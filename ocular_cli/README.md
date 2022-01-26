@@ -1,6 +1,6 @@
-# LensrsCli
+# Ocular
 
-LensrsCli is an application.
+Ocular is an application.
 
 ## Getting Started
 
