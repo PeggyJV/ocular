@@ -1,6 +1,12 @@
 use thiserror::Error;
 
 #[derive(Debug, Error)]
+pub enum ChainClientError {
+    #[error("error during key management operation: {0}")]
+    Keys(#[from] signatory::Error)
+}
+
+#[derive(Debug, Error)]
 pub enum ChainRegistryError {
     #[error("error parsing chain info: {0}")]
     InvalidChainInfo(#[from] serde_json::error::Error),

@@ -1,6 +1,6 @@
 use crate::{
     chain_registry::{AssetList, self},
-    config::ChainClientConfig,
+    chain_client::ChainClientConfig,
     error::{ChainInfoError},
 };
 use futures::executor;

@@ -1,5 +1,5 @@
 [package]
-name = "ocular_cli"
+name = "ocular-cli"
 description = "A CLI implementing the ocular client lib"
 authors = ["Collin Brittain"]
 version = "0.1.0"

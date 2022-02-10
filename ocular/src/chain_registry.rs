@@ -1,6 +1,8 @@
 use crate::{chain_info::ChainInfo, error::ChainRegistryError};
 use serde::{Deserialize, Serialize, de::DeserializeOwned};
 
+const REGISTRY_SOURCE: &str = "https://github.com/cosmos/chain-registry";
+
 #[derive(Debug, Default, Deserialize, Serialize)]
 pub struct AssetList {
     pub schema: String,
@@ -74,6 +76,10 @@ async fn get_content(path: String) -> Result<reqwest::Response, ChainRegistryErr
 pub async fn is_healthy_rpc(endpoint: &str) -> bool {
     // TO-DO
     true
+}
+
+pub fn get_source() -> &'static str {
+    REGISTRY_SOURCE
 }
 
 async fn parse_json<T>(data: reqwest::Response) -> Result<T, ChainRegistryError>

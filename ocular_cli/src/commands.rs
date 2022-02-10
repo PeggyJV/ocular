@@ -1,8 +1,9 @@
 //! LensrsCli Subcommands
 
 mod chains;
+mod keys;
 
-use self::chains::ChainsCmd;
+use self::{chains::ChainsCmd, keys::KeysCmd};
 use crate::config::LensrsCliConfig;
 use abscissa_core::{config::Override, Command, Configurable, FrameworkError, Runnable};
 use clap::Parser;
@@ -15,6 +16,9 @@ pub enum LensrsCliCmd {
     /// command for managing chains
     #[clap(subcommand)]
     Chains(ChainsCmd),
+    /// command for managing keys
+    #[clap(subcommand)]
+    Keys(KeysCmd),
 }
 
 /// Entry point for the application. It needs to be a struct to allow using subcommands!
@@ -65,6 +69,7 @@ impl Configurable<LensrsCliConfig> for EntryPoint {
     ) -> Result<LensrsCliConfig, FrameworkError> {
         match &self.cmd {
             LensrsCliCmd::Chains(cmd) => cmd.override_config(config),
+            LensrsCliCmd::Keys(cmd) => cmd.override_config(config),
             //
             // If you don't need special overrides for some
             // subcommands, you can just use a catch all
