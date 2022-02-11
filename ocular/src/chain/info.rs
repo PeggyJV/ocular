@@ -5,6 +5,7 @@ use crate::{
         registry::{self, AssetList},
     },
     error::{ChainInfoError, RpcError},
+    keys::KeyRingType,
 };
 use futures::executor;
 use rand::{prelude::SliceRandom, thread_rng};
@@ -123,7 +124,7 @@ impl ChainInfo {
             grpc_address: "".to_string(),
             key: "default".to_string(),
             key_directory: "".to_string(),
-            keyring_backend: "".to_string(),
+            keyring_backend: KeyRingType::default(),
             rpc_address: rpc,
         })
     }

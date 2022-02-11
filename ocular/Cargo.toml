@@ -24,3 +24,7 @@ signatory = "0.24.0"
 thiserror = "1.0.30"
 tiny-bip39 = "0.8.2"
 url = "2.2.2"
+keyring = "1.1.2"
+k256 = { version = "0.10.2", features = ["pem"] }
+pkcs8 = "0.8.0"
+deep_space = "2.8.9"

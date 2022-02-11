@@ -1,7 +1,5 @@
 use serde::{Deserialize, Serialize};
 
-
-
 /*  	Key            string                  `json:"key" yaml:"key"`
     ChainID        string                  `json:"chain-id" yaml:"chain-id"`
     RPCAddr        string                  `json:"rpc-addr" yaml:"rpc-addr"`
