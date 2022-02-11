@@ -16,10 +16,7 @@ pub enum ChainInfoError {
 }
 
 #[derive(Debug, Error)]
-pub enum ChainClientError {
-    #[error("error during key management operation: {0}")]
-    Keys(#[from] signatory::Error)
-}
+pub enum ChainClientError {}
 
 #[derive(Debug, Error)]
 pub enum ChainRegistryError {
@@ -36,4 +33,16 @@ pub enum RpcError {
     TendermintStatus(#[from] tendermint_rpc::Error),
     #[error("unhealthy RPC endpoint: {0}")]
     UnhealthyEndpoint(String),
+}
+
+#[derive(Debug, Error)]
+pub enum KeyStoreError {
+    #[error("error during key store operation: {0}")]
+    Keys(#[from] signatory::Error),
+    #[error("key name '{0}' already exists.")]
+    KeyExists(String),
+    #[error("key name '{0}' does not exist.")]
+    KeyDoesNotExist(String),
+    #[error("key store has not been initialized.")]
+    KeyStoreNotInitialized(),
 }
