@@ -1,6 +1,5 @@
-use tendermint_rpc::Client;
-
 use crate::error::{ChainClientError, RpcError};
+use tendermint_rpc::Client;
 
 use super::ChainClient;
 
