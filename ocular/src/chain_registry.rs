@@ -3,6 +3,7 @@ use serde::{de::DeserializeOwned, Deserialize, Serialize};
 
 #[derive(Debug, Default, Deserialize, Serialize)]
 pub struct AssetList {
+    #[serde(rename = "$schema")]
     pub schema: String,
     pub chain_id: String,
     pub assets: Vec<Asset>,
@@ -16,7 +17,8 @@ pub struct Asset {
     pub name: String,
     pub display: String,
     pub symbol: String,
-    logo_uris: Vec<LogoURI>,
+    #[serde(rename = "logo_URIs")]
+    pub logo_uris: LogoURIs,
     pub coingecko_id: String,
 }
 
@@ -27,7 +29,7 @@ pub struct DenomUnit {
 }
 
 #[derive(Debug, Default, Deserialize, Serialize)]
-pub struct LogoURI {
+pub struct LogoURIs {
     pub png: String,
     pub svg: String,
 }
@@ -50,7 +52,7 @@ pub async fn list_chains() -> Result<Vec<String>, ChainRegistryError> {
 }
 
 pub async fn get_assets(name: &str) -> Result<AssetList, ChainRegistryError> {
-    let path = format!("{}/chain.json", name);
+    let path = format!("{}/assetlist.json", name);
     let data = get_content(path).await?;
 
     parse_json(data).await
@@ -68,7 +70,7 @@ async fn get_content(path: String) -> Result<reqwest::Response, ChainRegistryErr
         .repos("cosmos", "chain-registry")
         .raw_file("HEAD".to_string(), path)
         .await
-        .map_err(|r| r.into())
+        .map_err(|e| e.into())
 }
 
 async fn parse_json<T>(data: reqwest::Response) -> Result<T, ChainRegistryError>
@@ -77,4 +79,34 @@ where
 {
     let content = data.text().await.unwrap();
     serde_json::from_str(content.as_str()).map_err(|r| r.into())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use assay::assay;
+
+    #[assay]
+    async fn gets_content_from_registry() {
+        let result = get_content("cosmoshub/chain.json".to_string()).await;
+
+        result.unwrap();
+    }
+
+    #[assay]
+    async fn parses_chain_info() {
+        let result = get_content("cosmoshub/chain.json".to_string())
+            .await
+            .unwrap();
+        let result = parse_json::<ChainInfo>(result).await;
+
+        result.unwrap();
+    }
+
+    #[assay]
+    async fn gets_chain() {
+        let result = get_chain("cosmoshub").await;
+
+        result.unwrap();
+    }
 }

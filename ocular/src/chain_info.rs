@@ -185,5 +185,27 @@ pub async fn is_healthy_rpc(endpoint: &str) -> Result<(), ChainInfoError> {
 #[cfg(test)]
 mod test {
     use super::*;
-    // TO-DO
+    use assay::assay;
+
+    #[assay]
+    async fn gets_assets() {
+        // as a unit test this shouldn't really rely on other parts
+        // of the API but I don't want to get bogged down hardcoding
+        // a ChainInfo right now.
+        let info = get_cosmoshub_info().await.unwrap();
+        let assets = info.get_asset_list().await;
+
+        assets.unwrap();
+    }
+
+    #[assay]
+    async fn build_chain_config() {
+        // as a unit test this shouldn't really rely on other parts
+        // of the API but I don't want to get bogged down hardcoding
+        // a ChainInfo right now.
+        let info = get_cosmoshub_info().await.unwrap();
+        let config = info.get_chain_config();
+
+        config.unwrap();
+    }
 }
