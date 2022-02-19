@@ -1,5 +1,6 @@
 use crate::{
-    chain_registry::{AssetList, self},
+    chain_client,
+    chain_registry::{self, AssetList},
     config::ChainClientConfig,
     error::{ChainInfoError, RpcError},
 };
@@ -37,13 +38,13 @@ pub struct Genesis {
 pub struct Codebase {
     pub git_repo: String,
     pub recommended_version: String,
-    #[serde(skip_serializing_if="Vec::is_empty", default="Vec::new")]
+    #[serde(skip_serializing_if = "Vec::is_empty", default = "Vec::new")]
     pub compatible_versions: Vec<String>,
 }
 
 #[derive(Clone, Debug, Default, Deserialize, Serialize)]
 pub struct Peers {
-    #[serde(skip_serializing_if="Vec::is_empty", default="Vec::new")]
+    #[serde(skip_serializing_if = "Vec::is_empty", default = "Vec::new")]
     pub seeds: Vec<Seed>,
     pub persistent_peers: Vec<PersistentPeer>,
 }
@@ -63,9 +64,9 @@ pub struct PersistentPeer {
 
 #[derive(Clone, Debug, Default, Deserialize, Serialize)]
 pub struct Apis {
-    #[serde(skip_serializing_if="Vec::is_empty", default="Vec::new")]
+    #[serde(skip_serializing_if = "Vec::is_empty", default = "Vec::new")]
     pub rpc: Vec<Rpc>,
-    #[serde(skip_serializing_if="Vec::is_empty", default="Vec::new")]
+    #[serde(skip_serializing_if = "Vec::is_empty", default = "Vec::new")]
     pub rest: Vec<Rest>,
 }
 
@@ -105,16 +106,12 @@ impl ChainInfo {
 
     pub fn get_chain_config(&self) -> Result<ChainClientConfig, ChainInfoError> {
         let mut gas_prices = String::default();
-        let asset_list = executor::block_on(async {
-            self.get_asset_list().await
-        })?;
+        let asset_list = executor::block_on(async { self.get_asset_list().await })?;
         if asset_list.assets.len() > 0 {
             gas_prices = format!("{:.2}{}", 0.01, asset_list.assets[0].base);
         }
 
-        let rpc = executor::block_on(async {
-            self.get_random_rpc_endpoint().await
-        })?;
+        let rpc = executor::block_on(async { self.get_random_rpc_endpoint().await })?;
 
         Ok(ChainClientConfig {
             account_prefix: self.bech32_prefix.clone(),

@@ -1,5 +1,5 @@
 use crate::{chain_info::ChainInfo, error::ChainRegistryError};
-use serde::{Deserialize, Serialize, de::DeserializeOwned};
+use serde::{de::DeserializeOwned, Deserialize, Serialize};
 
 #[derive(Debug, Default, Deserialize, Serialize)]
 pub struct AssetList {
@@ -71,13 +71,10 @@ async fn get_content(path: String) -> Result<reqwest::Response, ChainRegistryErr
         .map_err(|r| r.into())
 }
 
-pub async fn is_healthy_rpc(endpoint: &str) -> bool {
-    // TO-DO
-    true
-}
-
 async fn parse_json<T>(data: reqwest::Response) -> Result<T, ChainRegistryError>
-where T: DeserializeOwned {
+where
+    T: DeserializeOwned,
+{
     let content = data.text().await.unwrap();
-    serde_json::from_str(content.as_str()).map_err(|r| {r.into()})
+    serde_json::from_str(content.as_str()).map_err(|r| r.into())
 }
