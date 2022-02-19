@@ -1,10 +1,8 @@
-use std::{str::FromStr, time::Duration};
-
 use crate::{
     config::ChainClientConfig,
     error::{ChainClientError, RpcError},
 };
-use tendermint_rpc::{self, HttpClient, HttpClientUrl};
+use tendermint_rpc;
 
 pub mod query;
 
