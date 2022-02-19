@@ -1,11 +1,12 @@
 use crate::{
     chain_registry::{AssetList, self},
     config::ChainClientConfig,
-    error::{ChainInfoError},
+    error::{ChainInfoError, RpcError},
 };
 use futures::executor;
 use rand::{prelude::SliceRandom, thread_rng};
 use serde::{Deserialize, Serialize};
+use tendermint_rpc::Client;
 use url::Url;
 
 #[derive(Clone, Debug, Default, Deserialize, Serialize)]
@@ -133,31 +134,31 @@ impl ChainInfo {
         if let Some(endpoint) = endpoints.choose(&mut thread_rng()) {
             return Ok(endpoint.to_string());
         } else {
-            Err(ChainInfoError::RpcEndpoint(
-                "no available RPC endpoints".to_string(),
-            ))
+            Err(RpcError::UnhealthyEndpoint("no available RPC endpoints".to_string()).into())
         }
     }
 
     pub async fn get_rpc_endpoints(&self) -> Result<Vec<String>, ChainInfoError> {
         let mut endpoints = self.get_all_rpc_endpoints();
         if endpoints.is_empty() {
-            return Err(ChainInfoError::RpcEndpoint(
+            return Err(RpcError::UnhealthyEndpoint(
                 "no valid endpoint found. endpoints must use http or https.".to_string(),
-            ));
+            )
+            .into());
         }
 
         // this is not very efficient but i was getting annoyed trying to figure
         // out how to do filtering with an async method
         for (i, ep) in endpoints.clone().iter().enumerate() {
-            if !chain_registry::is_healthy_rpc(ep.as_str()).await {
+            if is_healthy_rpc(ep.as_str()).await.is_err() {
                 endpoints.remove(i);
             }
         }
         if endpoints.is_empty() {
-            return Err(ChainInfoError::RpcEndpoint(
+            return Err(RpcError::UnhealthyEndpoint(
                 "no healthy endpoint found (connections could not be established)".to_string(),
-            ));
+            )
+            .into());
         }
 
         Ok(endpoints)
@@ -165,7 +166,23 @@ impl ChainInfo {
 }
 
 pub async fn get_cosmoshub_info() -> Result<ChainInfo, ChainInfoError> {
-    chain_registry::get_chain("cosmoshub").await.map_err(|r| r.into())
+    chain_registry::get_chain("cosmoshub")
+        .await
+        .map_err(|r| r.into())
+}
+
+pub async fn is_healthy_rpc(endpoint: &str) -> Result<(), ChainInfoError> {
+    let rpc_client = chain_client::new_rpc_client(endpoint)?;
+    let status = rpc_client
+        .status()
+        .await
+        .map_err(|e| RpcError::TendermintStatus(e))?;
+
+    if status.sync_info.catching_up {
+        return Err(RpcError::UnhealthyEndpoint("node is still syncing.".to_string()).into());
+    }
+
+    Ok(())
 }
 
 #[cfg(test)]
