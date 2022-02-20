@@ -49,9 +49,7 @@ impl Configurable<LensrsCliConfig> for EntryPoint {
         // the only method that runs before config gets loaded, so I'm putting
         // it here for now.
         let rt = tokio::runtime::Runtime::new().unwrap();
-        rt.block_on(async {
-            crate::config::init().await
-        }).ok()
+        rt.block_on(async { crate::config::init().await }).ok()
     }
 
     /// Apply changes to the config after it's been loaded, e.g. overriding
@@ -59,10 +57,7 @@ impl Configurable<LensrsCliConfig> for EntryPoint {
     ///
     /// This can be safely deleted if you don't want to override config
     /// settings from command-line options.
-    fn process_config(
-        &self,
-        config: LensrsCliConfig,
-    ) -> Result<LensrsCliConfig, FrameworkError> {
+    fn process_config(&self, config: LensrsCliConfig) -> Result<LensrsCliConfig, FrameworkError> {
         match &self.cmd {
             LensrsCliCmd::Chains(cmd) => cmd.override_config(config),
             //

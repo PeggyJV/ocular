@@ -82,6 +82,8 @@ impl From<io::Error> for Error {
 
 impl From<toml::ser::Error> for Error {
     fn from(err: toml::ser::Error) -> Self {
-        ErrorKind::Config.context(format!("error serializing config content: {}", err)).into()
+        ErrorKind::Config
+            .context(format!("error serializing config content: {}", err))
+            .into()
     }
 }
