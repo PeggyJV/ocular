@@ -24,10 +24,7 @@ impl ChainClient {
     pub fn new(config: ChainClientConfig) -> Result<Self, ChainClientError> {
         let rpc_client = new_rpc_client(config.rpc_address.as_str())?;
 
-        Ok(ChainClient {
-            config,
-            rpc_client,
-        })
+        Ok(ChainClient { config, rpc_client })
     }
 }
 
