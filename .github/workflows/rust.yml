@@ -27,7 +27,7 @@ jobs:
             target/
           key: ${{ runner.os }}-cargo-${{ hashFiles('Cargo.lock') }}
       - name: Run Ocular acceptance tests
-        run: cargo test --all --verbose
+        run: cargo test ocular --verbose
   
   rust-build:
     runs-on: ubuntu-latest
