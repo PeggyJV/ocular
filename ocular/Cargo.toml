@@ -11,11 +11,13 @@ readme = "README.md"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+assay = "0.1"
 futures = { version = "0.3.19", features = ["executor"] }
 octocrab = "0.15.3"
 rand = "0.8.4"
 reqwest = { version = "0.11.8", features = ["json"] }
 serde = "1.0.133"
 serde_json = "1.0.78"
+tendermint-rpc = { version = "0.23.5", features = ["http-client"] }
 thiserror = "1.0.30"
 url = "2.2.2"

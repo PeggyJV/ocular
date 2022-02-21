@@ -1,16 +1,16 @@
 mod add;
 mod delete;
 mod edit;
-mod list;
-mod show;
-mod set_default;
-mod registry_list;
-mod show_default;
 mod editor;
+mod list;
+mod registry_list;
+mod set_default;
+mod show;
+mod show_default;
 
 use crate::config::LensrsCliConfig;
 use abscissa_core::{config, Command, FrameworkError, Runnable};
-use clap::{Parser};
+use clap::Parser;
 
 use self::show::ShowCmd;
 
@@ -30,10 +30,7 @@ impl config::Override<LensrsCliConfig> for ChainsCmd {
     // Process the given command line options, overriding settings from
     // a configuration file using explicit flags taken from command-line
     // arguments.
-    fn override_config(
-        &self,
-        config: LensrsCliConfig,
-    ) -> Result<LensrsCliConfig, FrameworkError> {
+    fn override_config(&self, config: LensrsCliConfig) -> Result<LensrsCliConfig, FrameworkError> {
         Ok(config)
     }
 }

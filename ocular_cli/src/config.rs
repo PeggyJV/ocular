@@ -8,7 +8,10 @@ use abscissa_core::tracing::debug;
 use dirs;
 use ocular::{chain_info::ChainInfo, chain_registry};
 use serde::{Deserialize, Serialize};
-use std::{fs, path::{Path, PathBuf}};
+use std::{
+    fs,
+    path::{Path, PathBuf},
+};
 
 /// LensrsCli Configuration
 #[derive(Clone, Debug, Default, Deserialize, Serialize)]

@@ -1,11 +1,13 @@
 use crate::{
-    chain_registry::{AssetList, self},
+    chain_client,
+    chain_registry::{self, AssetList},
     config::ChainClientConfig,
-    error::{ChainInfoError},
+    error::{ChainInfoError, RpcError},
 };
 use futures::executor;
 use rand::{prelude::SliceRandom, thread_rng};
 use serde::{Deserialize, Serialize};
+use tendermint_rpc::Client;
 use url::Url;
 
 #[derive(Clone, Debug, Default, Deserialize, Serialize)]
@@ -36,13 +38,13 @@ pub struct Genesis {
 pub struct Codebase {
     pub git_repo: String,
     pub recommended_version: String,
-    #[serde(skip_serializing_if="Vec::is_empty", default="Vec::new")]
+    #[serde(skip_serializing_if = "Vec::is_empty", default = "Vec::new")]
     pub compatible_versions: Vec<String>,
 }
 
 #[derive(Clone, Debug, Default, Deserialize, Serialize)]
 pub struct Peers {
-    #[serde(skip_serializing_if="Vec::is_empty", default="Vec::new")]
+    #[serde(skip_serializing_if = "Vec::is_empty", default = "Vec::new")]
     pub seeds: Vec<Seed>,
     pub persistent_peers: Vec<PersistentPeer>,
 }
@@ -62,9 +64,9 @@ pub struct PersistentPeer {
 
 #[derive(Clone, Debug, Default, Deserialize, Serialize)]
 pub struct Apis {
-    #[serde(skip_serializing_if="Vec::is_empty", default="Vec::new")]
+    #[serde(skip_serializing_if = "Vec::is_empty", default = "Vec::new")]
     pub rpc: Vec<Rpc>,
-    #[serde(skip_serializing_if="Vec::is_empty", default="Vec::new")]
+    #[serde(skip_serializing_if = "Vec::is_empty", default = "Vec::new")]
     pub rest: Vec<Rest>,
 }
 
@@ -104,22 +106,18 @@ impl ChainInfo {
 
     pub fn get_chain_config(&self) -> Result<ChainClientConfig, ChainInfoError> {
         let mut gas_prices = String::default();
-        let asset_list = executor::block_on(async {
-            self.get_asset_list().await
-        })?;
-        if asset_list.assets.len() > 0 {
+        let asset_list = executor::block_on(async { self.get_asset_list().await })?;
+        if !asset_list.assets.is_empty() {
             gas_prices = format!("{:.2}{}", 0.01, asset_list.assets[0].base);
         }
 
-        let rpc = executor::block_on(async {
-            self.get_random_rpc_endpoint().await
-        })?;
+        let rpc = executor::block_on(async { self.get_random_rpc_endpoint().await })?;
 
         Ok(ChainClientConfig {
             account_prefix: self.bech32_prefix.clone(),
             chain_id: self.chain_id.clone(),
             gas_adjustment: 1.2,
-            gas_prices: gas_prices,
+            gas_prices,
             grpc_address: "".to_string(),
             key: "default".to_string(),
             key_directory: "".to_string(),
@@ -131,33 +129,33 @@ impl ChainInfo {
     pub async fn get_random_rpc_endpoint(&self) -> Result<String, ChainInfoError> {
         let endpoints = self.get_rpc_endpoints().await?;
         if let Some(endpoint) = endpoints.choose(&mut thread_rng()) {
-            return Ok(endpoint.to_string());
+            Ok(endpoint.to_string())
         } else {
-            Err(ChainInfoError::RpcEndpoint(
-                "no available RPC endpoints".to_string(),
-            ))
+            Err(RpcError::UnhealthyEndpoint("no available RPC endpoints".to_string()).into())
         }
     }
 
     pub async fn get_rpc_endpoints(&self) -> Result<Vec<String>, ChainInfoError> {
         let mut endpoints = self.get_all_rpc_endpoints();
         if endpoints.is_empty() {
-            return Err(ChainInfoError::RpcEndpoint(
+            return Err(RpcError::UnhealthyEndpoint(
                 "no valid endpoint found. endpoints must use http or https.".to_string(),
-            ));
+            )
+            .into());
         }
 
         // this is not very efficient but i was getting annoyed trying to figure
         // out how to do filtering with an async method
         for (i, ep) in endpoints.clone().iter().enumerate() {
-            if !chain_registry::is_healthy_rpc(ep.as_str()).await {
+            if is_healthy_rpc(ep.as_str()).await.is_err() {
                 endpoints.remove(i);
             }
         }
         if endpoints.is_empty() {
-            return Err(ChainInfoError::RpcEndpoint(
+            return Err(RpcError::UnhealthyEndpoint(
                 "no healthy endpoint found (connections could not be established)".to_string(),
-            ));
+            )
+            .into());
         }
 
         Ok(endpoints)
@@ -165,11 +163,49 @@ impl ChainInfo {
 }
 
 pub async fn get_cosmoshub_info() -> Result<ChainInfo, ChainInfoError> {
-    chain_registry::get_chain("cosmoshub").await.map_err(|r| r.into())
+    chain_registry::get_chain("cosmoshub")
+        .await
+        .map_err(|r| r.into())
+}
+
+pub async fn is_healthy_rpc(endpoint: &str) -> Result<(), ChainInfoError> {
+    let rpc_client = chain_client::new_rpc_client(endpoint)?;
+    let status = rpc_client
+        .status()
+        .await
+        .map_err(RpcError::TendermintStatus)?;
+
+    if status.sync_info.catching_up {
+        return Err(RpcError::UnhealthyEndpoint("node is still syncing.".to_string()).into());
+    }
+
+    Ok(())
 }
 
 #[cfg(test)]
 mod test {
     use super::*;
-    // TO-DO
+    use assay::assay;
+
+    #[assay]
+    async fn gets_assets() {
+        // as a unit test this shouldn't really rely on other parts
+        // of the API but I don't want to get bogged down hardcoding
+        // a ChainInfo right now.
+        let info = get_cosmoshub_info().await.unwrap();
+        let assets = info.get_asset_list().await;
+
+        assets.unwrap();
+    }
+
+    #[assay]
+    async fn build_chain_config() {
+        // as a unit test this shouldn't really rely on other parts
+        // of the API but I don't want to get bogged down hardcoding
+        // a ChainInfo right now.
+        let info = get_cosmoshub_info().await.unwrap();
+        let config = info.get_chain_config();
+
+        config.unwrap();
+    }
 }
