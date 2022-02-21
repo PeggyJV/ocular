@@ -25,8 +25,8 @@ impl ChainClient {
         let rpc_client = new_rpc_client(config.rpc_address.as_str())?;
 
         Ok(ChainClient {
-            config: config,
-            rpc_client: rpc_client,
+            config,
+            rpc_client,
         })
     }
 }

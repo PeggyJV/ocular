@@ -9,7 +9,7 @@ impl ChainClient {
             .rpc_client
             .status()
             .await
-            .map_err(|e| RpcError::TendermintStatus(e))?;
+            .map_err(RpcError::TendermintStatus)?;
         Ok(status.sync_info.latest_block_height.value())
     }
 }

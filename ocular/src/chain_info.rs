@@ -107,7 +107,7 @@ impl ChainInfo {
     pub fn get_chain_config(&self) -> Result<ChainClientConfig, ChainInfoError> {
         let mut gas_prices = String::default();
         let asset_list = executor::block_on(async { self.get_asset_list().await })?;
-        if asset_list.assets.len() > 0 {
+        if !asset_list.assets.is_empty() {
             gas_prices = format!("{:.2}{}", 0.01, asset_list.assets[0].base);
         }
 
@@ -117,7 +117,7 @@ impl ChainInfo {
             account_prefix: self.bech32_prefix.clone(),
             chain_id: self.chain_id.clone(),
             gas_adjustment: 1.2,
-            gas_prices: gas_prices,
+            gas_prices,
             grpc_address: "".to_string(),
             key: "default".to_string(),
             key_directory: "".to_string(),
@@ -129,7 +129,7 @@ impl ChainInfo {
     pub async fn get_random_rpc_endpoint(&self) -> Result<String, ChainInfoError> {
         let endpoints = self.get_rpc_endpoints().await?;
         if let Some(endpoint) = endpoints.choose(&mut thread_rng()) {
-            return Ok(endpoint.to_string());
+            Ok(endpoint.to_string())
         } else {
             Err(RpcError::UnhealthyEndpoint("no available RPC endpoints".to_string()).into())
         }
@@ -173,7 +173,7 @@ pub async fn is_healthy_rpc(endpoint: &str) -> Result<(), ChainInfoError> {
     let status = rpc_client
         .status()
         .await
-        .map_err(|e| RpcError::TendermintStatus(e))?;
+        .map_err(RpcError::TendermintStatus)?;
 
     if status.sync_info.catching_up {
         return Err(RpcError::UnhealthyEndpoint("node is still syncing.".to_string()).into());

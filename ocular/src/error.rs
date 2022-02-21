@@ -1,4 +1,3 @@
-use tendermint_rpc;
 use thiserror::Error;
 
 // Higher level errors: ChainClientError, ChainInfoError, ChainRegistryError
