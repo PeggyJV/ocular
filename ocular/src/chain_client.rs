@@ -25,7 +25,11 @@ impl ChainClient {
         let rpc_client = new_rpc_client(config.rpc_address.as_str())?;
         let keyring = Keyring::new_file_store(Option::None);
 
-        Ok(ChainClient { config, keyring, rpc_client })
+        Ok(ChainClient {
+            config,
+            keyring,
+            rpc_client,
+        })
     }
 }
 

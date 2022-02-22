@@ -12,7 +12,7 @@ pub struct ChainClientConfig {
     pub gas_prices: String,
 }
 
-/*  	
+/*
     ChainID        string                  `json:"chain-id" yaml:"chain-id"`
     RPCAddr        string                  `json:"rpc-addr" yaml:"rpc-addr"`
     GRPCAddr       string                  `json:"grpc-addr" yaml:"grpc-addr"`
