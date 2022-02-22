@@ -3,7 +3,6 @@ use crate::{
     chain_registry::{self, AssetList},
     config::ChainClientConfig,
     error::{ChainInfoError, RpcError},
-    keys::KeyRingType,
 };
 use futures::executor;
 use rand::{prelude::SliceRandom, thread_rng};
@@ -120,9 +119,6 @@ impl ChainInfo {
             gas_adjustment: 1.2,
             gas_prices,
             grpc_address: "".to_string(),
-            key: "default".to_string(),
-            key_directory: "".to_string(),
-            keyring_backend: KeyRingType::default(),
             rpc_address: rpc,
         })
     }

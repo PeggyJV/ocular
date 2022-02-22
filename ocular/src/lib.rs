@@ -5,4 +5,4 @@ pub mod chain_info;
 pub mod chain_registry;
 pub mod config;
 mod error;
-pub mod keys;
+pub mod keyring;

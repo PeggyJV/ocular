@@ -90,6 +90,7 @@ pub struct PublicKeyOutput {
 }
 
 // --- Base Key Ring ---
+/// Base Keyring that needs to be initialized before being used. Initialization parameters vary depending on type of key store being used.
 pub struct Keyring {
     backend: KeyRingType,
     pub key_store: Box<dyn KeyStore>,
@@ -99,7 +100,7 @@ pub struct Keyring {
 impl Keyring {
     /// Create new instance of FsKeyStore Keyring
     /// Will create store at current working dir if None is provided
-    fn new_file_store(key_path: Option<&str>) -> Self {
+    pub fn new_file_store(key_path: Option<&str>) -> Self {
         let path: String;
         if key_path.is_none() {
             path = env::current_dir()
