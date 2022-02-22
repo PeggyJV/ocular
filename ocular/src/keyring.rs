@@ -5,7 +5,7 @@ use signatory::{
     pkcs8::der::Document, pkcs8::EncodePrivateKey, pkcs8::LineEnding, pkcs8::PrivateKeyDocument,
     FsKeyStore, KeyName,
 };
-use std::{env, fs, fs::metadata, fs::remove_dir, fs::remove_dir_all, path::Path};
+use std::{env, fs, path::Path};
 
 use crate::error::KeyStoreError;
 
@@ -76,6 +76,7 @@ pub trait KeyStore {
 
 /// Mnemonic and private key in pkcs8 PrivateKeyDocument format
 #[derive(Debug)]
+#[allow(dead_code)]
 pub struct PrivateKeyOutput {
     mnemonic: String,
     private_key: PrivateKeyDocument,
@@ -84,6 +85,7 @@ pub struct PrivateKeyOutput {
 /// Key name and address in Bech32 (aka segwit) format
 // TODO: Include actual public key here if ever needed
 #[derive(Debug)]
+#[allow(dead_code)]
 pub struct PublicKeyOutput {
     name: String,
     address: String,
@@ -91,6 +93,7 @@ pub struct PublicKeyOutput {
 
 // --- Base Key Ring ---
 /// Base Keyring that needs to be initialized before being used. Initialization parameters vary depending on type of key store being used.
+#[allow(dead_code)]
 pub struct Keyring {
     backend: KeyRingType,
     pub key_store: Box<dyn KeyStore>,
@@ -102,14 +105,15 @@ impl Keyring {
     /// Will create store at current working dir if None is provided
     pub fn new_file_store(key_path: Option<&str>) -> Self {
         let path: String;
-        if key_path.is_none() {
+
+        if let Some(key_path) = key_path {
+            path = key_path.to_string();
+        } else {
             path = env::current_dir()
                 .unwrap()
                 .into_os_string()
                 .into_string()
                 .expect("Could not get current working dir.");
-        } else {
-            path = key_path.unwrap().to_string();
         }
 
         dbg!(format!("Attempting to use path {}", path));
@@ -119,10 +123,9 @@ impl Keyring {
             key_store: None,
         };
 
-        key_store.create_key_store().expect(&format!(
-            "Could not create file key store for path: {}",
-            path
-        ));
+        key_store
+            .create_key_store()
+            .unwrap_or_else(|_| panic!("Could not create file key store for path: {}", path));
 
         Keyring {
             backend: KeyRingType::File,
@@ -154,15 +157,15 @@ impl KeyStore for FileKeyStore {
     }
 
     fn key_store_created(&self) -> bool {
-        !self.key_path.is_empty() && !self.key_store.is_none()
+        !self.key_path.is_empty() && self.key_store.is_some()
     }
 
     fn key_exists(&self, name: &str) -> Result<bool, KeyStoreError> {
-        let key_name =
-            &KeyName::new(name).expect(&format!("Could not create KeyName for '{}'.", name));
+        let key_name = &KeyName::new(name)
+            .unwrap_or_else(|_| panic!("Could not create KeyName for '{}'.", name));
 
         if !self.key_store_created() {
-            return Err(KeyStoreError::KeyStoreNotInitialized());
+            return Err(KeyStoreError::NotInitialized());
         }
 
         if let Ok(_info) = self
@@ -171,9 +174,9 @@ impl KeyStore for FileKeyStore {
             .expect("Error accessing key store.")
             .info(key_name)
         {
-            return Ok(true);
+            Ok(true)
         } else {
-            return Ok(false);
+            Ok(false)
         }
     }
 
@@ -187,11 +190,11 @@ impl KeyStore for FileKeyStore {
         // Check if key already exists
         if self.key_exists(name)? && !override_if_exists {
             eprintln!("Key '{}', already exists.", name);
-            return Err(KeyStoreError::KeyExists(name.to_string()));
+            return Err(KeyStoreError::Exists(name.to_string()));
         }
 
         let mnemonic = Mnemonic::new(bip39::MnemonicType::Words24, bip39::Language::English);
-        let seed = Seed::new(&mnemonic, &password);
+        let seed = Seed::new(&mnemonic, password);
 
         let derivation_path = match derivation_path {
             Some(_i) => derivation_path.unwrap(),
@@ -210,12 +213,12 @@ impl KeyStore for FileKeyStore {
             .to_pkcs8_der()
             .expect("Could not PKCS8 encode private key");
 
-        let key_name =
-            &KeyName::new(name).expect(&format!("Could not create KeyName for '{}'.", name));
+        let key_name = &KeyName::new(name)
+            .unwrap_or_else(|_| panic!("Could not create KeyName for '{}'.", name));
         self.key_store
             .as_ref()
             .expect("Error accessing key store.")
-            .store(&key_name, &encoded_key)
+            .store(key_name, &encoded_key)
             .expect("Could not store key");
 
         Ok(PrivateKeyOutput {
@@ -226,17 +229,17 @@ impl KeyStore for FileKeyStore {
 
     fn delete_key(&self, name: &str) -> Result<(), KeyStoreError> {
         if self.key_exists(name)? {
-            let key_name =
-                &KeyName::new(name).expect(&format!("Could not create KeyName for '{}'.", name));
+            let key_name = &KeyName::new(name)
+                .unwrap_or_else(|_| panic!("Could not create KeyName for '{}'.", name));
             let _delete_key = self
                 .key_store
                 .as_ref()
                 .expect("Error accessing key store.")
-                .delete(&key_name);
+                .delete(key_name);
 
-            return Ok(());
+            Ok(())
         } else {
-            return Err(KeyStoreError::KeyDoesNotExist(name.to_string()));
+            Err(KeyStoreError::DoesNotExist(name.to_string()))
         }
     }
 
@@ -249,20 +252,20 @@ impl KeyStore for FileKeyStore {
         // Check if current key exists
         if !self.key_exists(current_name)? {
             eprintln!("Key '{}', does not exist.", current_name);
-            return Err(KeyStoreError::KeyDoesNotExist(current_name.to_string()));
+            return Err(KeyStoreError::DoesNotExist(current_name.to_string()));
         }
 
         // Check if new key exists
         if self.key_exists(new_name)? && !override_if_exists {
             eprintln!("New key name '{}', already exists.", new_name);
-            return Err(KeyStoreError::KeyExists(new_name.to_string()));
+            return Err(KeyStoreError::Exists(new_name.to_string()));
         }
 
         // Proceed with rename
         let current_name = &KeyName::new(current_name)
-            .expect(&format!("Could not create KeyName for '{}'.", current_name));
+            .unwrap_or_else(|_| panic!("Could not create KeyName for '{}'.", current_name));
         let new_name = &KeyName::new(new_name)
-            .expect(&format!("Could not create KeyName for '{}'.", new_name));
+            .unwrap_or_else(|_| panic!("Could not create KeyName for '{}'.", new_name));
 
         let key = self
             .key_store
@@ -276,10 +279,10 @@ impl KeyStore for FileKeyStore {
             .key_store
             .as_ref()
             .expect("Error accessing key store.")
-            .store(&new_name, &key);
+            .store(new_name, &key);
 
         // Delete old key.
-        let _result = self.delete_key(&current_name);
+        let _result = self.delete_key(current_name);
 
         Ok(())
     }
@@ -288,17 +291,17 @@ impl KeyStore for FileKeyStore {
         // Check if key exists
         if !self.key_exists(name)? {
             eprintln!("Key '{}', does not exist.", name);
-            return Err(KeyStoreError::KeyDoesNotExist(name.to_string()));
+            return Err(KeyStoreError::DoesNotExist(name.to_string()));
         }
 
         // Prepare key and parse into pem
-        let key_name =
-            &KeyName::new(name).expect(&format!("Could not create KeyName for '{}'.", name));
+        let key_name = &KeyName::new(name)
+            .unwrap_or_else(|_| panic!("Could not create KeyName for '{}'.", name));
         let key = self
             .key_store
             .as_ref()
             .expect("Error accessing key store.")
-            .load(&key_name)
+            .load(key_name)
             .expect("Could not load key");
         let key: k256::elliptic_curve::SecretKey<k256::Secp256k1> = key
             .to_pem(LineEnding::default())
@@ -320,10 +323,10 @@ impl KeyStore for FileKeyStore {
             .to_bech32(COSMOS_ADDRESS_PREFIX)
             .expect("Could not bech32 encode address.");
 
-        return Ok(PublicKeyOutput {
+        Ok(PublicKeyOutput {
             name: name.to_string(),
-            address: address,
-        });
+            address,
+        })
     }
 
     fn get_all_keys(&self) -> Result<Vec<PublicKeyOutput>, Box<dyn std::error::Error>> {
@@ -348,7 +351,7 @@ impl KeyStore for FileKeyStore {
             }
         }
 
-        return Ok(vec);
+        Ok(vec)
     }
 
     fn recover_from_mnemonic(
@@ -362,13 +365,13 @@ impl KeyStore for FileKeyStore {
         // Check if key already exists
         if self.key_exists(name)? && !override_if_exists {
             eprintln!("Key '{}', already exists.", name);
-            return Err(KeyStoreError::KeyExists(name.to_string()));
+            return Err(KeyStoreError::Exists(name.to_string()));
         }
 
         let seed = Seed::new(
             &bip39::Mnemonic::from_phrase(mnemonic.trim(), bip39::Language::English)
                 .expect("Could not read mnemonic."),
-            &password,
+            password,
         );
 
         let derivation_path = match derivation_path {
@@ -388,12 +391,12 @@ impl KeyStore for FileKeyStore {
             .to_pkcs8_der()
             .expect("Could not PKCS8 encode private key");
 
-        let key_name =
-            &KeyName::new(name).expect(&format!("Could not create KeyName for '{}'.", name));
+        let key_name = &KeyName::new(name)
+            .unwrap_or_else(|_| panic!("Could not create KeyName for '{}'.", name));
         self.key_store
             .as_ref()
             .expect("Error accessing key store.")
-            .store(&key_name, &encoded_key)
+            .store(key_name, &encoded_key)
             .expect("Could not store key");
 
         Ok(())
@@ -423,20 +426,20 @@ mod tests {
             + "/working_test_dir0");
 
         // Assert doesnt exist
-        let result = std::panic::catch_unwind(|| metadata(new_dir).unwrap());
+        let result = std::panic::catch_unwind(|| fs::metadata(new_dir).unwrap());
         assert!(result.is_err());
 
         let keyring = Keyring::new_file_store(Option::Some(new_dir));
         assert_eq!(keyring.key_store.key_store_created(), true);
 
         // Assert new dir exists now
-        assert_eq!(metadata(new_dir).unwrap().is_dir(), true);
+        assert_eq!(fs::metadata(new_dir).unwrap().is_dir(), true);
 
         // Clean up dir
-        remove_dir(new_dir).expect(&format!("Failed to delete test directory {}", new_dir));
+        fs::remove_dir(new_dir).expect(&format!("Failed to delete test directory {}", new_dir));
 
         // Assert deleted
-        let result = std::panic::catch_unwind(|| metadata(new_dir).unwrap());
+        let result = std::panic::catch_unwind(|| fs::metadata(new_dir).unwrap());
         assert!(result.is_err());
     }
 
@@ -449,13 +452,13 @@ mod tests {
             .unwrap());
 
         // Assert dir exists
-        assert_eq!(metadata(existing_dir).unwrap().is_dir(), true);
+        assert_eq!(fs::metadata(existing_dir).unwrap().is_dir(), true);
 
         let keyring = Keyring::new_file_store(Option::Some(existing_dir));
         assert_eq!(keyring.key_store.key_store_created(), true);
 
         // Assert dir still exists
-        assert_eq!(metadata(existing_dir).unwrap().is_dir(), true);
+        assert_eq!(fs::metadata(existing_dir).unwrap().is_dir(), true);
     }
 
     #[test]
@@ -487,10 +490,10 @@ mod tests {
             .is_ok());
 
         // Clean up dir
-        remove_dir_all(new_dir).expect(&format!("Failed to delete test directory {}", new_dir));
+        fs::remove_dir_all(new_dir).expect(&format!("Failed to delete test directory {}", new_dir));
 
         // Assert deleted
-        let result = std::panic::catch_unwind(|| metadata(new_dir).unwrap());
+        let result = std::panic::catch_unwind(|| fs::metadata(new_dir).unwrap());
         assert!(result.is_err());
     }
 
@@ -516,10 +519,10 @@ mod tests {
         assert_eq!(keyring.key_store.key_exists("dolphin").unwrap(), true);
 
         // Clean up dir
-        remove_dir_all(new_dir).expect(&format!("Failed to delete test directory {}", new_dir));
+        fs::remove_dir_all(new_dir).expect(&format!("Failed to delete test directory {}", new_dir));
 
         // Assert deleted
-        let result = std::panic::catch_unwind(|| metadata(new_dir).unwrap());
+        let result = std::panic::catch_unwind(|| fs::metadata(new_dir).unwrap());
         assert!(result.is_err());
     }
 
@@ -548,10 +551,10 @@ mod tests {
         assert_eq!(keyring.key_store.key_exists("harambe").unwrap(), false);
 
         // Clean up dir
-        remove_dir_all(new_dir).expect(&format!("Failed to delete test directory {}", new_dir));
+        fs::remove_dir_all(new_dir).expect(&format!("Failed to delete test directory {}", new_dir));
 
         // Assert deleted
-        let result = std::panic::catch_unwind(|| metadata(new_dir).unwrap());
+        let result = std::panic::catch_unwind(|| fs::metadata(new_dir).unwrap());
         assert!(result.is_err());
     }
 
@@ -576,10 +579,10 @@ mod tests {
             .is_err());
 
         // Create some new keys
-        let key = keyring
+        let _key = keyring
             .key_store
             .add_key("penguin", "", Option::None, false);
-        let key = keyring.key_store.add_key("mouse", "", Option::None, false);
+        let _key = keyring.key_store.add_key("mouse", "", Option::None, false);
 
         // Verify keys exists and new named key does not
         assert_eq!(keyring.key_store.key_exists("penguin").unwrap(), true);
@@ -615,10 +618,10 @@ mod tests {
         assert_eq!(keyring.key_store.key_exists("penguin").unwrap(), true);
 
         // Clean up dir
-        remove_dir_all(new_dir).expect(&format!("Failed to delete test directory {}", new_dir));
+        fs::remove_dir_all(new_dir).expect(&format!("Failed to delete test directory {}", new_dir));
 
         // Assert deleted
-        let result = std::panic::catch_unwind(|| metadata(new_dir).unwrap());
+        let result = std::panic::catch_unwind(|| fs::metadata(new_dir).unwrap());
         assert!(result.is_err());
     }
 
@@ -636,7 +639,7 @@ mod tests {
         assert!(keyring.key_store.get_key_address("iguana").is_err());
 
         // Make new key
-        let key = keyring.key_store.add_key("iguana", "", Option::None, false);
+        let _key = keyring.key_store.add_key("iguana", "", Option::None, false);
 
         // Get key address
         let result = keyring.key_store.get_key_address("iguana");
@@ -644,10 +647,10 @@ mod tests {
         dbg!(result);
 
         // Clean up dir
-        remove_dir_all(new_dir).expect(&format!("Failed to delete test directory {}", new_dir));
+        fs::remove_dir_all(new_dir).expect(&format!("Failed to delete test directory {}", new_dir));
 
         // Assert deleted
-        let result = std::panic::catch_unwind(|| metadata(new_dir).unwrap());
+        let result = std::panic::catch_unwind(|| fs::metadata(new_dir).unwrap());
         assert!(result.is_err());
     }
 
@@ -680,10 +683,10 @@ mod tests {
         dbg!(result);
 
         // Clean up dir
-        remove_dir_all(new_dir).expect(&format!("Failed to delete test directory {}", new_dir));
+        fs::remove_dir_all(new_dir).expect(&format!("Failed to delete test directory {}", new_dir));
 
         // Assert deleted
-        let result = std::panic::catch_unwind(|| metadata(new_dir).unwrap());
+        let result = std::panic::catch_unwind(|| fs::metadata(new_dir).unwrap());
         assert!(result.is_err());
     }
 
@@ -728,10 +731,10 @@ mod tests {
         assert_eq!(new_public_key.address, public_key.address);
 
         // Clean up dir
-        remove_dir_all(new_dir).expect(&format!("Failed to delete test directory {}", new_dir));
+        fs::remove_dir_all(new_dir).expect(&format!("Failed to delete test directory {}", new_dir));
 
         // Assert deleted
-        let result = std::panic::catch_unwind(|| metadata(new_dir).unwrap());
+        let result = std::panic::catch_unwind(|| fs::metadata(new_dir).unwrap());
         assert!(result.is_err());
     }
 }
