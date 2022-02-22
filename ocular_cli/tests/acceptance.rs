@@ -31,7 +31,6 @@ pub static RUNNER: Lazy<CmdRunner> = Lazy::new(|| CmdRunner::default());
 
 /// Use `LensrsCliConfig::default()` value if no config or args
 #[test]
-#[ignore]
 fn start_no_args() {
     let mut runner = RUNNER.clone();
     let mut cmd = runner.arg("start").capture_stdout().run();
@@ -41,7 +40,6 @@ fn start_no_args() {
 
 /// Use command-line argument value
 #[test]
-#[ignore]
 fn start_with_args() {
     let mut runner = RUNNER.clone();
     let mut cmd = runner
@@ -55,7 +53,6 @@ fn start_with_args() {
 
 /// Example of a test which matches a regular expression
 #[test]
-#[ignore]
 fn version_no_args() {
     let mut runner = RUNNER.clone();
     let mut cmd = runner.arg("--version").capture_stdout().run();
