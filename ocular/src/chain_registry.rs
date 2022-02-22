@@ -1,8 +1,6 @@
 use crate::{chain_info::ChainInfo, error::ChainRegistryError};
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 
-const REGISTRY_SOURCE: &str = "https://github.com/cosmos/chain-registry";
-
 #[derive(Debug, Default, Deserialize, Serialize)]
 pub struct AssetList {
     #[serde(rename = "$schema")]
@@ -73,10 +71,6 @@ async fn get_content(path: String) -> Result<reqwest::Response, ChainRegistryErr
         .raw_file("HEAD".to_string(), path)
         .await
         .map_err(|e| e.into())
-}
-
-pub fn get_source() -> &'static str {
-    REGISTRY_SOURCE
 }
 
 async fn parse_json<T>(data: reqwest::Response) -> Result<T, ChainRegistryError>

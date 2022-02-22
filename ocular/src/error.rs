@@ -16,9 +16,6 @@ pub enum ChainInfoError {
 }
 
 #[derive(Debug, Error)]
-pub enum ChainClientError {}
-
-#[derive(Debug, Error)]
 pub enum ChainRegistryError {
     #[error("error parsing chain info: {0}")]
     InvalidChainInfo(#[from] serde_json::error::Error),
