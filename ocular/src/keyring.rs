@@ -1,15 +1,15 @@
+use bech32::{Bech32, ToBase32};
 use bip32::PrivateKey;
 use bip39::{Mnemonic, Seed};
+use ripemd::Ripemd160 as Ripemd;
 use serde::{Deserialize, Serialize};
+use sha2::Digest as Sha2Digest;
+use sha2::Sha256;
 use signatory::{
     pkcs8::der::Document, pkcs8::EncodePrivateKey, pkcs8::LineEnding, pkcs8::PrivateKeyDocument,
     FsKeyStore, KeyName,
 };
 use std::{env, fs, path::Path};
-use bech32::{Bech32, ToBase32};
-use ripemd::Ripemd160 as Ripemd;
-use sha2::Digest as Sha2Digest;
-use sha2::Sha256;
 
 use crate::error::KeyStoreError;
 
@@ -312,11 +312,13 @@ impl KeyStore for FileKeyStore {
 
         // Convert to deepspace private key for address conversion
         let key_bytes = key.to_bytes();
-        
+
         // Obtain public key bytes
         let secp256k1_engine = secp256k1::Secp256k1::new();
-        let secp256k1_secret_key = secp256k1::SecretKey::from_slice(&key_bytes).expect("Could not create secret key."); 
-        let secp256k1_public_key = secp256k1::PublicKey::from_secret_key(&secp256k1_engine, &secp256k1_secret_key);
+        let secp256k1_secret_key =
+            secp256k1::SecretKey::from_slice(&key_bytes).expect("Could not create secret key.");
+        let secp256k1_public_key =
+            secp256k1::PublicKey::from_secret_key(&secp256k1_engine, &secp256k1_secret_key);
         let secp256k1_public_key_bytes = secp256k1_public_key.serialize();
 
         // Obtain address hash
@@ -326,8 +328,10 @@ impl KeyStore for FileKeyStore {
         bytes.copy_from_slice(&ripemd160[..]);
 
         // Finally encode address to bech32
-        // TODO: Support other prefixes 
-        let bech32_encoded_address = Bech32::new(COSMOS_ADDRESS_PREFIX.to_string(), bytes.to_base32()).expect("Could not bech32 encode public key bytes.");
+        // TODO: Support other prefixes
+        let bech32_encoded_address =
+            Bech32::new(COSMOS_ADDRESS_PREFIX.to_string(), bytes.to_base32())
+                .expect("Could not bech32 encode public key bytes.");
 
         Ok(PublicKeyOutput {
             name: name.to_string(),
