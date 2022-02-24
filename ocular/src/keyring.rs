@@ -6,6 +6,10 @@ use signatory::{
     FsKeyStore, KeyName,
 };
 use std::{env, fs, path::Path};
+use bech32::{Bech32, ToBase32};
+use ripemd::Ripemd160 as Ripemd;
+use sha2::Digest as Sha2Digest;
+use sha2::Sha256;
 
 use crate::error::KeyStoreError;
 
@@ -76,26 +80,23 @@ pub trait KeyStore {
 
 /// Mnemonic and private key in pkcs8 PrivateKeyDocument format
 #[derive(Debug)]
-#[allow(dead_code)]
 pub struct PrivateKeyOutput {
-    mnemonic: String,
-    private_key: PrivateKeyDocument,
+    pub mnemonic: String,
+    pub private_key: PrivateKeyDocument,
 }
 
 /// Key name and address in Bech32 (aka segwit) format
 // TODO: Include actual public key here if ever needed
 #[derive(Debug)]
-#[allow(dead_code)]
 pub struct PublicKeyOutput {
-    name: String,
-    address: String,
+    pub name: String,
+    pub address: String,
 }
 
 // --- Base Key Ring ---
 /// Base Keyring that needs to be initialized before being used. Initialization parameters vary depending on type of key store being used.
-#[allow(dead_code)]
 pub struct Keyring {
-    backend: KeyRingType,
+    pub backend: KeyRingType,
     pub key_store: Box<dyn KeyStore>,
 }
 
@@ -150,7 +151,7 @@ impl KeyStore for FileKeyStore {
             Ok(ks) => {
                 self.key_store = Some(ks);
             }
-            Err(err) => return Err(err.into()),
+            Err(err) => return Err(KeyStoreError::CouldNotOpenOrCreateKeyStore(err.to_string())),
         };
 
         Ok(())
@@ -165,7 +166,7 @@ impl KeyStore for FileKeyStore {
             .unwrap_or_else(|_| panic!("Could not create KeyName for '{}'.", name));
 
         if !self.key_store_created() {
-            return Err(KeyStoreError::NotInitialized());
+            return Err(KeyStoreError::NotInitialized);
         }
 
         if let Ok(_info) = self
@@ -311,21 +312,26 @@ impl KeyStore for FileKeyStore {
 
         // Convert to deepspace private key for address conversion
         let key_bytes = key.to_bytes();
-        let key = deep_space::utils::bytes_to_hex_str(&key_bytes);
-        let deep_space_key: deep_space::private_key::PrivateKey =
-            key.parse().expect("Could not parse private key.");
+        
+        // Obtain public key bytes
+        let secp256k1_engine = secp256k1::Secp256k1::new();
+        let secp256k1_secret_key = secp256k1::SecretKey::from_slice(&key_bytes).expect("Could not create secret key."); 
+        let secp256k1_public_key = secp256k1::PublicKey::from_secret_key(&secp256k1_engine, &secp256k1_secret_key);
+        let secp256k1_public_key_bytes = secp256k1_public_key.serialize();
 
-        // Finally get address
-        // TODO: Support other prefixes if necessary
-        let address = deep_space_key
-            .to_address(COSMOS_ADDRESS_PREFIX)
-            .expect("Could not generate address.")
-            .to_bech32(COSMOS_ADDRESS_PREFIX)
-            .expect("Could not bech32 encode address.");
+        // Obtain address hash
+        let sha256 = Sha256::digest(secp256k1_public_key_bytes);
+        let ripemd160 = Ripemd::digest(&sha256);
+        let mut bytes: [u8; 20] = Default::default();
+        bytes.copy_from_slice(&ripemd160[..]);
+
+        // Finally encode address to bech32
+        // TODO: Support other prefixes 
+        let bech32_encoded_address = Bech32::new(COSMOS_ADDRESS_PREFIX.to_string(), bytes.to_base32()).expect("Could not bech32 encode public key bytes.");
 
         Ok(PublicKeyOutput {
             name: name.to_string(),
-            address,
+            address: bech32_encoded_address.to_string(),
         })
     }
 
@@ -410,14 +416,14 @@ mod tests {
     use super::*;
 
     #[test]
-    fn file_key_store_without_path_init_test() {
+    fn file_key_store_without_path_init() {
         let keyring = Keyring::new_file_store(Option::None);
 
         assert_eq!(keyring.key_store.key_store_created(), true);
     }
 
     #[test]
-    fn file_key_store_with_new_path_init_test() {
+    fn file_key_store_with_new_path_init() {
         let new_dir = &(env::current_dir()
             .unwrap()
             .into_os_string()
@@ -444,7 +450,7 @@ mod tests {
     }
 
     #[test]
-    fn file_key_store_with_existing_path_init_test() {
+    fn file_key_store_with_existing_path_init() {
         let existing_dir = &(env::current_dir()
             .unwrap()
             .into_os_string()
@@ -462,7 +468,7 @@ mod tests {
     }
 
     #[test]
-    fn file_key_store_add_key_test() {
+    fn file_key_store_add_key() {
         let new_dir = &(env::current_dir()
             .unwrap()
             .into_os_string()
@@ -498,7 +504,7 @@ mod tests {
     }
 
     #[test]
-    fn file_store_key_exists_test() {
+    fn file_store_key_exists() {
         let new_dir = &(env::current_dir()
             .unwrap()
             .into_os_string()
@@ -527,7 +533,7 @@ mod tests {
     }
 
     #[test]
-    fn file_store_delete_key_test() {
+    fn file_store_delete_key() {
         let new_dir = &(env::current_dir()
             .unwrap()
             .into_os_string()
@@ -559,7 +565,7 @@ mod tests {
     }
 
     #[test]
-    fn file_store_rename_key_test() {
+    fn file_store_rename_key() {
         let new_dir = &(env::current_dir()
             .unwrap()
             .into_os_string()
@@ -626,7 +632,7 @@ mod tests {
     }
 
     #[test]
-    fn file_store_get_key_address_test() {
+    fn file_store_get_key_address() {
         let new_dir = &(env::current_dir()
             .unwrap()
             .into_os_string()
@@ -639,7 +645,9 @@ mod tests {
         assert!(keyring.key_store.get_key_address("iguana").is_err());
 
         // Make new key
-        let _key = keyring.key_store.add_key("iguana", "", Option::None, false);
+        let key = keyring.key_store.add_key("iguana", "", Option::None, false);
+
+        dbg!(key.unwrap().mnemonic);
 
         // Get key address
         let result = keyring.key_store.get_key_address("iguana");
@@ -655,7 +663,7 @@ mod tests {
     }
 
     #[test]
-    fn file_store_get_all_keys_test() {
+    fn file_store_get_all_keys() {
         let new_dir = &(env::current_dir()
             .unwrap()
             .into_os_string()
@@ -691,7 +699,7 @@ mod tests {
     }
 
     #[test]
-    fn file_store_recover_from_mnemonic_test() {
+    fn file_store_recover_from_mnemonic() {
         let new_dir = &(env::current_dir()
             .unwrap()
             .into_os_string()
