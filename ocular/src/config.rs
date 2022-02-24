@@ -11,13 +11,3 @@ pub struct ChainClientConfig {
     pub gas_adjustment: f64,
     pub gas_prices: String,
 }
-
-/*
-    ChainID        string                  `json:"chain-id" yaml:"chain-id"`
-    RPCAddr        string                  `json:"rpc-addr" yaml:"rpc-addr"`
-    GRPCAddr       string                  `json:"grpc-addr" yaml:"grpc-addr"`
-    AccountPrefix  string                  `json:"account-prefix" yaml:"account-prefix"`
-    GasAdjustment  float64                 `json:"gas-adjustment" yaml:"gas-adjustment"`
-    GasPrices      string                  `json:"gas-prices" yaml:"gas-prices"`
-    TrustingPeriod string                  `json:"omitempty" yaml:"omitempty"`
-*/

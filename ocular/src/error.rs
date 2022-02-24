@@ -34,8 +34,8 @@ pub enum RpcError {
 
 #[derive(Debug, Error)]
 pub enum KeyStoreError {
-    #[error("error during key store operation: {0}")]
-    Error(#[from] signatory::Error),
+    #[error("error creating or opening keystore: {0}")]
+    CouldNotOpenOrCreateKeyStore(String),
 
     #[error("key name '{0}' already exists.")]
     Exists(String),
@@ -44,5 +44,5 @@ pub enum KeyStoreError {
     DoesNotExist(String),
 
     #[error("key store has not been initialized.")]
-    NotInitialized(),
+    NotInitialized,
 }
