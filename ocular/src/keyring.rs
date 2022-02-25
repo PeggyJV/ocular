@@ -1,10 +1,8 @@
-use bech32::{Bech32, ToBase32};
-use bip32::PrivateKey;
-use bip39::{Mnemonic, Seed};
-use ripemd::Ripemd160 as Ripemd;
+#![warn(unused_qualifications)]
+
+use bip32::{PrivateKey, Mnemonic};
+use rand_core::OsRng;
 use serde::{Deserialize, Serialize};
-use sha2::Digest as Sha2Digest;
-use sha2::Sha256;
 use signatory::{
     pkcs8::der::Document, pkcs8::EncodePrivateKey, pkcs8::LineEnding, pkcs8::PrivateKeyDocument,
     FsKeyStore, KeyName,
@@ -15,8 +13,8 @@ use crate::error::KeyStoreError;
 
 // Constants
 // TODO: Move to independant constants file if reused elsewhere
-static COSMOS_BASE_DERIVATION_PATH: &str = "m/44'/118'/0'/0/0";
-static COSMOS_ADDRESS_PREFIX: &str = "cosmos";
+const COSMOS_BASE_DERIVATION_PATH: &str = "m/44'/118'/0'/0/0";
+const COSMOS_ADDRESS_PREFIX: &str = "cosmos";
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub enum KeyRingType {
@@ -79,9 +77,8 @@ pub trait KeyStore {
 }
 
 /// Mnemonic and private key in pkcs8 PrivateKeyDocument format
-#[derive(Debug)]
 pub struct PrivateKeyOutput {
-    pub mnemonic: String,
+    pub mnemonic: Mnemonic,
     pub private_key: PrivateKeyDocument,
 }
 
@@ -90,7 +87,7 @@ pub struct PrivateKeyOutput {
 #[derive(Debug)]
 pub struct PublicKeyOutput {
     pub name: String,
-    pub address: String,
+    pub account: cosmrs::AccountId,
 }
 
 // --- Base Key Ring ---
@@ -104,7 +101,7 @@ pub struct Keyring {
 impl Keyring {
     /// Create new instance of FsKeyStore Keyring
     /// Will create store at current working dir if None is provided
-    pub fn new_file_store(key_path: Option<&str>) -> Self {
+    pub fn new_file_store(key_path: Option<&str>) -> Result<Self, KeyStoreError> {
         let path: String;
 
         if let Some(key_path) = key_path {
@@ -124,14 +121,12 @@ impl Keyring {
             key_store: None,
         };
 
-        key_store
-            .create_key_store()
-            .unwrap_or_else(|_| panic!("Could not create file key store for path: {}", path));
+        key_store.create_key_store()?;
 
-        Keyring {
+        Ok(Keyring {
             backend: KeyRingType::File,
             key_store: Box::new(key_store),
-        }
+        })
     }
 
     // Alternative key store types to be implemented via separate constructors
@@ -194,8 +189,8 @@ impl KeyStore for FileKeyStore {
             return Err(KeyStoreError::Exists(name.to_string()));
         }
 
-        let mnemonic = Mnemonic::new(bip39::MnemonicType::Words24, bip39::Language::English);
-        let seed = Seed::new(&mnemonic, password);
+        let mnemonic = Mnemonic::random(&mut OsRng, Default::default());
+        let seed = mnemonic.to_seed(password);
 
         let derivation_path = match derivation_path {
             Some(_i) => derivation_path.unwrap(),
@@ -223,7 +218,7 @@ impl KeyStore for FileKeyStore {
             .expect("Could not store key");
 
         Ok(PrivateKeyOutput {
-            mnemonic: mnemonic.phrase().to_string(),
+            mnemonic,
             private_key: encoded_key,
         })
     }
@@ -295,47 +290,36 @@ impl KeyStore for FileKeyStore {
             return Err(KeyStoreError::DoesNotExist(name.to_string()));
         }
 
-        // Prepare key and parse into pem
+        // Prepare signing key and parse into pem
         let key_name = &KeyName::new(name)
             .unwrap_or_else(|_| panic!("Could not create KeyName for '{}'.", name));
-        let key = self
+        let signing_key = self
             .key_store
             .as_ref()
             .expect("Error accessing key store.")
             .load(key_name)
             .expect("Could not load key");
-        let key: k256::elliptic_curve::SecretKey<k256::Secp256k1> = key
+
+        let signing_key: k256::elliptic_curve::SecretKey<k256::Secp256k1> = signing_key
             .to_pem(LineEnding::default())
             .expect("Could not convert to pem.")
             .parse()
             .expect("Could not parse pem");
 
-        // Convert to deepspace private key for address conversion
-        let key_bytes = key.to_bytes();
+        let signing_key_bytes = signing_key.to_bytes();
 
-        // Obtain public key bytes
-        let secp256k1_engine = secp256k1::Secp256k1::new();
-        let secp256k1_secret_key =
-            secp256k1::SecretKey::from_slice(&key_bytes).expect("Could not create secret key.");
-        let secp256k1_public_key =
-            secp256k1::PublicKey::from_secret_key(&secp256k1_engine, &secp256k1_secret_key);
-        let secp256k1_public_key_bytes = secp256k1_public_key.serialize();
+        let verifying_key = cosmrs::crypto::secp256k1::SigningKey::from_bytes(&signing_key_bytes)
+            .expect("Could not create verifying key from signing key.")
+            .public_key();
 
-        // Obtain address hash
-        let sha256 = Sha256::digest(secp256k1_public_key_bytes);
-        let ripemd160 = Ripemd::digest(&sha256);
-        let mut bytes: [u8; 20] = Default::default();
-        bytes.copy_from_slice(&ripemd160[..]);
-
-        // Finally encode address to bech32
         // TODO: Support other prefixes
-        let bech32_encoded_address =
-            Bech32::new(COSMOS_ADDRESS_PREFIX.to_string(), bytes.to_base32())
-                .expect("Could not bech32 encode public key bytes.");
+        let account_id = cosmrs::crypto::PublicKey::from(verifying_key)
+            .account_id(COSMOS_ADDRESS_PREFIX)
+            .expect("Could not get account id from verifying key.");
 
         Ok(PublicKeyOutput {
             name: name.to_string(),
-            address: bech32_encoded_address.to_string(),
+            account: account_id,
         })
     }
 
@@ -378,11 +362,8 @@ impl KeyStore for FileKeyStore {
             return Err(KeyStoreError::Exists(name.to_string()));
         }
 
-        let seed = Seed::new(
-            &bip39::Mnemonic::from_phrase(mnemonic.trim(), bip39::Language::English)
-                .expect("Could not read mnemonic."),
-            password,
-        );
+        let mnemonic =  Mnemonic::new(mnemonic.trim(), Default::default()).or_else(|err| Err(KeyStoreError::InvalidMnemonic(err.to_string())))?;
+        let seed = mnemonic.to_seed(password);
 
         let derivation_path = match derivation_path {
             Some(_i) => derivation_path.unwrap(),
@@ -421,7 +402,8 @@ mod tests {
 
     #[test]
     fn file_key_store_without_path_init() {
-        let keyring = Keyring::new_file_store(Option::None);
+        let keyring =
+            Keyring::new_file_store(None).expect("Could not initialize keystore.");
 
         assert_eq!(keyring.key_store.key_store_created(), true);
     }
@@ -439,7 +421,8 @@ mod tests {
         let result = std::panic::catch_unwind(|| fs::metadata(new_dir).unwrap());
         assert!(result.is_err());
 
-        let keyring = Keyring::new_file_store(Option::Some(new_dir));
+        let keyring =
+            Keyring::new_file_store(Some(new_dir)).expect("Could not initialize keystore.");
         assert_eq!(keyring.key_store.key_store_created(), true);
 
         // Assert new dir exists now
@@ -464,7 +447,8 @@ mod tests {
         // Assert dir exists
         assert_eq!(fs::metadata(existing_dir).unwrap().is_dir(), true);
 
-        let keyring = Keyring::new_file_store(Option::Some(existing_dir));
+        let keyring = Keyring::new_file_store(Some(existing_dir))
+            .expect("Could not initialize keystore.");
         assert_eq!(keyring.key_store.key_store_created(), true);
 
         // Assert dir still exists
@@ -479,24 +463,25 @@ mod tests {
             .into_string()
             .unwrap()
             + "/working_test_dir1");
-        let keyring = Keyring::new_file_store(Option::Some(new_dir));
+        let keyring =
+            Keyring::new_file_store(Some(new_dir)).expect("Could not initialize keystore.");
 
         // Check add key doesn't result in failure
         assert!(keyring
             .key_store
-            .add_key("NewKey", "", Option::None, false)
+            .add_key("NewKey", "", None, false)
             .is_ok());
 
         // Assert attempting to override key results in failure
         assert!(keyring
             .key_store
-            .add_key("NewKey", "", Option::None, false)
+            .add_key("NewKey", "", None, false)
             .is_err());
 
         // Assert attempting to override key with override results in success
         assert!(keyring
             .key_store
-            .add_key("NewKey", "", Option::None, true)
+            .add_key("NewKey", "", None, true)
             .is_ok());
 
         // Clean up dir
@@ -515,7 +500,8 @@ mod tests {
             .into_string()
             .unwrap()
             + "/working_test_dir2");
-        let keyring = Keyring::new_file_store(Option::Some(new_dir));
+        let keyring =
+            Keyring::new_file_store(Some(new_dir)).expect("Could not initialize keystore.");
 
         // Check key doesnt exist
         assert_eq!(keyring.key_store.key_exists("dolphin").unwrap(), false);
@@ -523,7 +509,7 @@ mod tests {
         // Create key
         let _new_key = keyring
             .key_store
-            .add_key("dolphin", "", Option::None, false);
+            .add_key("dolphin", "", None, false);
 
         // Assert new key exists
         assert_eq!(keyring.key_store.key_exists("dolphin").unwrap(), true);
@@ -544,7 +530,8 @@ mod tests {
             .into_string()
             .unwrap()
             + "/working_test_dir3");
-        let keyring = Keyring::new_file_store(Option::Some(new_dir));
+        let keyring =
+            Keyring::new_file_store(Some(new_dir)).expect("Could not initialize keystore.");
 
         // Attempt to delete key that doesnt exist, assert Err thrown
         assert!(keyring.key_store.delete_key("harambe").is_err());
@@ -552,7 +539,7 @@ mod tests {
         // Create new key
         let _new_key = keyring
             .key_store
-            .add_key("harambe", "", Option::None, false);
+            .add_key("harambe", "", None, false);
 
         // Delete existing key
         assert!(keyring.key_store.delete_key("harambe").is_ok());
@@ -576,7 +563,8 @@ mod tests {
             .into_string()
             .unwrap()
             + "/working_test_dir4");
-        let keyring = Keyring::new_file_store(Option::Some(new_dir));
+        let keyring =
+            Keyring::new_file_store(Some(new_dir)).expect("Could not initialize keystore.");
 
         // Attempt to rename key that doesn't exist
         assert!(keyring
@@ -591,8 +579,8 @@ mod tests {
         // Create some new keys
         let _key = keyring
             .key_store
-            .add_key("penguin", "", Option::None, false);
-        let _key = keyring.key_store.add_key("mouse", "", Option::None, false);
+            .add_key("penguin", "", None, false);
+        let _key = keyring.key_store.add_key("mouse", "", None, false);
 
         // Verify keys exists and new named key does not
         assert_eq!(keyring.key_store.key_exists("penguin").unwrap(), true);
@@ -643,20 +631,20 @@ mod tests {
             .into_string()
             .unwrap()
             + "/working_test_dir5");
-        let keyring = Keyring::new_file_store(Option::Some(new_dir));
+        let keyring =
+            Keyring::new_file_store(Some(new_dir)).expect("Could not initialize keystore.");
 
         // Attempt to get key address that doesn't exist
         assert!(keyring.key_store.get_key_address("iguana").is_err());
 
         // Make new key
-        let key = keyring.key_store.add_key("iguana", "", Option::None, false);
+        let key = keyring.key_store.add_key("iguana", "", None, false);
 
-        dbg!(key.unwrap().mnemonic);
+        dbg!(key.unwrap().mnemonic.phrase());
 
         // Get key address
         let result = keyring.key_store.get_key_address("iguana");
         assert!(result.is_ok());
-        dbg!(result);
 
         // Clean up dir
         fs::remove_dir_all(new_dir).expect(&format!("Failed to delete test directory {}", new_dir));
@@ -674,7 +662,8 @@ mod tests {
             .into_string()
             .unwrap()
             + "/working_test_dir6");
-        let keyring = Keyring::new_file_store(Option::Some(new_dir));
+        let keyring =
+            Keyring::new_file_store(Some(new_dir)).expect("Could not initialize keystore.");
 
         // Verify no keys at start
         let result = keyring.key_store.get_all_keys();
@@ -682,17 +671,15 @@ mod tests {
         assert_eq!(keyring.key_store.get_all_keys().unwrap().len(), 0);
 
         // Make new keys
-        let _key = keyring.key_store.add_key("car", "", Option::None, false);
+        let _key = keyring.key_store.add_key("car", "", None, false);
         let _key = keyring
             .key_store
-            .add_key("motorcycle", "", Option::None, false);
+            .add_key("motorcycle", "", None, false);
 
         // Verify new keys
         let result = keyring.key_store.get_all_keys();
         assert!(result.is_ok());
         assert_eq!(keyring.key_store.get_all_keys().unwrap().len(), 2);
-
-        dbg!(result);
 
         // Clean up dir
         fs::remove_dir_all(new_dir).expect(&format!("Failed to delete test directory {}", new_dir));
@@ -710,7 +697,8 @@ mod tests {
             .into_string()
             .unwrap()
             + "/working_test_dir7");
-        let keyring = Keyring::new_file_store(Option::Some(new_dir));
+        let keyring =
+            Keyring::new_file_store(Some(new_dir)).expect("Could not initialize keystore.");
 
         // Verify key doesn't exist to start
         assert!(keyring.key_store.get_key_address("celery").is_err());
@@ -718,7 +706,7 @@ mod tests {
         // Create new key and get address
         let private_key = keyring
             .key_store
-            .add_key("celery", "tomato", Option::None, false)
+            .add_key("celery", "tomato", None, false)
             .unwrap();
         let public_key = keyring.key_store.get_key_address("celery").unwrap();
 
@@ -726,21 +714,21 @@ mod tests {
         assert!(keyring.key_store.delete_key("celery").is_ok());
         assert_eq!(keyring.key_store.key_exists("celery").unwrap(), false);
 
-        // Attempt recovery via mneumonic
+        // Attempt recovery via mnemonic
         assert!(keyring
             .key_store
             .recover_from_mnemonic(
                 "new_celery",
-                &private_key.mnemonic.to_string(),
+                &private_key.mnemonic.phrase(),
                 "tomato",
-                Option::None,
+                None,
                 false
             )
             .is_ok());
 
         // Verify recovered key is equal to deleted one
         let new_public_key = keyring.key_store.get_key_address("new_celery").unwrap();
-        assert_eq!(new_public_key.address, public_key.address);
+        assert_eq!(new_public_key.account.as_ref(), public_key.account.as_ref());
 
         // Clean up dir
         fs::remove_dir_all(new_dir).expect(&format!("Failed to delete test directory {}", new_dir));

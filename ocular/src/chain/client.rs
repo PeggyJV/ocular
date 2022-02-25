@@ -26,7 +26,7 @@ impl ChainClient {
         let chain = executor::block_on(async { get_chain(chain_name).await })?;
         let config = chain.get_chain_config()?;
         let rpc_client = new_rpc_client(config.rpc_address.as_str())?;
-        let keyring = Keyring::new_file_store(Option::None);
+        let keyring = Keyring::new_file_store(None).expect("Could not create keyring.");
 
         Ok(ChainClient {
             config,

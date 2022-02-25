@@ -49,4 +49,7 @@ pub enum KeyStoreError {
 
     #[error("key store has not been initialized.")]
     NotInitialized,
+
+    #[error("invalid mnemonic: {0}")]
+    InvalidMnemonic(String),
 }
