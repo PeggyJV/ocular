@@ -1,3 +1,5 @@
+#![warn(unused_qualifications)]
+
 use crate::{
     chain::{config::ChainClientConfig, registry::get_chain},
     error::{ChainClientError, RpcError},
