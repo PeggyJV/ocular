@@ -4,10 +4,9 @@ use bip32::{Mnemonic, PrivateKey};
 use cosmrs::crypto::secp256k1::SigningKey;
 use rand_core::OsRng;
 use signatory::{
-    pkcs8::der::Document, pkcs8::EncodePrivateKey, pkcs8::LineEnding, pkcs8::PrivateKeyDocument,
-    FsKeyStore, KeyName,
+    pkcs8::der::Document, pkcs8::EncodePrivateKey, pkcs8::LineEnding, FsKeyStore, KeyName,
 };
-use std::{env, fs, path::Path};
+use std::{fs, path::Path};
 
 use crate::error::KeyStoreError;
 
@@ -65,10 +64,10 @@ pub trait KeyStore {
     ) -> Result<(), KeyStoreError>;
 }
 
-/// Mnemonic and private key in pkcs8 PrivateKeyDocument format
+/// Mnemonic and private key
 pub struct PrivateKeyOutput {
     pub mnemonic: Mnemonic,
-    pub private_key: PrivateKeyDocument,
+    pub private_key: SigningKey,
 }
 
 /// Key name and address in Bech32 (aka segwit) format
@@ -76,7 +75,7 @@ pub struct PrivateKeyOutput {
 pub struct PublicKeyOutput {
     pub name: String,
     pub public_key: String,
-    pub account: String,
+    pub account: cosmrs::AccountId,
 }
 
 /// Keybase that needs to be initialized before being used. Initialization parameters vary depending on type of key store being used.
@@ -94,7 +93,12 @@ impl Keybase {
         if let Some(key_path) = key_path {
             path = key_path.to_string();
         } else {
-            path = String::from(dirs::home_dir().unwrap().into_os_string().into_string().unwrap() + DEFAULT_FS_KEYSTORE_DIR);
+            path = dirs::home_dir()
+                .unwrap()
+                .into_os_string()
+                .into_string()
+                .unwrap()
+                + DEFAULT_FS_KEYSTORE_DIR;
         }
 
         dbg!(format!("Attempting to use path {}", path));
@@ -184,10 +188,11 @@ impl KeyStore for FileKeyStore {
             .expect("Could not parse derivation path.");
 
         // Process key and store
-        let key =
+        let extended_signing_key =
             bip32::XPrv::derive_from_path(seed, &derivation_path).expect("Could not derive key.");
-        let private_key = k256::SecretKey::from(key.private_key());
-        let encoded_key = private_key
+
+        let signing_key = k256::SecretKey::from(extended_signing_key.private_key());
+        let encoded_key = signing_key
             .to_pkcs8_der()
             .expect("Could not PKCS8 encode private key");
 
@@ -201,7 +206,7 @@ impl KeyStore for FileKeyStore {
 
         Ok(PrivateKeyOutput {
             mnemonic,
-            private_key: encoded_key,
+            private_key: SigningKey::from(extended_signing_key),
         })
     }
 
@@ -302,7 +307,7 @@ impl KeyStore for FileKeyStore {
         Ok(PublicKeyOutput {
             name: name.to_string(),
             public_key: verifying_key.to_string(),
-            account: account_id.as_ref().to_string(),
+            account: account_id,
         })
     }
 
@@ -391,7 +396,14 @@ mod tests {
         assert_eq!(keybase.key_store.key_store_created(), true);
 
         // Assert dir exists where expected
-        let expected_dir = String::from(dirs::home_dir().unwrap().into_os_string().into_string().unwrap() + DEFAULT_FS_KEYSTORE_DIR);
+        let expected_dir = String::from(
+            dirs::home_dir()
+                .unwrap()
+                .into_os_string()
+                .into_string()
+                .unwrap()
+                + DEFAULT_FS_KEYSTORE_DIR,
+        );
         assert_eq!(fs::metadata(expected_dir).unwrap().is_dir(), true);
 
         // Don't delete dir in case user already has keys loaded and runs this test
@@ -399,7 +411,7 @@ mod tests {
 
     #[test]
     fn file_key_store_with_new_path_init() {
-        let new_dir = &(env::current_dir()
+        let new_dir = &(std::env::current_dir()
             .unwrap()
             .into_os_string()
             .into_string()
@@ -427,7 +439,7 @@ mod tests {
 
     #[test]
     fn file_key_store_with_existing_path_init() {
-        let existing_dir = &(env::current_dir()
+        let existing_dir = &(std::env::current_dir()
             .unwrap()
             .into_os_string()
             .into_string()
@@ -446,7 +458,7 @@ mod tests {
 
     #[test]
     fn file_key_store_add_key() {
-        let new_dir = &(env::current_dir()
+        let new_dir = &(std::env::current_dir()
             .unwrap()
             .into_os_string()
             .into_string()
@@ -477,7 +489,7 @@ mod tests {
 
     #[test]
     fn file_store_key_exists() {
-        let new_dir = &(env::current_dir()
+        let new_dir = &(std::env::current_dir()
             .unwrap()
             .into_os_string()
             .into_string()
@@ -505,7 +517,7 @@ mod tests {
 
     #[test]
     fn file_store_delete_key() {
-        let new_dir = &(env::current_dir()
+        let new_dir = &(std::env::current_dir()
             .unwrap()
             .into_os_string()
             .into_string()
@@ -536,7 +548,7 @@ mod tests {
 
     #[test]
     fn file_store_rename_key() {
-        let new_dir = &(env::current_dir()
+        let new_dir = &(std::env::current_dir()
             .unwrap()
             .into_os_string()
             .into_string()
@@ -602,17 +614,20 @@ mod tests {
 
     #[test]
     fn file_store_get_public_key_and_address() {
-        let new_dir = &(env::current_dir()
+        let new_dir = &(std::env::current_dir()
             .unwrap()
             .into_os_string()
             .into_string()
             .unwrap()
             + "/working_test_dir5");
         let keybase =
-        Keybase::new_file_store(Some(new_dir)).expect("Could not initialize keystore.");
+            Keybase::new_file_store(Some(new_dir)).expect("Could not initialize keystore.");
 
         // Attempt to get key address that doesn't exist
-        assert!(keybase.key_store.get_public_key_and_address("iguana").is_err());
+        assert!(keybase
+            .key_store
+            .get_public_key_and_address("iguana")
+            .is_err());
 
         // Make new key
         let key = keybase.key_store.add_key("iguana", "", None, false);
@@ -633,14 +648,14 @@ mod tests {
 
     #[test]
     fn file_store_get_all_keys() {
-        let new_dir = &(env::current_dir()
+        let new_dir = &(std::env::current_dir()
             .unwrap()
             .into_os_string()
             .into_string()
             .unwrap()
             + "/working_test_dir6");
         let keybase =
-        Keybase::new_file_store(Some(new_dir)).expect("Could not initialize keystore.");
+            Keybase::new_file_store(Some(new_dir)).expect("Could not initialize keystore.");
 
         // Verify no keys at start
         let result = keybase.key_store.get_all_keys();
@@ -666,24 +681,30 @@ mod tests {
 
     #[test]
     fn file_store_recover_from_mnemonic() {
-        let new_dir = &(env::current_dir()
+        let new_dir = &(std::env::current_dir()
             .unwrap()
             .into_os_string()
             .into_string()
             .unwrap()
             + "/working_test_dir7");
         let keybase =
-        Keybase::new_file_store(Some(new_dir)).expect("Could not initialize keystore.");
+            Keybase::new_file_store(Some(new_dir)).expect("Could not initialize keystore.");
 
         // Verify key doesn't exist to start
-        assert!(keybase.key_store.get_public_key_and_address("celery").is_err());
+        assert!(keybase
+            .key_store
+            .get_public_key_and_address("celery")
+            .is_err());
 
         // Create new key and get address
         let private_key = keybase
             .key_store
             .add_key("celery", "tomato", None, false)
             .unwrap();
-        let public_key = keybase.key_store.get_public_key_and_address("celery").unwrap();
+        let public_key = keybase
+            .key_store
+            .get_public_key_and_address("celery")
+            .unwrap();
 
         // Delete it
         assert!(keybase.key_store.delete_key("celery").is_ok());
@@ -702,8 +723,11 @@ mod tests {
             .is_ok());
 
         // Verify recovered key is equal to deleted one
-        let new_public_key = keybase.key_store.get_public_key_and_address("new_celery").unwrap();
-        assert_eq!(new_public_key.account, public_key.account);
+        let new_public_key = keybase
+            .key_store
+            .get_public_key_and_address("new_celery")
+            .unwrap();
+        assert_eq!(new_public_key.account.as_ref(), public_key.account.as_ref());
         assert_eq!(new_public_key.public_key, public_key.public_key);
 
         // Clean up dir
