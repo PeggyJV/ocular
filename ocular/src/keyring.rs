@@ -3,7 +3,6 @@
 use bip32::{Mnemonic, PrivateKey};
 use cosmrs::crypto::secp256k1::SigningKey;
 use rand_core::OsRng;
-use serde::{Deserialize, Serialize};
 use signatory::{
     pkcs8::der::Document, pkcs8::EncodePrivateKey, pkcs8::LineEnding, pkcs8::PrivateKeyDocument,
     FsKeyStore, KeyName,
@@ -16,18 +15,6 @@ use crate::error::KeyStoreError;
 // TODO: Move to independant constants file if reused elsewhere
 const COSMOS_BASE_DERIVATION_PATH: &str = "m/44'/118'/0'/0/0";
 const COSMOS_ADDRESS_PREFIX: &str = "cosmos";
-
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub enum KeyRingType {
-    File,
-    // TODO: OS (and other) Types
-}
-
-impl Default for KeyRingType {
-    fn default() -> Self {
-        KeyRingType::File
-    }
-}
 
 /// Basic keystore traits that all backends are expected to implement
 pub trait KeyStore {
@@ -94,7 +81,6 @@ pub struct PublicKeyOutput {
 // --- Base Key Ring ---
 /// Base Keyring that needs to be initialized before being used. Initialization parameters vary depending on type of key store being used.
 pub struct Keyring {
-    pub backend: KeyRingType,
     pub key_store: Box<dyn KeyStore>,
 }
 
@@ -125,7 +111,6 @@ impl Keyring {
         key_store.create_key_store()?;
 
         Ok(Keyring {
-            backend: KeyRingType::File,
             key_store: Box::new(key_store),
         })
     }
