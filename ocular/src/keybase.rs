@@ -15,6 +15,7 @@ use crate::error::KeyStoreError;
 // TODO: Move to independant constants file if reused elsewhere
 const COSMOS_BASE_DERIVATION_PATH: &str = "m/44'/118'/0'/0/0";
 const COSMOS_ADDRESS_PREFIX: &str = "cosmos";
+const DEFAULT_FS_KEYSTORE_DIR: &str = "/.ocular/keys";
 
 /// Basic keystore traits that all backends are expected to implement
 pub trait KeyStore {
@@ -86,18 +87,14 @@ pub struct Keybase {
 // Keybase constructors
 impl Keybase {
     /// Create new instance of FsKeyStore
-    /// Will create store at current working dir if None is provided
+    /// Will create store at '~/<DEFAULT_FS_KEYSTORE_DIR>' if None is provided
     pub fn new_file_store(key_path: Option<&str>) -> Result<Self, KeyStoreError> {
         let path: String;
 
         if let Some(key_path) = key_path {
             path = key_path.to_string();
         } else {
-            path = env::current_dir()
-                .unwrap()
-                .into_os_string()
-                .into_string()
-                .expect("Could not get current working dir.");
+            path = String::from(dirs::home_dir().unwrap().into_os_string().into_string().unwrap() + DEFAULT_FS_KEYSTORE_DIR);
         }
 
         dbg!(format!("Attempting to use path {}", path));
@@ -392,6 +389,12 @@ mod tests {
         let keybase = Keybase::new_file_store(None).expect("Could not initialize keystore.");
 
         assert_eq!(keybase.key_store.key_store_created(), true);
+
+        // Assert dir exists where expected
+        let expected_dir = String::from(dirs::home_dir().unwrap().into_os_string().into_string().unwrap() + DEFAULT_FS_KEYSTORE_DIR);
+        assert_eq!(fs::metadata(expected_dir).unwrap().is_dir(), true);
+
+        // Don't delete dir in case user already has keys loaded and runs this test
     }
 
     #[test]
