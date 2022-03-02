@@ -61,7 +61,7 @@ pub trait KeyStore {
     ) -> Result<(), KeyStoreError>;
 
     /// Get key address in bech32 (aka segwit) format. Will throw an error if the key does not exist.
-    fn get_key_address(&self, name: &str) -> Result<PublicKeyOutput, KeyStoreError>;
+    fn get_public_key_and_address(&self, name: &str) -> Result<PublicKeyOutput, KeyStoreError>;
 
     /// Get all key addresses in bech32 (aka segwit) format.
     fn get_all_keys(&self) -> Result<Vec<PublicKeyOutput>, Box<dyn std::error::Error>>;
@@ -84,11 +84,11 @@ pub struct PrivateKeyOutput {
 }
 
 /// Key name and address in Bech32 (aka segwit) format
-// TODO: Include actual public key here if ever needed
 #[derive(Debug)]
 pub struct PublicKeyOutput {
     pub name: String,
-    pub account: cosmrs::AccountId,
+    pub public_key: String,
+    pub account: String,
 }
 
 // --- Base Key Ring ---
@@ -284,7 +284,7 @@ impl KeyStore for FileKeyStore {
         Ok(())
     }
 
-    fn get_key_address(&self, name: &str) -> Result<PublicKeyOutput, KeyStoreError> {
+    fn get_public_key_and_address(&self, name: &str) -> Result<PublicKeyOutput, KeyStoreError> {
         // Check if key exists
         if !self.key_exists(name)? {
             eprintln!("Key '{}', does not exist.", name);
@@ -320,7 +320,8 @@ impl KeyStore for FileKeyStore {
 
         Ok(PublicKeyOutput {
             name: name.to_string(),
-            account: account_id,
+            public_key: verifying_key.to_string(),
+            account: account_id.as_ref().to_string(),
         })
     }
 
@@ -338,7 +339,7 @@ impl KeyStore for FileKeyStore {
                             .expect("Could not get file stem.")
                             .to_str()
                             .expect("Could not convert to string.");
-                        let key_data = self.get_key_address(name)?;
+                        let key_data = self.get_public_key_and_address(name)?;
 
                         vec.push(key_data);
                     }
@@ -613,7 +614,7 @@ mod tests {
     }
 
     #[test]
-    fn file_store_get_key_address() {
+    fn file_store_get_public_key_and_address() {
         let new_dir = &(env::current_dir()
             .unwrap()
             .into_os_string()
@@ -624,7 +625,7 @@ mod tests {
             Keyring::new_file_store(Some(new_dir)).expect("Could not initialize keystore.");
 
         // Attempt to get key address that doesn't exist
-        assert!(keyring.key_store.get_key_address("iguana").is_err());
+        assert!(keyring.key_store.get_public_key_and_address("iguana").is_err());
 
         // Make new key
         let key = keyring.key_store.add_key("iguana", "", None, false);
@@ -632,7 +633,7 @@ mod tests {
         dbg!(key.unwrap().mnemonic.phrase());
 
         // Get key address
-        let result = keyring.key_store.get_key_address("iguana");
+        let result = keyring.key_store.get_public_key_and_address("iguana");
         assert!(result.is_ok());
 
         // Clean up dir
@@ -688,14 +689,14 @@ mod tests {
             Keyring::new_file_store(Some(new_dir)).expect("Could not initialize keystore.");
 
         // Verify key doesn't exist to start
-        assert!(keyring.key_store.get_key_address("celery").is_err());
+        assert!(keyring.key_store.get_public_key_and_address("celery").is_err());
 
         // Create new key and get address
         let private_key = keyring
             .key_store
             .add_key("celery", "tomato", None, false)
             .unwrap();
-        let public_key = keyring.key_store.get_key_address("celery").unwrap();
+        let public_key = keyring.key_store.get_public_key_and_address("celery").unwrap();
 
         // Delete it
         assert!(keyring.key_store.delete_key("celery").is_ok());
@@ -714,8 +715,9 @@ mod tests {
             .is_ok());
 
         // Verify recovered key is equal to deleted one
-        let new_public_key = keyring.key_store.get_key_address("new_celery").unwrap();
-        assert_eq!(new_public_key.account.as_ref(), public_key.account.as_ref());
+        let new_public_key = keyring.key_store.get_public_key_and_address("new_celery").unwrap();
+        assert_eq!(new_public_key.account, public_key.account);
+        assert_eq!(new_public_key.public_key, public_key.public_key);
 
         // Clean up dir
         fs::remove_dir_all(new_dir).expect(&format!("Failed to delete test directory {}", new_dir));
