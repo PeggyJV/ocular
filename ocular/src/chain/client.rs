@@ -3,7 +3,7 @@
 use crate::{
     chain::{config::ChainClientConfig, registry::get_chain},
     error::{ChainClientError, RpcError},
-    keyring::Keyring,
+    keybase::Keybase,
 };
 use futures::executor;
 use tendermint_rpc;
@@ -14,7 +14,7 @@ type RpcClient = tendermint_rpc::HttpClient;
 
 pub struct ChainClient {
     pub config: ChainClientConfig,
-    pub keyring: Keyring,
+    pub keybase: Keybase,
     pub rpc_client: RpcClient,
     // light_provider: ?
     // input:
@@ -28,11 +28,11 @@ impl ChainClient {
         let chain = executor::block_on(async { get_chain(chain_name).await })?;
         let config = chain.get_chain_config()?;
         let rpc_client = new_rpc_client(config.rpc_address.as_str())?;
-        let keyring = Keyring::new_file_store(None).expect("Could not create keyring.");
+        let keybase = Keybase::new_file_store(None).expect("Could not create keybase.");
 
         Ok(ChainClient {
             config,
-            keyring,
+            keybase,
             rpc_client,
         })
     }
