@@ -52,4 +52,10 @@ pub enum KeyStoreError {
 
     #[error("invalid mnemonic: {0}")]
     InvalidMnemonic(String),
+
+    #[error("unable to store key: {0}")]
+    UnableToStoreKey(String),
+
+    #[error("unable to delete key: {0}")]
+    UnableToDeleteKey(String),
 }

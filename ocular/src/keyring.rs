@@ -29,28 +29,41 @@ pub trait KeyStore {
     fn key_store_created(&self) -> bool;
 
     /// Check if key exists under specific name. Will return false if no key is found.
-    fn key_exists(&self, name: &str) -> Result<bool, KeyStoreError>;
+    fn key_exists(&self, keyname: &KeyName) -> Result<bool, KeyStoreError>;
 
-    /// Add a new key based off of name, password, and derivation path (defaults to cosmos). If override_if_exists is set to true, it will override any existing key with the same name.
+    /// Add a private key document associated with a key name into the keystore.
     fn add_key(
         &self,
-        name: &str,
-        password: &str,
-        derivation_path: Option<&str>,
-        override_if_exists: bool,
-    ) -> Result<PrivateKeyOutput, KeyStoreError>;
-
-    /// Delete key with a given name. If no key exists under name specified an error will be thrown.
-    fn delete_key(&self, name: &str) -> Result<(), KeyStoreError>;
-
-    /// Rename key. If override_if_exists is true any keys with the new key name will be forecfully overriden.
-    fn rename_key(
-        &self,
-        current_name: &str,
-        new_name: &str,
-        override_if_exists: bool,
+        key_name: &KeyName,
+        encoded_key: pkcs8::PrivateKeyDocument
     ) -> Result<(), KeyStoreError>;
 
+    /// Delete key with a given name. If no key exists under name specified an error will be thrown.
+    fn delete_key(&self, key_name: &KeyName) -> Result<(), KeyStoreError>;
+
+    /// Rename key.
+    fn rename_key(
+        &self,
+        current_name: &KeyName,
+        new_name: &KeyName,
+    ) -> Result<(), KeyStoreError>;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    
     /// Get key address in bech32 (aka segwit) format. Will throw an error if the key does not exist.
     fn get_public_key_and_address(&self, name: &str) -> Result<PublicKeyOutput, KeyStoreError>;
 
@@ -84,12 +97,12 @@ pub struct PublicKeyOutput {
 
 /// Keyring that needs to be initialized before being used. Initialization parameters vary depending on type of key store being used.
 pub struct Keyring {
-    pub key_store: Box<dyn KeyStore>,
+    key_store: Box<dyn KeyStore>,
 }
 
 // Keyring constructors
 impl Keyring {
-    /// Create new instance of FsKeyStore
+    /// Create new instance of FsKeyStore. 
     /// Will create store at '~/<DEFAULT_FS_KEYSTORE_DIR>' if None is provided
     pub fn new_file_store(key_path: Option<&str>) -> Result<Self, KeyStoreError> {
         let path: String;
@@ -120,6 +133,128 @@ impl Keyring {
     }
 
     // Alternative key store types to be implemented via separate constructors
+
+    // ----- Keyring utilities -----
+    
+    /// Check if key store has been initialized.
+    pub fn key_store_created(&self) -> bool {
+        return self.key_store.key_store_created();
+    }
+
+    /// Check if key exists under specific name. Will return false if no key is found.
+    pub fn key_exists(&self, name: &str) -> Result<bool, KeyStoreError> {
+        let key_name = &KeyName::new(name)
+            .unwrap_or_else(|_| panic!("Could not create KeyName for '{}'.", name));
+
+        if !self.key_store_created() {
+            return Err(KeyStoreError::NotInitialized);
+        }
+        return self.key_store.key_exists(key_name);
+    }
+
+    /// Add a new key based off of name, password, and derivation path (defaults to cosmos); a mnemonic will automatically be created. If override_if_exists is set to true, it will override any existing key with the same name.
+    pub fn add_key_with_generated_mnemonic(
+        &self,
+        name: &str,
+        password: &str,
+        derivation_path: Option<&str>,
+        override_if_exists: bool,
+    ) -> Result<PrivateKeyOutput, KeyStoreError> {
+        // Check if key already exists
+        if self.key_exists(name)? && !override_if_exists {
+            eprintln!("Key '{}', already exists.", name);
+            return Err(KeyStoreError::Exists(name.to_string()));
+        }
+
+        let mnemonic = Mnemonic::random(&mut OsRng, Default::default());
+        let seed = mnemonic.to_seed(password);
+
+        let derivation_path = match derivation_path {
+            Some(_i) => derivation_path.unwrap(),
+            _ => COSMOS_BASE_DERIVATION_PATH,
+        };
+
+        let derivation_path = derivation_path
+            .parse::<bip32::DerivationPath>()
+            .expect("Could not parse derivation path.");
+
+        // Process key
+        let extended_signing_key =
+            bip32::XPrv::derive_from_path(seed, &derivation_path).expect("Could not derive key.");
+
+        let signing_key = k256::SecretKey::from(extended_signing_key.private_key());
+        let encoded_key = signing_key
+            .to_pkcs8_der()
+            .expect("Could not PKCS8 encode private key");
+
+        let key_name = KeyName::new(name)
+            .unwrap_or_else(|_| panic!("Could not create KeyName for '{}'.", name));
+
+        // Store the key
+        self.key_store.add_key(&key_name, encoded_key);
+
+        Ok(PrivateKeyOutput {
+            mnemonic,
+            private_key: SigningKey::from(extended_signing_key),
+        })
+    }
+
+    /// Delete key with a given name. If no key exists under name specified an error will be thrown.
+    fn delete_key(&self, name: &str) -> Result<(), KeyStoreError> {
+        if self.key_exists(name)? {
+            let key_name = &KeyName::new(name)
+                .unwrap_or_else(|_| panic!("Could not create KeyName for '{}'.", name));
+            
+            self.key_store.delete_key(key_name)
+        } else {
+            Err(KeyStoreError::DoesNotExist(name.to_string()))
+        }
+    }
+
+    /// Rename key. If override_if_exists is true any keys with the new key name will be forecfully overriden. Errors will be thrown if current name DNE or if new key name already exists without override flag being set to true.
+    pub fn rename_key(
+        &self,
+        current_name: &str,
+        new_name: &str,
+        override_if_exists: bool,
+    ) -> Result<(), KeyStoreError> {
+        // Check if current key exists
+        if !self.key_exists(current_name)? {
+            eprintln!("Key '{}', does not exist.", current_name);
+            return Err(KeyStoreError::DoesNotExist(current_name.to_string()));
+        }
+
+        // Check if new key exists
+        if self.key_exists(new_name)? && !override_if_exists {
+            eprintln!("New key name '{}', already exists.", new_name);
+            return Err(KeyStoreError::Exists(new_name.to_string()));
+        }
+
+        // Proceed with rename
+        let current_name = &KeyName::new(current_name)
+            .unwrap_or_else(|_| panic!("Could not create KeyName for '{}'.", current_name));
+        let new_name = &KeyName::new(new_name)
+            .unwrap_or_else(|_| panic!("Could not create KeyName for '{}'.", new_name));
+
+        self.key_store.rename_key(current_name, new_name)
+    }
+    
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 }
 
 // --- File Key Store ---
@@ -146,14 +281,7 @@ impl KeyStore for FileKeyStore {
         !self.key_path.is_empty() && self.key_store.is_some()
     }
 
-    fn key_exists(&self, name: &str) -> Result<bool, KeyStoreError> {
-        let key_name = &KeyName::new(name)
-            .unwrap_or_else(|_| panic!("Could not create KeyName for '{}'.", name));
-
-        if !self.key_store_created() {
-            return Err(KeyStoreError::NotInitialized);
-        }
-
+    fn key_exists(&self, key_name: &KeyName) -> Result<bool, KeyStoreError> {
         if let Ok(_info) = self
             .key_store
             .as_ref()
@@ -168,92 +296,31 @@ impl KeyStore for FileKeyStore {
 
     fn add_key(
         &self,
-        name: &str,
-        password: &str,
-        derivation_path: Option<&str>,
-        override_if_exists: bool,
-    ) -> Result<PrivateKeyOutput, KeyStoreError> {
-        // Check if key already exists
-        if self.key_exists(name)? && !override_if_exists {
-            eprintln!("Key '{}', already exists.", name);
-            return Err(KeyStoreError::Exists(name.to_string()));
-        }
-
-        let mnemonic = Mnemonic::random(&mut OsRng, Default::default());
-        let seed = mnemonic.to_seed(password);
-
-        let derivation_path = match derivation_path {
-            Some(_i) => derivation_path.unwrap(),
-            _ => COSMOS_BASE_DERIVATION_PATH,
+        key_name: &KeyName,
+        encoded_key: pkcs8::PrivateKeyDocument
+    ) -> Result<(), KeyStoreError> {
+        match self.key_store.as_ref().expect("Error accessing key store.").store(key_name, &encoded_key) {
+            Ok(ks) => {
+                return Ok(())
+            }
+            Err(err) => return Err(KeyStoreError::UnableToStoreKey(err.to_string())),
         };
-
-        let derivation_path = derivation_path
-            .parse::<bip32::DerivationPath>()
-            .expect("Could not parse derivation path.");
-
-        // Process key and store
-        let extended_signing_key =
-            bip32::XPrv::derive_from_path(seed, &derivation_path).expect("Could not derive key.");
-
-        let signing_key = k256::SecretKey::from(extended_signing_key.private_key());
-        let encoded_key = signing_key
-            .to_pkcs8_der()
-            .expect("Could not PKCS8 encode private key");
-
-        let key_name = &KeyName::new(name)
-            .unwrap_or_else(|_| panic!("Could not create KeyName for '{}'.", name));
-        self.key_store
-            .as_ref()
-            .expect("Error accessing key store.")
-            .store(key_name, &encoded_key)
-            .expect("Could not store key");
-
-        Ok(PrivateKeyOutput {
-            mnemonic,
-            private_key: SigningKey::from(extended_signing_key),
-        })
     }
 
-    fn delete_key(&self, name: &str) -> Result<(), KeyStoreError> {
-        if self.key_exists(name)? {
-            let key_name = &KeyName::new(name)
-                .unwrap_or_else(|_| panic!("Could not create KeyName for '{}'.", name));
-            let _delete_key = self
-                .key_store
-                .as_ref()
-                .expect("Error accessing key store.")
-                .delete(key_name);
-
-            Ok(())
-        } else {
-            Err(KeyStoreError::DoesNotExist(name.to_string()))
-        }
+    fn delete_key(&self, key_name: &KeyName) -> Result<(), KeyStoreError> {
+        match self.key_store.as_ref().expect("Error accessing key store.").delete(key_name) {
+            Ok(ks) => {
+                return Ok(())
+            }
+            Err(err) => return Err(KeyStoreError::UnableToDeleteKey(err.to_string())),
+        };
     }
 
     fn rename_key(
         &self,
-        current_name: &str,
-        new_name: &str,
-        override_if_exists: bool,
+        current_name: &KeyName,
+        new_name: &KeyName,
     ) -> Result<(), KeyStoreError> {
-        // Check if current key exists
-        if !self.key_exists(current_name)? {
-            eprintln!("Key '{}', does not exist.", current_name);
-            return Err(KeyStoreError::DoesNotExist(current_name.to_string()));
-        }
-
-        // Check if new key exists
-        if self.key_exists(new_name)? && !override_if_exists {
-            eprintln!("New key name '{}', already exists.", new_name);
-            return Err(KeyStoreError::Exists(new_name.to_string()));
-        }
-
-        // Proceed with rename
-        let current_name = &KeyName::new(current_name)
-            .unwrap_or_else(|_| panic!("Could not create KeyName for '{}'.", current_name));
-        let new_name = &KeyName::new(new_name)
-            .unwrap_or_else(|_| panic!("Could not create KeyName for '{}'.", new_name));
-
         let key = self
             .key_store
             .as_ref()
@@ -262,17 +329,39 @@ impl KeyStore for FileKeyStore {
             .expect("Could not load key.");
 
         // Create new key.
-        let _result = self
+        self
             .key_store
             .as_ref()
             .expect("Error accessing key store.")
-            .store(new_name, &key);
+            .store(new_name, &key)
+            .expect("Could not create new key.");
 
         // Delete old key.
-        let _result = self.delete_key(current_name);
+        self.delete_key(current_name).expect("Could not delete old key.");
 
         Ok(())
     }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
     fn get_public_key_and_address(&self, name: &str) -> Result<PublicKeyOutput, KeyStoreError> {
         // Check if key exists
@@ -386,6 +475,24 @@ impl KeyStore for FileKeyStore {
         Ok(())
     }
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 // ---------------------------------- Tests ----------------------------------
 // TODO: Make these tests more comprehensive and increase code coverage.
