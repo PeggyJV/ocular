@@ -1,7 +1,7 @@
 #![warn(unused_qualifications)]
 
 use bip32::{Mnemonic, PrivateKey};
-use cosmrs::crypto::secp256k1::SigningKey;
+use cosmrs::crypto::{secp256k1::SigningKey, PublicKey};
 use rand_core::OsRng;
 use signatory::{
     pkcs8::der::Document, pkcs8::EncodePrivateKey, pkcs8::LineEnding, FsKeyStore, KeyName,
@@ -17,8 +17,8 @@ const COSMOS_ADDRESS_PREFIX: &str = "cosmos";
 const DEFAULT_FS_KEYSTORE_DIR: &str = "/.ocular/keys";
 
 // TODO: Additional hashmap of key attributes: name, prefix, type..
-// BRING BACK KEYRING NAMING
 // ADD COSMOS KEYRING FUNCTIONS
+// Move keyring functions out of filestore
 
 /// Basic keystore traits that all backends are expected to implement
 pub trait KeyStore {
@@ -78,7 +78,7 @@ pub struct PrivateKeyOutput {
 #[derive(Debug)]
 pub struct PublicKeyOutput {
     pub name: String,
-    pub public_key: String,
+    pub public_key: PublicKey,
     pub account: cosmrs::AccountId,
 }
 
@@ -310,7 +310,7 @@ impl KeyStore for FileKeyStore {
 
         Ok(PublicKeyOutput {
             name: name.to_string(),
-            public_key: verifying_key.to_string(),
+            public_key: verifying_key,
             account: account_id,
         })
     }
