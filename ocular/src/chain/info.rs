@@ -1,7 +1,9 @@
 use crate::{
-    chain_client,
-    chain_registry::{self, AssetList},
-    config::ChainClientConfig,
+    chain::{
+        client,
+        config::ChainClientConfig,
+        registry::{self, AssetList},
+    },
     error::{ChainInfoError, RpcError},
 };
 use futures::executor;
@@ -99,7 +101,7 @@ impl ChainInfo {
     }
 
     pub async fn get_asset_list(&self) -> Result<AssetList, ChainInfoError> {
-        chain_registry::get_assets(self.chain_name.as_str())
+        registry::get_assets(self.chain_name.as_str())
             .await
             .map_err(|r| r.into())
     }
@@ -163,13 +165,11 @@ impl ChainInfo {
 }
 
 pub async fn get_cosmoshub_info() -> Result<ChainInfo, ChainInfoError> {
-    chain_registry::get_chain("cosmoshub")
-        .await
-        .map_err(|r| r.into())
+    registry::get_chain("cosmoshub").await.map_err(|r| r.into())
 }
 
 pub async fn is_healthy_rpc(endpoint: &str) -> Result<(), ChainInfoError> {
-    let rpc_client = chain_client::new_rpc_client(endpoint)?;
+    let rpc_client = client::new_rpc_client(endpoint)?;
     let status = rpc_client
         .status()
         .await
