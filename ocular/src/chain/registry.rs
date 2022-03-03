@@ -1,4 +1,4 @@
-use crate::{chain_info::ChainInfo, error::ChainRegistryError};
+use crate::{chain::info::ChainInfo, error::ChainRegistryError};
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 
 #[derive(Debug, Default, Deserialize, Serialize)]

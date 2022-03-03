@@ -1,6 +1,5 @@
 use crate::{
-    chain_registry::get_chain,
-    config::ChainClientConfig,
+    chain::{config::ChainClientConfig, registry::get_chain},
     error::{ChainClientError, RpcError},
 };
 use futures::executor;

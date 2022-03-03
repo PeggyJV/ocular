@@ -1,5 +1,5 @@
 use assay::assay;
-use ocular::chain_client::ChainClient;
+use ocular::chain::client::ChainClient;
 
 #[assay]
 async fn create_chain_client() {

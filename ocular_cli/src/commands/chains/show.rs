@@ -12,7 +12,7 @@ impl Runnable for ShowCmd {
     /// Start the application.
     fn run(&self) {
         abscissa_tokio::run(&APP, async {
-            match ocular::chain_registry::get_chain(self.name.as_str()).await {
+            match ocular::chain::registry::get_chain(self.name.as_str()).await {
                 Ok(info) => {
                     let info = serde_json::to_string_pretty(&info).unwrap();
                     print!("{}", info)
