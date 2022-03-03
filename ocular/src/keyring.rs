@@ -16,6 +16,10 @@ const COSMOS_BASE_DERIVATION_PATH: &str = "m/44'/118'/0'/0/0";
 const COSMOS_ADDRESS_PREFIX: &str = "cosmos";
 const DEFAULT_FS_KEYSTORE_DIR: &str = "/.ocular/keys";
 
+// TODO: Additional hashmap of key attributes: name, prefix, type..
+// BRING BACK KEYRING NAMING
+// ADD COSMOS KEYRING FUNCTIONS
+
 /// Basic keystore traits that all backends are expected to implement
 pub trait KeyStore {
     /// Create new key store
@@ -78,13 +82,13 @@ pub struct PublicKeyOutput {
     pub account: cosmrs::AccountId,
 }
 
-/// Keybase that needs to be initialized before being used. Initialization parameters vary depending on type of key store being used.
-pub struct Keybase {
+/// Keyring that needs to be initialized before being used. Initialization parameters vary depending on type of key store being used.
+pub struct Keyring {
     pub key_store: Box<dyn KeyStore>,
 }
 
-// Keybase constructors
-impl Keybase {
+// Keyring constructors
+impl Keyring {
     /// Create new instance of FsKeyStore
     /// Will create store at '~/<DEFAULT_FS_KEYSTORE_DIR>' if None is provided
     pub fn new_file_store(key_path: Option<&str>) -> Result<Self, KeyStoreError> {
@@ -110,7 +114,7 @@ impl Keybase {
 
         key_store.create_key_store()?;
 
-        Ok(Keybase {
+        Ok(Keyring {
             key_store: Box::new(key_store),
         })
     }
@@ -391,9 +395,9 @@ mod tests {
 
     #[test]
     fn file_key_store_without_path_init() {
-        let keybase = Keybase::new_file_store(None).expect("Could not initialize keystore.");
+        let keyring = Keyring::new_file_store(None).expect("Could not initialize keystore.");
 
-        assert_eq!(keybase.key_store.key_store_created(), true);
+        assert_eq!(keyring.key_store.key_store_created(), true);
 
         // Assert dir exists where expected
         let expected_dir = String::from(
@@ -422,9 +426,9 @@ mod tests {
         let result = std::panic::catch_unwind(|| fs::metadata(new_dir).unwrap());
         assert!(result.is_err());
 
-        let keybase =
-            Keybase::new_file_store(Some(new_dir)).expect("Could not initialize keystore.");
-        assert_eq!(keybase.key_store.key_store_created(), true);
+        let keyring =
+            Keyring::new_file_store(Some(new_dir)).expect("Could not initialize keystore.");
+        assert_eq!(keyring.key_store.key_store_created(), true);
 
         // Assert new dir exists now
         assert_eq!(fs::metadata(new_dir).unwrap().is_dir(), true);
@@ -448,9 +452,9 @@ mod tests {
         // Assert dir exists
         assert_eq!(fs::metadata(existing_dir).unwrap().is_dir(), true);
 
-        let keybase =
-            Keybase::new_file_store(Some(existing_dir)).expect("Could not initialize keystore.");
-        assert_eq!(keybase.key_store.key_store_created(), true);
+        let keyring =
+            Keyring::new_file_store(Some(existing_dir)).expect("Could not initialize keystore.");
+        assert_eq!(keyring.key_store.key_store_created(), true);
 
         // Assert dir still exists
         assert_eq!(fs::metadata(existing_dir).unwrap().is_dir(), true);
@@ -464,20 +468,20 @@ mod tests {
             .into_string()
             .unwrap()
             + "/working_test_dir1");
-        let keybase =
-            Keybase::new_file_store(Some(new_dir)).expect("Could not initialize keystore.");
+        let keyring =
+            Keyring::new_file_store(Some(new_dir)).expect("Could not initialize keystore.");
 
         // Check add key doesn't result in failure
-        assert!(keybase.key_store.add_key("NewKey", "", None, false).is_ok());
+        assert!(keyring.key_store.add_key("NewKey", "", None, false).is_ok());
 
         // Assert attempting to override key results in failure
-        assert!(keybase
+        assert!(keyring
             .key_store
             .add_key("NewKey", "", None, false)
             .is_err());
 
         // Assert attempting to override key with override results in success
-        assert!(keybase.key_store.add_key("NewKey", "", None, true).is_ok());
+        assert!(keyring.key_store.add_key("NewKey", "", None, true).is_ok());
 
         // Clean up dir
         fs::remove_dir_all(new_dir).expect(&format!("Failed to delete test directory {}", new_dir));
@@ -495,17 +499,17 @@ mod tests {
             .into_string()
             .unwrap()
             + "/working_test_dir2");
-        let keybase =
-            Keybase::new_file_store(Some(new_dir)).expect("Could not initialize keystore.");
+        let keyring =
+            Keyring::new_file_store(Some(new_dir)).expect("Could not initialize keystore.");
 
         // Check key doesnt exist
-        assert_eq!(keybase.key_store.key_exists("dolphin").unwrap(), false);
+        assert_eq!(keyring.key_store.key_exists("dolphin").unwrap(), false);
 
         // Create key
-        let _new_key = keybase.key_store.add_key("dolphin", "", None, false);
+        let _new_key = keyring.key_store.add_key("dolphin", "", None, false);
 
         // Assert new key exists
-        assert_eq!(keybase.key_store.key_exists("dolphin").unwrap(), true);
+        assert_eq!(keyring.key_store.key_exists("dolphin").unwrap(), true);
 
         // Clean up dir
         fs::remove_dir_all(new_dir).expect(&format!("Failed to delete test directory {}", new_dir));
@@ -523,20 +527,20 @@ mod tests {
             .into_string()
             .unwrap()
             + "/working_test_dir3");
-        let keybase =
-            Keybase::new_file_store(Some(new_dir)).expect("Could not initialize keystore.");
+        let keyring =
+            Keyring::new_file_store(Some(new_dir)).expect("Could not initialize keystore.");
 
         // Attempt to delete key that doesnt exist, assert Err thrown
-        assert!(keybase.key_store.delete_key("harambe").is_err());
+        assert!(keyring.key_store.delete_key("harambe").is_err());
 
         // Create new key
-        let _new_key = keybase.key_store.add_key("harambe", "", None, false);
+        let _new_key = keyring.key_store.add_key("harambe", "", None, false);
 
         // Delete existing key
-        assert!(keybase.key_store.delete_key("harambe").is_ok());
+        assert!(keyring.key_store.delete_key("harambe").is_ok());
 
         // Verify it was deleted
-        assert_eq!(keybase.key_store.key_exists("harambe").unwrap(), false);
+        assert_eq!(keyring.key_store.key_exists("harambe").unwrap(), false);
 
         // Clean up dir
         fs::remove_dir_all(new_dir).expect(&format!("Failed to delete test directory {}", new_dir));
@@ -554,55 +558,55 @@ mod tests {
             .into_string()
             .unwrap()
             + "/working_test_dir4");
-        let keybase =
-            Keybase::new_file_store(Some(new_dir)).expect("Could not initialize keystore.");
+        let keyring =
+            Keyring::new_file_store(Some(new_dir)).expect("Could not initialize keystore.");
 
         // Attempt to rename key that doesn't exist
-        assert!(keybase
+        assert!(keyring
             .key_store
             .rename_key("current_name", "new_name", false)
             .is_err());
-        assert!(keybase
+        assert!(keyring
             .key_store
             .rename_key("current_name", "new_name", true)
             .is_err());
 
         // Create some new keys
-        let _key = keybase.key_store.add_key("penguin", "", None, false);
-        let _key = keybase.key_store.add_key("mouse", "", None, false);
+        let _key = keyring.key_store.add_key("penguin", "", None, false);
+        let _key = keyring.key_store.add_key("mouse", "", None, false);
 
         // Verify keys exists and new named key does not
-        assert_eq!(keybase.key_store.key_exists("penguin").unwrap(), true);
-        assert_eq!(keybase.key_store.key_exists("mouse").unwrap(), true);
-        assert_eq!(keybase.key_store.key_exists("capybara").unwrap(), false);
+        assert_eq!(keyring.key_store.key_exists("penguin").unwrap(), true);
+        assert_eq!(keyring.key_store.key_exists("mouse").unwrap(), true);
+        assert_eq!(keyring.key_store.key_exists("capybara").unwrap(), false);
 
         // Attempt valid rename without override
-        assert!(keybase
+        assert!(keyring
             .key_store
             .rename_key("mouse", "capybara", false)
             .is_ok());
 
         // Verify rename worked
-        assert_eq!(keybase.key_store.key_exists("mouse").unwrap(), false);
-        assert_eq!(keybase.key_store.key_exists("capybara").unwrap(), true);
+        assert_eq!(keyring.key_store.key_exists("mouse").unwrap(), false);
+        assert_eq!(keyring.key_store.key_exists("capybara").unwrap(), true);
 
         // Attempt rename again into existing key without override and re validate keystore integrity
-        assert!(keybase
+        assert!(keyring
             .key_store
             .rename_key("capybara", "penguin", false)
             .is_err());
-        assert_eq!(keybase.key_store.key_exists("penguin").unwrap(), true);
-        assert_eq!(keybase.key_store.key_exists("capybara").unwrap(), true);
+        assert_eq!(keyring.key_store.key_exists("penguin").unwrap(), true);
+        assert_eq!(keyring.key_store.key_exists("capybara").unwrap(), true);
 
         // Attempt rename with valid override
-        assert!(keybase
+        assert!(keyring
             .key_store
             .rename_key("capybara", "penguin", true)
             .is_ok());
 
         // Verify rename worked.
-        assert_eq!(keybase.key_store.key_exists("capybara").unwrap(), false);
-        assert_eq!(keybase.key_store.key_exists("penguin").unwrap(), true);
+        assert_eq!(keyring.key_store.key_exists("capybara").unwrap(), false);
+        assert_eq!(keyring.key_store.key_exists("penguin").unwrap(), true);
 
         // Clean up dir
         fs::remove_dir_all(new_dir).expect(&format!("Failed to delete test directory {}", new_dir));
@@ -620,22 +624,22 @@ mod tests {
             .into_string()
             .unwrap()
             + "/working_test_dir5");
-        let keybase =
-            Keybase::new_file_store(Some(new_dir)).expect("Could not initialize keystore.");
+        let keyring =
+            Keyring::new_file_store(Some(new_dir)).expect("Could not initialize keystore.");
 
         // Attempt to get key address that doesn't exist
-        assert!(keybase
+        assert!(keyring
             .key_store
             .get_public_key_and_address("iguana")
             .is_err());
 
         // Make new key
-        let key = keybase.key_store.add_key("iguana", "", None, false);
+        let key = keyring.key_store.add_key("iguana", "", None, false);
 
         dbg!(key.unwrap().mnemonic.phrase());
 
         // Get key address
-        let result = keybase.key_store.get_public_key_and_address("iguana");
+        let result = keyring.key_store.get_public_key_and_address("iguana");
         assert!(result.is_ok());
 
         // Clean up dir
@@ -654,22 +658,22 @@ mod tests {
             .into_string()
             .unwrap()
             + "/working_test_dir6");
-        let keybase =
-            Keybase::new_file_store(Some(new_dir)).expect("Could not initialize keystore.");
+        let keyring =
+            Keyring::new_file_store(Some(new_dir)).expect("Could not initialize keystore.");
 
         // Verify no keys at start
-        let result = keybase.key_store.get_all_keys();
+        let result = keyring.key_store.get_all_keys();
         assert!(result.is_ok());
-        assert_eq!(keybase.key_store.get_all_keys().unwrap().len(), 0);
+        assert_eq!(keyring.key_store.get_all_keys().unwrap().len(), 0);
 
         // Make new keys
-        let _key = keybase.key_store.add_key("car", "", None, false);
-        let _key = keybase.key_store.add_key("motorcycle", "", None, false);
+        let _key = keyring.key_store.add_key("car", "", None, false);
+        let _key = keyring.key_store.add_key("motorcycle", "", None, false);
 
         // Verify new keys
-        let result = keybase.key_store.get_all_keys();
+        let result = keyring.key_store.get_all_keys();
         assert!(result.is_ok());
-        assert_eq!(keybase.key_store.get_all_keys().unwrap().len(), 2);
+        assert_eq!(keyring.key_store.get_all_keys().unwrap().len(), 2);
 
         // Clean up dir
         fs::remove_dir_all(new_dir).expect(&format!("Failed to delete test directory {}", new_dir));
@@ -687,31 +691,31 @@ mod tests {
             .into_string()
             .unwrap()
             + "/working_test_dir7");
-        let keybase =
-            Keybase::new_file_store(Some(new_dir)).expect("Could not initialize keystore.");
+        let keyring =
+            Keyring::new_file_store(Some(new_dir)).expect("Could not initialize keystore.");
 
         // Verify key doesn't exist to start
-        assert!(keybase
+        assert!(keyring
             .key_store
             .get_public_key_and_address("celery")
             .is_err());
 
         // Create new key and get address
-        let private_key = keybase
+        let private_key = keyring
             .key_store
             .add_key("celery", "tomato", None, false)
             .unwrap();
-        let public_key = keybase
+        let public_key = keyring
             .key_store
             .get_public_key_and_address("celery")
             .unwrap();
 
         // Delete it
-        assert!(keybase.key_store.delete_key("celery").is_ok());
-        assert_eq!(keybase.key_store.key_exists("celery").unwrap(), false);
+        assert!(keyring.key_store.delete_key("celery").is_ok());
+        assert_eq!(keyring.key_store.key_exists("celery").unwrap(), false);
 
         // Attempt recovery via mnemonic
-        assert!(keybase
+        assert!(keyring
             .key_store
             .recover_from_mnemonic(
                 "new_celery",
@@ -723,7 +727,7 @@ mod tests {
             .is_ok());
 
         // Verify recovered key is equal to deleted one
-        let new_public_key = keybase
+        let new_public_key = keyring
             .key_store
             .get_public_key_and_address("new_celery")
             .unwrap();
