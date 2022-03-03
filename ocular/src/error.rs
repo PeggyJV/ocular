@@ -3,6 +3,10 @@ use thiserror::Error;
 // Higher level errors: ChainClientError, ChainInfoError, ChainRegistryError
 #[derive(Debug, Error)]
 pub enum ChainClientError {
+    #[error("{0}")]
+    ChainInfo(#[from] ChainInfoError),
+    #[error("{0}")]
+    ChainRegistry(#[from] ChainRegistryError),
     #[error("error during RPC call: {0}")]
     TendermintRpc(#[from] RpcError),
 }
