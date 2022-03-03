@@ -1,27 +1,20 @@
 # Ocular
 
-Ocular is (will be) a rust implementation of [lens](https://github.com/strangelove-ventures/lens), a client library and associated CLI for blockchains built with the [Cosmos SDK](https://github.com/cosmos/cosmos-sdk).
+Ocular seeks to be the preferred cosmos client library UX for Rust projects. It is strongly based on [lens](https://github.com/strangelove-ventures/lens), a go client library for blockchains built with the [Cosmos SDK](https://github.com/cosmos/cosmos-sdk).
 
-## To do
-This list is not exhaustive and will be updated periodically. If you are interested in contributing, compare with the [lens](https://github.com/strangelove-ventures/lens) repo to see what is missing.
+# Features
 
-`ocular`
-- [X] Chain registry interaction
-- [X] Structs for deserialized chain info from `chain.json`
-- [X] Structs for deserialized assets info from `assets.json`
-- [ ] Chain client config struct (in progress)
+## Existing
+- Automatic client configuration based on the [cosmos chain registry](https://github.com/cosmos/chain-registry):
+```
+let client = ChainClient::new("cosmoshub");
+```
+## In Progress
+- Core module querys
+- Tendermint querys
+- Key management
+- TX signing with the familiar cosmos Accounts paradigm
+- Automatic IBC relayer path retrieval
 
-`ocular_cli`
-- [X] Chain info serializaton to TOML
-- [X] Config files initialization
-- [ ] Implement `chains` subcommands
-    - [X] `show`
-    - [ ] `add`
-    - [ ] `update`
-    - [ ] `delete`
-    - [ ] `edit`
-    - [ ] `editor`
-    - [ ] `list`
-    - [ ] `registry_list`
-    - [ ] `show_default`
-    - [ ] `set_default`
+## Future
+- Arbitrary gRPC message sending (for custom modules)
