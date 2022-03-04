@@ -58,4 +58,7 @@ pub enum KeyStoreError {
 
     #[error("unable to delete key: {0}")]
     UnableToDeleteKey(String),
+
+    #[error("unable to retrieve key: {0}")]
+    UnableToRetrieveKey(String),
 }
