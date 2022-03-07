@@ -45,11 +45,6 @@ pub trait KeyStore {
 
     /// Load PrivateKeyDocumentfrom key store. Will return an error if key DNE under name.
     fn get_key(&self, key_name: &KeyName) -> Result<pkcs8::PrivateKeyDocument, KeyStoreError>;
-
-    /*
-        /// Get all key addresses in bech32 (aka segwit) format.
-        fn get_all_keys(&self) -> Result<Vec<PublicKeyOutput>, Box<dyn std::error::Error>>;
-    */
 }
 
 /// Mnemonic and private key
@@ -279,7 +274,6 @@ impl Keyring {
             .expect("Could not create verifying key from signing key.")
             .public_key();
 
-        // TODO: Support other prefixes
         let account_id = verifying_key
             .account_id(prefix)
             .expect("Could not get account id from verifying key.");
@@ -290,12 +284,11 @@ impl Keyring {
             account: account_id,
         })
     }
-    /*
-        /// Get all key addresses in bech32 (aka segwit) format.
-        pub fn get_all_keys(&self) -> Result<Vec<PublicKeyOutput>, Box<dyn std::error::Error>> {
-            self.key_store.get_all_keys()
-        }
-    */
+
+    /// List all keys.
+    pub fn list_all_keys(&self) -> Result<HashMap<String, Record>, Box<dyn std::error::Error>> {
+        Ok(self.records.clone())
+    }
 
     /// Recover key via mnemonic, password, and derivation_path (defaults to cosmos). If override_if_exists is set to true, it will override any existing key with the same name.
     fn create_or_recover_from_mnemonic(
@@ -439,32 +432,6 @@ impl KeyStore for FileKeyStore {
             Err(err) => Err(KeyStoreError::UnableToRetrieveKey(err.to_string())),
         };
     }
-    /*
-        fn get_all_keys(&self) -> Result<Vec<String>, Box<dyn std::error::Error>> {
-            let mut vec = Vec::new();
-
-            for entry in std::fs::read_dir(&self.key_path).expect("Could not read directory.") {
-                let path = entry.unwrap().path();
-
-                if path.is_file() {
-                    if let Some(extension) = path.extension() {
-                        if extension == "pem" {
-                            let name = path
-                                .file_stem()
-                                .expect("Could not get file stem.")
-                                .to_str()
-                                .expect("Could not convert to string.");
-                            let key_data = super::get_public_key_and_address(name)?;
-
-                            vec.push(key_data);
-                        }
-                    }
-                }
-            }
-
-            Ok(vec)
-        }
-    */
 }
 
 // ---------------------------------- Tests ----------------------------------
@@ -746,40 +713,48 @@ mod tests {
         let result = std::panic::catch_unwind(|| std::fs::metadata(new_dir).unwrap());
         assert!(result.is_err());
     }
-    /*
-        #[test]
-        fn file_store_get_all_keys() {
-            let new_dir = &(std::env::current_dir()
-                .unwrap()
-                .into_os_string()
-                .into_string()
-                .unwrap()
-                + "/working_test_dir6");
-            let keyring =
-                Keyring::new_file_store(Some(new_dir)).expect("Could not initialize keystore.");
 
-            // Verify no keys at start
-            let result = keyring.get_all_keys();
-            assert!(result.is_ok());
-            assert_eq!(keyring.get_all_keys().unwrap().len(), 0);
+    #[test]
+    fn file_store_list_all_keys() {
+        let new_dir = &(std::env::current_dir()
+            .unwrap()
+            .into_os_string()
+            .into_string()
+            .unwrap()
+            + "/working_test_dir6");
+        let mut keyring =
+            Keyring::new_file_store(Some(new_dir)).expect("Could not initialize keystore.");
 
-            // Make new keys
-            let _key = keyring.add_key_with_generated_mnemonic("car", "", None, false);
-            let _key = keyring.add_key_with_generated_mnemonic("motorcycle", "", None, false);
+        // Verify no keys at start
+        let result = keyring.list_all_keys();
+        assert!(result.is_ok());
+        assert_eq!(keyring.list_all_keys().unwrap().len(), 0);
 
-            // Verify new keys
-            let result = keyring.get_all_keys();
-            assert!(result.is_ok());
-            assert_eq!(keyring.get_all_keys().unwrap().len(), 2);
+        // Make new keys
+        let _key =
+            keyring.add_key_with_generated_mnemonic("car", "", None, false, RecordType::Offline);
+        let _key = keyring.add_key_with_generated_mnemonic(
+            "motorcycle",
+            "",
+            None,
+            false,
+            RecordType::Offline,
+        );
 
-            // Clean up dir
-            std::fs::remove_dir_all(new_dir).expect(&format!("Failed to delete test directory {}", new_dir));
+        // Verify new keys
+        let result = keyring.list_all_keys();
+        assert!(result.is_ok());
+        assert_eq!(keyring.list_all_keys().unwrap().len(), 2);
 
-            // Assert deleted
-            let result = std::panic::catch_unwind(|| std::fs::metadata(new_dir).unwrap());
-            assert!(result.is_err());
-        }
-    */
+        // Clean up dir
+        std::fs::remove_dir_all(new_dir)
+            .expect(&format!("Failed to delete test directory {}", new_dir));
+
+        // Assert deleted
+        let result = std::panic::catch_unwind(|| std::fs::metadata(new_dir).unwrap());
+        assert!(result.is_err());
+    }
+
     #[test]
     fn file_store_create_or_recover_from_mnemonic() {
         let new_dir = &(std::env::current_dir()
