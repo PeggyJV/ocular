@@ -745,6 +745,27 @@ mod tests {
         let result = keyring.list_all_keys();
         assert!(result.is_ok());
         assert_eq!(keyring.list_all_keys().unwrap().len(), 2);
+        assert_eq!(
+            keyring
+                .list_all_keys()
+                .expect("Could not access keys")
+                .contains_key("car"),
+            true
+        );
+        assert_eq!(
+            keyring
+                .list_all_keys()
+                .expect("Could not access keys")
+                .contains_key("motorcycle"),
+            true
+        );
+        assert_eq!(
+            keyring
+                .list_all_keys()
+                .expect("Could not access keys")
+                .contains_key("DNE"),
+            false
+        );
 
         // Clean up dir
         std::fs::remove_dir_all(new_dir)
