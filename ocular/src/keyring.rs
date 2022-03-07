@@ -17,14 +17,7 @@ use crate::error::KeyStoreError;
 // Constants
 // TODO: Move to independant constants file if reused elsewhere
 const COSMOS_BASE_DERIVATION_PATH: &str = "m/44'/118'/0'/0/0";
-const COSMOS_ADDRESS_PREFIX: &str = "cosmos";
 const DEFAULT_FS_KEYSTORE_DIR: &str = "/.ocular/keys";
-
-//****/
-// TODOS:
-// 2.) Get address method by prefix
-// 3.) Various Cosmos keyring functions for each record type (local, multi etc.)
-//****/
 
 /// Basic keystore traits that all backends are expected to implement
 pub trait KeyStore {
@@ -257,7 +250,11 @@ impl Keyring {
     }
 
     /// Get key address in bech32 (aka segwit) format. Will throw an error if the key does not exist.
-    pub fn get_public_key_and_address(&self, name: &str) -> Result<PublicKeyOutput, KeyStoreError> {
+    pub fn get_public_key_and_address(
+        &self,
+        name: &str,
+        prefix: &str,
+    ) -> Result<PublicKeyOutput, KeyStoreError> {
         // Check if key exists
         if !self.key_exists(name)? {
             eprintln!("Key '{}', does not exist.", name);
@@ -284,7 +281,7 @@ impl Keyring {
 
         // TODO: Support other prefixes
         let account_id = verifying_key
-            .account_id(COSMOS_ADDRESS_PREFIX)
+            .account_id(prefix)
             .expect("Could not get account id from verifying key.");
 
         Ok(PublicKeyOutput {
@@ -727,7 +724,9 @@ mod tests {
             Keyring::new_file_store(Some(new_dir)).expect("Could not initialize keystore.");
 
         // Attempt to get key address that doesn't exist
-        assert!(keyring.get_public_key_and_address("iguana").is_err());
+        assert!(keyring
+            .get_public_key_and_address("iguana", "cosmos")
+            .is_err());
 
         // Make new key
         let key =
@@ -736,7 +735,7 @@ mod tests {
         dbg!(key.unwrap().mnemonic.phrase());
 
         // Get key address
-        let result = keyring.get_public_key_and_address("iguana");
+        let result = keyring.get_public_key_and_address("iguana", "cosmos");
         assert!(result.is_ok());
 
         // Clean up dir
@@ -793,13 +792,17 @@ mod tests {
             Keyring::new_file_store(Some(new_dir)).expect("Could not initialize keystore.");
 
         // Verify key doesn't exist to start
-        assert!(keyring.get_public_key_and_address("celery").is_err());
+        assert!(keyring
+            .get_public_key_and_address("celery", "cosmos")
+            .is_err());
 
         // Create new key and get address
         let private_key = keyring
             .add_key_with_generated_mnemonic("celery", "tomato", None, false, RecordType::Offline)
             .unwrap();
-        let public_key = keyring.get_public_key_and_address("celery").unwrap();
+        let public_key = keyring
+            .get_public_key_and_address("celery", "cosmos")
+            .unwrap();
 
         // Delete it
         assert!(keyring.delete_key("celery").is_ok());
@@ -818,7 +821,9 @@ mod tests {
             .is_ok());
 
         // Verify recovered key is equal to deleted one
-        let new_public_key = keyring.get_public_key_and_address("new_celery").unwrap();
+        let new_public_key = keyring
+            .get_public_key_and_address("new_celery", "cosmos")
+            .unwrap();
         assert_eq!(new_public_key.account.as_ref(), public_key.account.as_ref());
         assert_eq!(new_public_key.public_key, public_key.public_key);
 
