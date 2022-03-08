@@ -25,6 +25,8 @@ pub enum ChainRegistryError {
     InvalidChainInfo(#[from] serde_json::error::Error),
     #[error("error during chain registry request: {0}")]
     Request(#[from] octocrab::Error),
+    #[error("{0}")]
+    UnsupportedChain(String),
 }
 
 // Lower level errors; should be used by higher level errors
