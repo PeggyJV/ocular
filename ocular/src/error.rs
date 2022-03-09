@@ -35,3 +35,30 @@ pub enum RpcError {
     #[error("unhealthy RPC endpoint: {0}")]
     UnhealthyEndpoint(String),
 }
+
+#[derive(Debug, Error)]
+pub enum KeyStoreError {
+    #[error("error creating or opening keystore: {0}")]
+    CouldNotOpenOrCreateKeyStore(String),
+
+    #[error("key name '{0}' already exists.")]
+    Exists(String),
+
+    #[error("key name '{0}' does not exist.")]
+    DoesNotExist(String),
+
+    #[error("key store has not been initialized.")]
+    NotInitialized,
+
+    #[error("invalid mnemonic: {0}")]
+    InvalidMnemonic(String),
+
+    #[error("unable to store key: {0}")]
+    UnableToStoreKey(String),
+
+    #[error("unable to delete key: {0}")]
+    UnableToDeleteKey(String),
+
+    #[error("unable to retrieve key: {0}")]
+    UnableToRetrieveKey(String),
+}
