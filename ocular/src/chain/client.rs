@@ -41,7 +41,11 @@ fn get_client(chain_name: &str) -> Result<ChainClient, ChainClientError> {
     let keyring = Keyring::new_file_store(None)?;
     let rpc_client = new_rpc_client(config.rpc_address.as_str())?;
 
-    Ok(ChainClient { config, keyring, rpc_client })
+    Ok(ChainClient {
+        config,
+        keyring,
+        rpc_client,
+    })
 }
 
 pub fn new_rpc_client(address: &str) -> Result<RpcClient, RpcError> {
