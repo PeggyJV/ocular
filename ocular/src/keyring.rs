@@ -67,18 +67,16 @@ impl Keyring {
     /// Create new instance of FsKeyStore.
     /// Will create store at '~/<DEFAULT_FS_KEYSTORE_DIR>' if None is provided
     pub fn new_file_store(key_path: Option<&str>) -> Result<Self, KeyStoreError> {
-        let path: String;
-
-        if let Some(key_path) = key_path {
-            path = key_path.to_string();
+        let path: String = if let Some(key_path) = key_path {
+            key_path.to_string()
         } else {
-            path = dirs::home_dir()
+            dirs::home_dir()
                 .unwrap()
                 .into_os_string()
                 .into_string()
                 .unwrap()
-                + DEFAULT_FS_KEYSTORE_DIR;
-        }
+                + DEFAULT_FS_KEYSTORE_DIR
+        };
 
         dbg!(format!("Attempting to use path {}", path));
 
