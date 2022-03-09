@@ -27,7 +27,7 @@ pub struct ChainClient {
 
 impl ChainClient {
     pub fn new(chain: Chains) -> Result<Self, ChainClientError> {
-        get_client(chain.into())
+        get_client(chain.as_str())
     }
 
     pub fn new_unsupported(chain_name: &str) -> Result<Self, ChainClientError> {

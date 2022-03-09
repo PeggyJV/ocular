@@ -127,8 +127,8 @@ impl FromStr for Chains {
     }
 }
 
-impl Into<&str> for Chains {
-    fn into(self) -> &'static str {
+impl Chains {
+    fn as_str(&self) -> &'static str {
         match self {
             Chains::Agoric => "agoric",
             Chains::Akash => "akash",
