@@ -32,7 +32,7 @@ pub trait KeyStore {
     fn key_exists(&self, keyname: &KeyName) -> Result<bool, KeyStoreError>;
 
     /// Add a private key document associated with a key name into the keystore.
-    fn create_key(
+    fn add_key(
         &self,
         key_name: &KeyName,
         encoded_key: pkcs8::PrivateKeyDocument,
@@ -115,7 +115,7 @@ impl Keyring {
     }
 
     /// Add a new key based off of name, password, and derivation path (defaults to cosmos); a mnemonic will automatically be created and returned. If override_if_exists is set to true, it will override any existing key with the same name.
-    pub fn create_key_with_generated_mnemonic(
+    pub fn create_key(
         &mut self,
         name: &str,
         password: &str,
@@ -153,21 +153,21 @@ impl Keyring {
             .unwrap_or_else(|_| panic!("Could not create KeyName for '{}'.", name));
 
         // Store the key
-        self.key_store.create_key(&key_name, encoded_key)?;
+        self.key_store.add_key(&key_name, encoded_key)?;
 
         self.records.insert(String::from(name));
 
         Ok(mnemonic)
     }
 
-    /// Equivalent of create_key_with_generated_mnemonic, albeit with no ability to add a derivation path: creates a cosmos key - Adds a new cosmos key based off of name, password; a mnemonic will automatically be created and returned. If override_if_exists is set to true, it will override any existing key with the same name.
-    pub fn create_cosmos_key_with_generated_mnemonic(
+    /// Equivalent of create_key, albeit with no ability to add a derivation path: creates a cosmos key - Adds a new cosmos key based off of name, password; a mnemonic will automatically be created and returned. If override_if_exists is set to true, it will override any existing key with the same name.
+    pub fn create_cosmos_key(
         &mut self,
         name: &str,
         password: &str,
         override_if_exists: bool,
     ) -> Result<Mnemonic, KeyStoreError> {
-        self.create_key_with_generated_mnemonic(
+        self.create_key(
             name,
             password,
             Some(COSMOS_BASE_DERIVATION_PATH),
@@ -328,7 +328,7 @@ impl Keyring {
         let key_name = &KeyName::new(name)
             .unwrap_or_else(|_| panic!("Could not create KeyName for '{}'.", name));
 
-        self.key_store.create_key(key_name, encoded_key)?;
+        self.key_store.add_key(key_name, encoded_key)?;
 
         self.records.insert(String::from(name));
 
@@ -390,7 +390,7 @@ impl KeyStore for FileKeyStore {
         }
     }
 
-    fn create_key(
+    fn add_key(
         &self,
         key_name: &KeyName,
         encoded_key: pkcs8::PrivateKeyDocument,
@@ -523,7 +523,7 @@ mod tests {
     }
 
     #[test]
-    fn file_key_store_create_key() {
+    fn file_key_store_add_key() {
         let new_dir = &(std::env::current_dir()
             .unwrap()
             .into_os_string()
@@ -534,19 +534,13 @@ mod tests {
             Keyring::new_file_store(Some(new_dir)).expect("Could not initialize keystore.");
 
         // Check add key doesn't result in failure
-        assert!(keyring
-            .create_key_with_generated_mnemonic("NewKey", "", None, false)
-            .is_ok());
+        assert!(keyring.create_key("NewKey", "", None, false).is_ok());
 
         // Assert attempting to override key results in failure
-        assert!(keyring
-            .create_key_with_generated_mnemonic("NewKey", "", None, false)
-            .is_err());
+        assert!(keyring.create_key("NewKey", "", None, false).is_err());
 
         // Assert attempting to override key with override results in success
-        assert!(keyring
-            .create_key_with_generated_mnemonic("NewKey", "", None, true)
-            .is_ok());
+        assert!(keyring.create_key("NewKey", "", None, true).is_ok());
 
         // Clean up dir
         std::fs::remove_dir_all(new_dir)
@@ -572,7 +566,7 @@ mod tests {
         assert_eq!(keyring.key_exists("dolphin").unwrap(), false);
 
         // Create key
-        let _create_key = keyring.create_key_with_generated_mnemonic("dolphin", "", None, false);
+        let _key = keyring.create_key("dolphin", "", None, false);
 
         // Assert new key exists
         assert_eq!(keyring.key_exists("dolphin").unwrap(), true);
@@ -601,7 +595,7 @@ mod tests {
         assert!(keyring.delete_key("harambe").is_err());
 
         // Create new key
-        let _create_key = keyring.create_key_with_generated_mnemonic("harambe", "", None, false);
+        let _key = keyring.create_key("harambe", "", None, false);
 
         // Delete existing key
         assert!(keyring.delete_key("harambe").is_ok());
@@ -638,8 +632,8 @@ mod tests {
             .is_err());
 
         // Create some new keys
-        let _key = keyring.create_key_with_generated_mnemonic("penguin", "", None, false);
-        let _key = keyring.create_key_with_generated_mnemonic("mouse", "", None, false);
+        let _key = keyring.create_key("penguin", "", None, false);
+        let _key = keyring.create_key("mouse", "", None, false);
 
         // Verify keys exists and new named key does not
         assert_eq!(keyring.key_exists("penguin").unwrap(), true);
@@ -691,7 +685,7 @@ mod tests {
             .is_err());
 
         // Make new key
-        let key = keyring.create_key_with_generated_mnemonic("iguana", "", None, false);
+        let key = keyring.create_key("iguana", "", None, false);
 
         dbg!(key.unwrap().phrase());
 
@@ -725,8 +719,8 @@ mod tests {
         assert_eq!(keyring.list_all_keys().unwrap().len(), 0);
 
         // Make new keys
-        let _key = keyring.create_key_with_generated_mnemonic("car", "", None, false);
-        let _key = keyring.create_key_with_generated_mnemonic("motorcycle", "", None, false);
+        let _key = keyring.create_key("car", "", None, false);
+        let _key = keyring.create_key("motorcycle", "", None, false);
 
         // Verify new keys
         let result = keyring.list_all_keys();
@@ -780,9 +774,7 @@ mod tests {
             .is_err());
 
         // Create new key and get address
-        let private_key = keyring
-            .create_key_with_generated_mnemonic("celery", "tomato", None, false)
-            .unwrap();
+        let private_key = keyring.create_key("celery", "tomato", None, false).unwrap();
         let public_key = keyring
             .get_public_key_and_address("celery", "cosmos")
             .unwrap();
@@ -827,7 +819,7 @@ mod tests {
         assert!(keyring.get_key("pterodactyl").is_err());
 
         // Add a key
-        let _result = keyring.create_key_with_generated_mnemonic("pterodactyl", "", None, false);
+        let _result = keyring.create_key("pterodactyl", "", None, false);
 
         // Check key gets returned successfully.
         assert!(keyring.get_key("pterodactyl").is_ok());
@@ -853,19 +845,13 @@ mod tests {
             Keyring::new_file_store(Some(new_dir)).expect("Could not initialize keystore.");
 
         // Check add key doesn't result in failure
-        assert!(keyring
-            .create_cosmos_key_with_generated_mnemonic("scorpion", "", false)
-            .is_ok());
+        assert!(keyring.create_cosmos_key("scorpion", "", false).is_ok());
 
         // Assert attempting to override key results in failure
-        assert!(keyring
-            .create_cosmos_key_with_generated_mnemonic("scorpion", "", false)
-            .is_err());
+        assert!(keyring.create_cosmos_key("scorpion", "", false).is_err());
 
         // Assert attempting to override key with override results in success
-        assert!(keyring
-            .create_cosmos_key_with_generated_mnemonic("scorpion", "", true)
-            .is_ok());
+        assert!(keyring.create_cosmos_key("scorpion", "", true).is_ok());
 
         // Clean up dir
         std::fs::remove_dir_all(new_dir)
@@ -893,9 +879,7 @@ mod tests {
             .is_err());
 
         // Create new key and get address
-        let private_key = keyring
-            .create_key_with_generated_mnemonic("trex", "jenga", None, false)
-            .unwrap();
+        let private_key = keyring.create_key("trex", "jenga", None, false).unwrap();
         let public_key = keyring
             .get_public_key_and_address("trex", "cosmos")
             .unwrap();
