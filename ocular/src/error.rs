@@ -7,6 +7,8 @@ pub enum ChainClientError {
     ChainInfo(#[from] ChainInfoError),
     #[error("{0}")]
     ChainRegistry(#[from] ChainRegistryError),
+    #[error("{0}")]
+    Keyring(#[from] KeyStoreError),
     #[error("error during RPC call: {0}")]
     TendermintRpc(#[from] RpcError),
 }

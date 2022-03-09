@@ -38,7 +38,7 @@ impl ChainClient {
 fn get_client(chain_name: &str) -> Result<ChainClient, ChainClientError> {
     let chain = executor::block_on(async { get_chain(chain_name).await })?;
     let config = chain.get_chain_config()?;
-    let keyring = Keyring::new_file_store(None).unwrap();
+    let keyring = Keyring::new_file_store(None)?;
     let rpc_client = new_rpc_client(config.rpc_address.as_str())?;
 
     Ok(ChainClient { config, keyring, rpc_client })
