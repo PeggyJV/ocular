@@ -29,6 +29,6 @@ k256 = { version = "0.10.2", features = ["pem"] }
 pkcs8 = "0.8.0"
 bech32 = "0.6.0"
 hex = "0.3.1"
-cosmrs = "0.4.1"
+cosmrs = "0.5.0"
 rand_core = "0.6.3"
 dirs = "1.0.4"
