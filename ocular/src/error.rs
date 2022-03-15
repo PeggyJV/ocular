@@ -86,3 +86,15 @@ pub enum KeyStoreError {
     #[error("unable to retrieve key: {0}")]
     UnableToRetrieveKey(String),
 }
+
+#[derive(Debug, Error)]
+pub enum TransactionError {
+    #[error("serialization error: {0}")]
+    SerializationError(String),
+
+    #[error("error converting types: {0}")]
+    TypeConversionError(String),
+
+    #[error("error signing message: {0}")]
+    SigningError(String),
+}
