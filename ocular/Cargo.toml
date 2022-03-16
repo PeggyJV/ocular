@@ -12,23 +12,26 @@ readme = "README.md"
 
 [dependencies]
 assay = "0.1"
-bip32 = "0.3.0"
-futures = { version = "0.3.19", features = ["executor"] }
-octocrab = "0.15.3"
-rand = "0.8.4"
-reqwest = { version = "0.11.8", features = ["json"] }
-serde = "1.0.133"
-serde_json = "1.0.78"
-tendermint-rpc = { version = "0.23.3", features = ["http-client"] }
-signatory = "0.24.0"
-thiserror = "1.0.30"
-tiny-bip39 = "0.8.2"
-url = "2.2.2"
-keyring = "1.1.2"
-k256 = { version = "0.10.2", features = ["pem"] }
-pkcs8 = "0.8.0"
-bech32 = "0.6.0"
-hex = "0.3.1"
-cosmrs = "0.4.1"
-rand_core = "0.6.3"
-dirs = "1.0.4"
+bech32 = "0.6"
+bip32 = "0.3"
+cosmos-sdk-proto = { version = "0.9", features = ["grpc"] }
+cosmrs = "0.4"
+dirs = "1.0"
+futures = { version = "0.3", features = ["executor"] }
+hex = "0.3"
+keyring = "1.1"
+k256 = { version = "0.10", features = ["pem"] }
+http = "0.2"
+octocrab = "0.15"
+pkcs8 = "0.8"
+rand = "0.8"
+rand_core = "0.6"
+reqwest = { version = "0.11", features = ["json"] }
+serde = "1.0"
+serde_json = "1.0"
+signatory = "0.24"
+tendermint-rpc = { version = "0.23", features = ["http-client"] }
+thiserror = "1.0"
+tiny-bip39 = "0.8"
+tonic = { version = "0.6", features = ["transport"] }
+url = "2.2"
