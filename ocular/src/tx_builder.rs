@@ -21,7 +21,7 @@ pub struct TransactionMetadata {
 }
 
 impl TransactionHandler {
-    /// Creates and signs a send message. Returns an error if unsuccessful in creating a Tx.
+    /// Creates, signs, and converts a send message into a byte array. Returns an error if unsuccessful in creating a message
     pub fn create_and_sign_send_message(
         sender_account: AccountId,
         sender_public_key: PublicKey,
@@ -29,7 +29,7 @@ impl TransactionHandler {
         recipient_account: AccountId,
         amount: Coin,
         tx_metadata: TransactionMetadata,
-    ) -> Result<Tx, TransactionError> {
+    ) -> Result<Vec<u8>, TransactionError> {
         // Create send message for coin
         let msg_send = MsgSend {
             from_address: sender_account,
@@ -70,15 +70,9 @@ impl TransactionHandler {
         };
 
         // Serialize into bytes.
-        let tx_bytes = match tx_signed.to_bytes() {
-            Ok(bytes) => bytes,
-            Err(err) => return Err(TransactionError::SerializationError(err.to_string())),
-        };
-
-        // Convert to cosmrs Tx
-        match Tx::from_bytes(&tx_bytes) {
-            Ok(tx) => Ok(tx),
-            Err(err) => Err(TransactionError::TypeConversionError(err.to_string())),
+        match tx_signed.to_bytes() {
+            Ok(bytes) => Ok(bytes),
+            Err(err) => Err(TransactionError::SerializationError(err.to_string())),
         }
     }
 }
@@ -120,9 +114,6 @@ mod tests {
                 memo: String::from("Some memo"),
             },
         )
-        .expect("Could not create tx");
-
-        dbg!(tx.body);
-        dbg!(tx.auth_info);
+        .expect("Could not create transaction");
     }
 }
