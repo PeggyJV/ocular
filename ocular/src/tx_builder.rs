@@ -22,7 +22,7 @@ pub struct TransactionMetadata {
 
 impl TransactionHandler {
     /// Creates and signs a send message. Returns an error if unsuccessful in creating a
-    pub fn create_and_sign_send_message(
+    pub fn create_and_sign_msg_send(
         sender_account: AccountId,
         sender_public_key: PublicKey,
         sender_private_key: SigningKey,
@@ -83,7 +83,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn create_and_sign_send_message() {
+    fn create_and_sign_msg_send() {
         // Create some keys to start off
         let sender_private_key = SigningKey::random();
         let sender_public_key = sender_private_key.public_key();
@@ -96,7 +96,7 @@ mod tests {
             .account_id("cosmos")
             .expect("Could not create recipient account");
 
-        TransactionHandler::create_and_sign_send_message(
+        TransactionHandler::create_and_sign_msg_send(
             sender_account,
             sender_public_key,
             sender_private_key,
