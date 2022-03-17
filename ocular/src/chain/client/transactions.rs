@@ -95,7 +95,8 @@ impl ChainClient {
             amount,
             tx_body,
             tx_metadata,
-        ).await
+        )
+        .await
     }
 
     /// Sign and send delegate message
@@ -127,7 +128,8 @@ impl ChainClient {
             amount,
             tx_body,
             tx_metadata,
-        ).await
+        )
+        .await
     }
 
     /// Sign and send undelegate message
@@ -159,9 +161,9 @@ impl ChainClient {
             amount,
             tx_body,
             tx_metadata,
-        ).await
+        )
+        .await
     }
 }
 
 // Disclaimer on testing: Since the above commands inherently require chains to operate, testing is deferred to integration tests in ocular/tests/single_node_chain_txs.rs
-
