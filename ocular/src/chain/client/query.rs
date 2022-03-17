@@ -18,7 +18,7 @@ pub type SlashingQueryClient = slashing::query_client::QueryClient<Channel>;
 pub type StakingQueryClient = staking::query_client::QueryClient<Channel>;
 
 impl ChainClient {
-    fn check_for_grpc_address(&self) -> Result<(), GrpcError> {
+    pub fn check_for_grpc_address(&self) -> Result<(), GrpcError> {
         if self.config.grpc_address.is_empty() {
             return Err(GrpcError::MissingEndpoint(format!(
                 "no grpc address available for chain {}",

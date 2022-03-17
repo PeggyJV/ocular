@@ -17,5 +17,5 @@ pub mod cosmos_modules {
 }
 pub mod error;
 pub mod keyring;
-pub mod utils;
 pub mod tx_builder;
+pub mod utils;

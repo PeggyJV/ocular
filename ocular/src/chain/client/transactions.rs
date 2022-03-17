@@ -11,18 +11,6 @@ pub type TxClient = tx::service_client::ServiceClient<Channel>;
 pub type StakingMsgClient = staking::msg_client::MsgClient<Channel>;
 
 impl ChainClient {
-    // TODO: remove this method copy once https://github.com/PeggyJV/ocular/pull/22 merged
-    pub fn check_for_grpc_address(&self) -> Result<(), GrpcError> {
-        if self.config.grpc_address.is_empty() {
-            return Err(GrpcError::MissingEndpoint(format!(
-                "no grpc address available for chain {}",
-                self.config.chain_id
-            )));
-        }
-
-        Ok(())
-    }
-
     /// Get Transaction Service Client
     pub async fn get_tx_client(&self) -> Result<TxClient, GrpcError> {
         self.check_for_grpc_address()?;

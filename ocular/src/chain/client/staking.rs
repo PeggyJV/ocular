@@ -26,7 +26,7 @@ impl ChainClient {
 mod tests {
     use crate::chain::client::ChainClient;
     use assay::assay;
-    
+
     #[assay]
     async fn staking_msg_client_initialization() {
         let client = ChainClient::new("cosmoshub").unwrap();
