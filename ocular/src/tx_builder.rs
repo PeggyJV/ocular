@@ -21,28 +21,16 @@ pub struct TransactionMetadata {
 }
 
 impl TransactionHandler {
-    /// Creates and signs a send message. Returns an error if unsuccessful in creating a
-    pub fn create_and_sign_msg_send(
-        sender_account: AccountId,
+    // TODO: Make this extensible to multisig and multicoin (or add new methods for that)
+    /// Helper method for signing and serializing messages to bytes.
+    fn sign_and_serialize_msg_into_bytes(
+        &self,
         sender_public_key: PublicKey,
         sender_private_key: SigningKey,
-        recipient_account: AccountId,
         amount: Coin,
+        tx_body: tx::Body,
         tx_metadata: TransactionMetadata,
     ) -> Result<Vec<u8>, TransactionError> {
-        // Create send message for coin
-        let msg_send = MsgSend {
-            from_address: sender_account,
-            to_address: recipient_account,
-            amount: vec![amount.clone()],
-        };
-
-        // Build tx body.
-        let tx_body = match msg_send.to_any() {
-            Ok(msg) => tx::Body::new(vec![msg], tx_metadata.memo, tx_metadata.timeout_height),
-            Err(err) => return Err(TransactionError::SerializationError(err.to_string())),
-        };
-
         // Create signer info.
         let signer_info =
             SignerInfo::single_direct(Some(sender_public_key), tx_metadata.sequence_number);
@@ -75,6 +63,39 @@ impl TransactionHandler {
             Err(err) => Err(TransactionError::SerializationError(err.to_string())),
         }
     }
+
+    // TODO: Make this extensible to multisig and multicoin (or add new methods for that)
+    /// Creates and signs a send message. Returns an error if unsuccessful.
+    pub fn create_and_sign_msg_send(
+        &self,
+        sender_account: AccountId,
+        sender_public_key: PublicKey,
+        sender_private_key: SigningKey,
+        recipient_account: AccountId,
+        amount: Coin,
+        tx_metadata: TransactionMetadata,
+    ) -> Result<Vec<u8>, TransactionError> {
+        // Create send message for coin
+        let msg_send = MsgSend {
+            from_address: sender_account,
+            to_address: recipient_account,
+            amount: vec![amount.clone()],
+        };
+
+        // Build tx body.
+        let tx_body = match msg_send.to_any() {
+            Ok(msg) => tx::Body::new(vec![msg], &tx_metadata.memo, tx_metadata.timeout_height),
+            Err(err) => return Err(TransactionError::SerializationError(err.to_string())),
+        };
+
+        self.sign_and_serialize_msg_into_bytes(
+            sender_public_key,
+            sender_private_key,
+            amount,
+            tx_body,
+            tx_metadata,
+        )
+    }
 }
 
 // ---------------------------------- Tests ----------------------------------
@@ -96,24 +117,27 @@ mod tests {
             .account_id("cosmos")
             .expect("Could not create recipient account");
 
-        TransactionHandler::create_and_sign_msg_send(
-            sender_account,
-            sender_public_key,
-            sender_private_key,
-            recipient_account,
-            Coin {
-                amount: 1_000_000u64.into(),
-                denom: "uatom".parse().unwrap(),
-            },
-            TransactionMetadata {
-                chain_id: Id::try_from("cosmoshub-4").expect("Could not create chain id."),
-                account_number: 1,
-                sequence_number: 0,
-                gas_limit: 100_000,
-                timeout_height: 9001u16,
-                memo: String::from("Some memo"),
-            },
-        )
-        .expect("Could not create tx");
+        let transaction_handler = TransactionHandler {};
+
+        transaction_handler
+            .create_and_sign_msg_send(
+                sender_account,
+                sender_public_key,
+                sender_private_key,
+                recipient_account,
+                Coin {
+                    amount: 1_000_000u64.into(),
+                    denom: "uatom".parse().unwrap(),
+                },
+                TransactionMetadata {
+                    chain_id: Id::try_from("cosmoshub-4").expect("Could not create chain id."),
+                    account_number: 1,
+                    sequence_number: 0,
+                    gas_limit: 100_000,
+                    timeout_height: 9001u16,
+                    memo: String::from("Some memo"),
+                },
+            )
+            .expect("Could not create tx");
     }
 }
