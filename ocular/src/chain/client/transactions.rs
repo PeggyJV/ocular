@@ -10,7 +10,7 @@ use super::ChainClient;
 pub type TxClient = tx::service_client::ServiceClient<Channel>;
 
 impl ChainClient {
-    // TODO: remove this method once https://github.com/PeggyJV/ocular/pull/22 merged
+    // TODO: remove this method copy once https://github.com/PeggyJV/ocular/pull/22 merged
     fn check_for_grpc_address(&self) -> Result<(), GrpcError> {
         if self.config.grpc_address.is_empty() {
             return Err(GrpcError::MissingEndpoint(format!(
@@ -49,5 +49,23 @@ impl ChainClient {
             .await
             .map_err(GrpcError::Request)?
             .into_inner())
+    }
+}
+
+// ---------------------------------- Tests ----------------------------------
+// Super basic unit tests since these operations inherently require chains
+#[cfg(test)]
+mod tests {
+    use crate::chain::client::ChainClient;
+    use assay::assay;
+
+    #[assay]
+    async fn tx_client_initialization() {
+        let client = ChainClient::new("cosmoshub").unwrap();
+
+        client
+            .get_tx_client()
+            .await
+            .expect("failed to get transaction client");
     }
 }
