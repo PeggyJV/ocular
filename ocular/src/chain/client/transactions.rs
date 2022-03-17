@@ -12,7 +12,7 @@ pub type StakingMsgClient = staking::msg_client::MsgClient<Channel>;
 
 impl ChainClient {
     // TODO: remove this method copy once https://github.com/PeggyJV/ocular/pull/22 merged
-    fn check_for_grpc_address(&self) -> Result<(), GrpcError> {
+    pub fn check_for_grpc_address(&self) -> Result<(), GrpcError> {
         if self.config.grpc_address.is_empty() {
             return Err(GrpcError::MissingEndpoint(format!(
                 "no grpc address available for chain {}",
@@ -28,15 +28,6 @@ impl ChainClient {
         self.check_for_grpc_address()?;
 
         TxClient::connect(self.config.grpc_address.clone())
-            .await
-            .map_err(GrpcError::Connection)
-    }
-
-    /// Get Staking Msg Client
-    pub async fn get_staking_msg_client(&self) -> Result<StakingMsgClient, GrpcError> {
-        self.check_for_grpc_address()?;
-
-        StakingMsgClient::connect(self.config.grpc_address.clone())
             .await
             .map_err(GrpcError::Connection)
     }
@@ -77,15 +68,5 @@ mod tests {
             .get_tx_client()
             .await
             .expect("failed to get transaction service client");
-    }
-
-    #[assay]
-    async fn staking_msg_client_initialization() {
-        let client = ChainClient::new("cosmoshub").unwrap();
-
-        client
-            .get_staking_msg_client()
-            .await
-            .expect("failed to get staking msg client");
     }
 }
