@@ -8,7 +8,6 @@ use tonic::transport::Channel;
 use super::ChainClient;
 
 pub type TxClient = tx::service_client::ServiceClient<Channel>;
-pub type StakingMsgClient = staking::msg_client::MsgClient<Channel>;
 
 impl ChainClient {
     /// Get Transaction Service Client
