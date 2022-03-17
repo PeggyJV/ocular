@@ -28,7 +28,7 @@ impl ChainClient {
 
         TxClient::connect(self.config.grpc_address.clone())
             .await
-            .map_err(|e| GrpcError::Connection(e).into())
+            .map_err(GrpcError::Connection)
     }
 
     /// Takes in a message represented by a byte array and a broadcast mode (https://docs.cosmos.network/v0.42/core/proto-docs.html#cosmos.tx.v1beta1.BroadcastMode)
@@ -40,7 +40,7 @@ impl ChainClient {
         let mut tx_client = self.get_tx_client().await?;
 
         let broadcast_request = tx::BroadcastTxRequest {
-            tx_bytes: tx_bytes,
+            tx_bytes,
             mode: broadcast_mode.into(),
         };
 

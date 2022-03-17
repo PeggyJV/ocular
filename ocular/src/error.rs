@@ -15,6 +15,8 @@ pub enum ChainClientError {
     ModuleQuery(String),
     #[error("error during RPC call: {0}")]
     Rpc(#[from] RpcError),
+    #[error("{0}")]
+    TransactionError(#[from] TransactionError),
 }
 
 #[derive(Debug, Error)]

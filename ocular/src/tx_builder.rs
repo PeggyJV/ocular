@@ -3,7 +3,7 @@ use cosmrs::{
     bank::MsgSend,
     crypto::{secp256k1::SigningKey, PublicKey},
     tendermint::chain::Id,
-    tx::{self, Fee, Msg, SignDoc, SignerInfo, Tx},
+    tx::{self, Fee, Msg, SignDoc, SignerInfo},
     AccountId, Coin,
 };
 
@@ -21,7 +21,7 @@ pub struct TransactionMetadata {
 }
 
 impl TransactionHandler {
-    /// Creates, signs, and converts a send message into a byte array. Returns an error if unsuccessful in creating a message
+    /// Creates and signs a send message. Returns an error if unsuccessful in creating a
     pub fn create_and_sign_send_message(
         sender_account: AccountId,
         sender_public_key: PublicKey,
@@ -96,7 +96,7 @@ mod tests {
             .account_id("cosmos")
             .expect("Could not create recipient account");
 
-        let tx = TransactionHandler::create_and_sign_send_message(
+        TransactionHandler::create_and_sign_send_message(
             sender_account,
             sender_public_key,
             sender_private_key,
@@ -114,6 +114,6 @@ mod tests {
                 memo: String::from("Some memo"),
             },
         )
-        .expect("Could not create transaction");
+        .expect("Could not create tx");
     }
 }
