@@ -10,6 +10,7 @@ use tendermint_rpc;
 
 pub mod query;
 pub mod transactions;
+pub mod staking;
 
 type RpcClient = tendermint_rpc::HttpClient;
 
