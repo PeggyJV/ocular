@@ -536,7 +536,9 @@ dependencies = [
  "serde_json",
  "subtle-encoding",
  "tendermint",
+ "tendermint-rpc",
  "thiserror",
+ "tokio",
 ]
 
 [[package]]
@@ -1241,11 +1243,12 @@ dependencies = [
  "headers",
  "http",
  "hyper",
- "hyper-tls",
- "native-tls",
+ "hyper-rustls",
+ "rustls-native-certs",
  "tokio",
- "tokio-native-tls",
+ "tokio-rustls",
  "tower-service",
+ "webpki",
 ]
 
 [[package]]
@@ -1736,6 +1739,7 @@ dependencies = [
  "tendermint-rpc",
  "thiserror",
  "tiny-bip39",
+ "tokio",
  "tonic",
  "url",
 ]
@@ -2837,9 +2841,9 @@ dependencies = [
 
 [[package]]
 name = "tendermint-config"
-version = "0.23.3"
+version = "0.23.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ecc127f82e7a8c7337c1f293d65a821380d3407c4c44bc979ef4da0ebc3b31ed"
+checksum = "c5a5c41141b56f1e0463182d910b8ccb84fd4abe61a4290a89794d44ad3e15a9"
 dependencies = [
  "flex-error",
  "serde",
@@ -2869,9 +2873,9 @@ dependencies = [
 
 [[package]]
 name = "tendermint-rpc"
-version = "0.23.3"
+version = "0.23.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "626c493e9ced3a9de37583bbd929f4b6dbd49aa513ab9b4776aa44a9332ce9b5"
+checksum = "7c4a92790ed1f844984ce78436c9bdd0931034b387ee6158f0f0731956285d6f"
 dependencies = [
  "async-trait",
  "bytes",

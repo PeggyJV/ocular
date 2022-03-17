@@ -99,4 +99,7 @@ pub enum TransactionError {
 
     #[error("error signing message: {0}")]
     SigningError(String),
+
+    #[error("error broadcasting message: {0}")]
+    BroadcastError(String),
 }
