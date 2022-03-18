@@ -3,8 +3,10 @@
  */
 
 // Requies docker
-
-use ocular::{chain::config::ChainClientConfig, keyring::Keyring};
+use ocular::{
+    chain::{client::transactions::TransactionMetadata, config::ChainClientConfig},
+    keyring::Keyring,
+};
 
 use ocular::chain::client::ChainClient;
 
@@ -39,28 +41,30 @@ const MEMO: &str = "test memo";
 fn local_single_node_chain_test() {
     let sender_private_key = secp256k1::SigningKey::random();
     let sender_public_key = sender_private_key.public_key();
-    let sender_account_id = sender_public_key.account_id(ACCOUNT_PREFIX).unwrap();
+    let sender_account_id = sender_public_key
+        .account_id(ACCOUNT_PREFIX)
+        .expect("Could not create account id.");
 
     let recipient_private_key = secp256k1::SigningKey::random();
     let recipient_account_id = recipient_private_key
         .public_key()
         .account_id(ACCOUNT_PREFIX)
-        .unwrap();
+        .expect("Could not create account id.");
 
     let amount = Coin {
         amount: 1u8.into(),
-        denom: DENOM.parse().unwrap(),
+        denom: DENOM.parse().expect("Could not parse denom."),
     };
 
     let msg_send = MsgSend {
         from_address: sender_account_id.clone(),
-        to_address: recipient_account_id,
+        to_address: recipient_account_id.clone(),
         amount: vec![amount.clone()],
     }
     .to_any()
-    .unwrap();
+    .expect("Could not serlialize msg.");
 
-    let chain_id = CHAIN_ID.parse().unwrap();
+    let chain_id = CHAIN_ID.parse().expect("Could not parse chain id");
     let sequence_number = 0;
     let gas = 100_000;
     let fee = Fee::from_amount_and_gas(amount, gas);
@@ -69,8 +73,14 @@ fn local_single_node_chain_test() {
     let expected_tx_body = tx::Body::new(vec![msg_send], MEMO, timeout_height);
     let expected_auth_info =
         SignerInfo::single_direct(Some(sender_public_key), sequence_number).auth_info(fee);
-    let expected_sign_doc = SignDoc::new(&expected_tx_body, &expected_auth_info, &chain_id, ACCOUNT_NUMBER).unwrap();
-    let expected_tx_raw = expected_sign_doc.sign(&sender_private_key).unwrap();
+    let expected_sign_doc = SignDoc::new(
+        &expected_tx_body,
+        &expected_auth_info,
+        &chain_id,
+        ACCOUNT_NUMBER,
+    )
+    .expect("Could not parse sign doc.");
+    let expected_tx_raw = expected_sign_doc.sign(&sender_private_key).expect("Could not parse tx.");
 
     let docker_args = [
         "-d",
@@ -81,47 +91,52 @@ fn local_single_node_chain_test() {
         &sender_account_id.to_string(),
     ];
 
+    let rpc_address = format!("http://localhost:{}", RPC_PORT);
+    let rpc_client = rpc::HttpClient::new(rpc_address.as_str()).expect("Could not create RPC");
+
+    let chain_client = ChainClient {
+        config: ChainClientConfig {
+            chain_id: chain_id.to_string(),
+            rpc_address: rpc_address.clone(),
+            grpc_address: rpc_address,
+            account_prefix: ACCOUNT_PREFIX.to_string(),
+            gas_adjustment: 1.2,
+            gas_prices: gas.to_string(),
+        },
+        keyring: Keyring::new_file_store(None).expect("Could not create keyring."),
+        rpc_client: rpc_client.clone(),
+    };
+    
     dev::docker_run(&docker_args, || {
         init_tokio_runtime().block_on(async {
-            let rpc_address = format!("http://localhost:{}", RPC_PORT);
-            let rpc_client = rpc::HttpClient::new(rpc_address.as_str()).unwrap();
-        
-            let chain_client = ChainClient {
-                config: ChainClientConfig {
-                    chain_id: chain_id.to_string(),
-                    rpc_address: rpc_address.clone(), 
-                    grpc_address: rpc_address,
-                    account_prefix: ACCOUNT_PREFIX.to_string(),
-                    gas_adjustment: 1.2,
-                    gas_prices: gas.to_string(),
-                },
-                keyring: Keyring::new_file_store(None).expect("Could not create keyring."),
-                rpc_client: rpc_client.clone(),
-            };
-
             dev::poll_for_first_block(&rpc_client).await;
 
-            // Test MsgSend functionality 
-            //let actual_tx_commit_response = chain_client.sign_and_send_msg_send(sender_account, sender_public_key, sender_private_key, recipient_account, amount, tx_metadata)
+            let tx_metadata = TransactionMetadata {
+                chain_id: chain_id,
+                account_number: ACCOUNT_NUMBER,
+                sequence_number: sequence_number,
+                gas_limit: gas,
+                timeout_height: timeout_height,
+                memo: MEMO.to_string(),
+            };
 
-
-
-/* 
-            let tx_commit_response = expected_tx_raw.broadcast_commit(&rpc_client).await.unwrap();
+            // Test MsgSend functionality
+            let actual_tx_commit_response = chain_client.sign_and_send_msg_send(
+                sender_account_id,
+                sender_public_key,
+                sender_private_key,
+                recipient_account_id,
+                amount,
+                tx_metadata,
+            ).await.expect("Could not broadcast msg.");
 
             if actual_tx_commit_response.check_tx.code.is_err() {
-                panic!("check_tx failed: {:?}", tx_commit_response.check_tx);
+                panic!("check_tx failed: {:?}", actual_tx_commit_response.check_tx);
             }
 
             if actual_tx_commit_response.deliver_tx.code.is_err() {
-                panic!("deliver_tx failed: {:?}", tx_commit_response.deliver_tx);
+                panic!("deliver_tx failed: {:?}", actual_tx_commit_response.deliver_tx);
             }
-
-*/
-
-
-
-
 
             let actual_tx = dev::poll_for_tx(&rpc_client, actual_tx_commit_response.hash).await;
             assert_eq!(&expected_tx_body, &actual_tx.body);
@@ -135,5 +150,5 @@ fn init_tokio_runtime() -> tokio::runtime::Runtime {
     tokio::runtime::Builder::new_current_thread()
         .enable_all()
         .build()
-        .unwrap()
+        .expect("Could not build tokio runtime")
 }
