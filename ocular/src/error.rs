@@ -9,14 +9,20 @@ pub enum ChainClientError {
     ChainRegistry(#[from] ChainRegistryError),
     #[error("{0}")]
     Keyring(#[from] KeyStoreError),
+    #[error("{0}")]
+    Grpc(#[from] GrpcError),
+    #[error("{0}")]
+    ModuleQuery(String),
     #[error("error during RPC call: {0}")]
-    TendermintRpc(#[from] RpcError),
+    Rpc(#[from] RpcError),
 }
 
 #[derive(Debug, Error)]
 pub enum ChainInfoError {
     #[error("error during chain registry interaction: {0}")]
     ChainRegistry(#[from] ChainRegistryError),
+    #[error("invalid gRPC endpoint(s): {0}")]
+    GrpcEndpoint(#[from] GrpcError),
     #[error("invalid RPC endpoint(s): {0}")]
     RpcEndpoint(#[from] RpcError),
 }
@@ -33,7 +39,21 @@ pub enum ChainRegistryError {
 
 // Lower level errors; should be used by higher level errors
 #[derive(Debug, Error)]
+pub enum GrpcError {
+    #[error("{0}")]
+    Connection(#[from] tonic::transport::Error),
+    #[error("{0}")]
+    MissingEndpoint(String),
+    #[error("{0}")]
+    Request(#[from] tonic::Status),
+    #[error("unhealthy gRPC endpoint: {0}")]
+    UnhealthyEndpoint(String),
+}
+
+#[derive(Debug, Error)]
 pub enum RpcError {
+    #[error("{0}")]
+    MissingEndpoint(String),
     #[error("tendermint status error: {0}")]
     TendermintStatus(#[from] tendermint_rpc::Error),
     #[error("unhealthy RPC endpoint: {0}")]

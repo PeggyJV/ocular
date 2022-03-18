@@ -4,7 +4,8 @@ use crate::{
         config::ChainClientConfig,
         registry::{self, AssetList},
     },
-    error::{ChainInfoError, RpcError},
+    error::{ChainInfoError, GrpcError, RpcError},
+    utils,
 };
 use futures::executor;
 use rand::{prelude::SliceRandom, thread_rng};
@@ -12,7 +13,10 @@ use serde::{Deserialize, Serialize};
 use tendermint_rpc::Client;
 use url::Url;
 
+use super::client::query::BankQueryClient;
+
 #[derive(Clone, Debug, Default, Deserialize, Serialize)]
+#[serde(default)]
 pub struct ChainInfo {
     #[serde(rename = "$schema")]
     pub schema: String,
@@ -32,11 +36,13 @@ pub struct ChainInfo {
 }
 
 #[derive(Clone, Debug, Default, Deserialize, Serialize)]
+#[serde(default)]
 pub struct Genesis {
     pub genesis_url: String,
 }
 
 #[derive(Clone, Debug, Default, Deserialize, Serialize)]
+#[serde(default)]
 pub struct Codebase {
     pub git_repo: String,
     pub recommended_version: String,
@@ -45,6 +51,7 @@ pub struct Codebase {
 }
 
 #[derive(Clone, Debug, Default, Deserialize, Serialize)]
+#[serde(default)]
 pub struct Peers {
     #[serde(skip_serializing_if = "Vec::is_empty", default = "Vec::new")]
     pub seeds: Vec<Seed>,
@@ -52,6 +59,7 @@ pub struct Peers {
 }
 
 #[derive(Clone, Debug, Default, Deserialize, Serialize)]
+#[serde(default)]
 pub struct Seed {
     pub id: String,
     pub address: String,
@@ -65,26 +73,46 @@ pub struct PersistentPeer {
 }
 
 #[derive(Clone, Debug, Default, Deserialize, Serialize)]
+#[serde(default)]
 pub struct Apis {
     #[serde(skip_serializing_if = "Vec::is_empty", default = "Vec::new")]
     pub rpc: Vec<Rpc>,
     #[serde(skip_serializing_if = "Vec::is_empty", default = "Vec::new")]
     pub rest: Vec<Rest>,
+    pub grpc: Vec<Grpc>,
 }
 
 #[derive(Clone, Debug, Default, Deserialize, Serialize)]
+#[serde(default)]
 pub struct Rpc {
     pub address: String,
     pub provider: Option<String>,
 }
 
 #[derive(Clone, Debug, Default, Deserialize, Serialize)]
+#[serde(default)]
 pub struct Rest {
     pub address: String,
     pub provider: Option<String>,
 }
 
+#[derive(Clone, Debug, Default, Deserialize, Serialize)]
+#[serde(default)]
+pub struct Grpc {
+    pub address: String,
+    pub provider: Option<String>,
+}
+
 impl ChainInfo {
+    fn get_all_grpc_endpoints(&self) -> Vec<String> {
+        self.apis
+            .grpc
+            .iter()
+            .filter_map(|grpc| utils::parse_or_build_grpc_endpoint(grpc.address.as_str()).ok())
+            .filter(|uri| !uri.is_empty())
+            .collect()
+    }
+
     fn get_all_rpc_endpoints(&self) -> Vec<String> {
         self.apis
             .rpc
@@ -113,15 +141,23 @@ impl ChainInfo {
             gas_prices = format!("{:.2}{}", 0.01, asset_list.assets[0].base);
         }
 
-        let rpc = executor::block_on(async { self.get_random_rpc_endpoint().await })?;
+        let (rpc_address, grpc_address) = executor::block_on(async {
+            let rpc = self.get_random_rpc_endpoint().await;
+            let grpc = self.get_random_grpc_endpoint().await;
+
+            (rpc, grpc)
+        });
+
+        let rpc_address = rpc_address?;
+        let grpc_address = grpc_address?;
 
         Ok(ChainClientConfig {
             account_prefix: self.bech32_prefix.clone(),
             chain_id: self.chain_id.clone(),
             gas_adjustment: 1.2,
             gas_prices,
-            grpc_address: "".to_string(),
-            rpc_address: rpc,
+            grpc_address,
+            rpc_address,
         })
     }
 
@@ -134,10 +170,45 @@ impl ChainInfo {
         }
     }
 
+    pub async fn get_random_grpc_endpoint(&self) -> Result<String, ChainInfoError> {
+        let endpoints = self.get_grpc_endpoints().await?;
+        if let Some(endpoint) = endpoints.choose(&mut thread_rng()) {
+            Ok(endpoint.to_string())
+        } else {
+            Err(RpcError::UnhealthyEndpoint("no available RPC endpoints".to_string()).into())
+        }
+    }
+
+    pub async fn get_grpc_endpoints(&self) -> Result<Vec<String>, ChainInfoError> {
+        let mut endpoints = self.get_all_grpc_endpoints();
+        if endpoints.is_empty() {
+            return Err(GrpcError::MissingEndpoint(
+                "no valid endpoint found. endpoints must use http or https.".to_string(),
+            )
+            .into());
+        }
+
+        // this is not very efficient but i was getting annoyed trying to figure
+        // out how to do filtering with an async method
+        for (i, ep) in endpoints.clone().iter().enumerate() {
+            if is_healthy_grpc(ep.as_str()).await.is_err() {
+                endpoints.remove(i);
+            }
+        }
+        if endpoints.is_empty() {
+            return Err(GrpcError::UnhealthyEndpoint(
+                "no healthy endpoint found (connections could not be established)".to_string(),
+            )
+            .into());
+        }
+
+        Ok(endpoints)
+    }
+
     pub async fn get_rpc_endpoints(&self) -> Result<Vec<String>, ChainInfoError> {
         let mut endpoints = self.get_all_rpc_endpoints();
         if endpoints.is_empty() {
-            return Err(RpcError::UnhealthyEndpoint(
+            return Err(RpcError::MissingEndpoint(
                 "no valid endpoint found. endpoints must use http or https.".to_string(),
             )
             .into());
@@ -165,6 +236,19 @@ pub async fn get_cosmoshub_info() -> Result<ChainInfo, ChainInfoError> {
     registry::get_chain("cosmoshub").await.map_err(|r| r.into())
 }
 
+pub async fn is_healthy_grpc(endpoint: &str) -> Result<(), ChainInfoError> {
+    if BankQueryClient::connect(endpoint.to_string())
+        .await
+        .is_err()
+    {
+        return Err(
+            GrpcError::UnhealthyEndpoint(format!("{} failed health check", endpoint)).into(),
+        );
+    }
+
+    Ok(())
+}
+
 pub async fn is_healthy_rpc(endpoint: &str) -> Result<(), ChainInfoError> {
     let rpc_client = client::new_rpc_client(endpoint)?;
     let status = rpc_client
@@ -180,7 +264,7 @@ pub async fn is_healthy_rpc(endpoint: &str) -> Result<(), ChainInfoError> {
 }
 
 #[cfg(test)]
-mod test {
+mod tests {
     use super::*;
     use assay::assay;
 
@@ -189,7 +273,9 @@ mod test {
         // as a unit test this shouldn't really rely on other parts
         // of the API but I don't want to get bogged down hardcoding
         // a ChainInfo right now.
-        let info = get_cosmoshub_info().await.unwrap();
+        let info = get_cosmoshub_info()
+            .await
+            .expect("failed to get cosmoshub ChainInfo");
         let assets = info.get_asset_list().await;
 
         assets.unwrap();
@@ -200,7 +286,9 @@ mod test {
         // as a unit test this shouldn't really rely on other parts
         // of the API but I don't want to get bogged down hardcoding
         // a ChainInfo right now.
-        let info = get_cosmoshub_info().await.unwrap();
+        let info = get_cosmoshub_info()
+            .await
+            .expect("failed to get cosmoshub ChainInfo");
         let config = info.get_chain_config();
 
         config.unwrap();
