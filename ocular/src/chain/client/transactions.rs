@@ -12,6 +12,7 @@ use tendermint_rpc::endpoint::broadcast::tx_commit::Response;
 use super::ChainClient;
 
 /// Metadata wrapper for transactions
+#[derive(Clone, Debug)]
 pub struct TransactionMetadata {
     pub chain_id: Id,
     pub account_number: u64,
