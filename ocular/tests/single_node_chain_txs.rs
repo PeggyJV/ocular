@@ -12,7 +12,7 @@ use ocular::chain::client::ChainClient;
 
 use cosmrs::{
     bank::MsgSend,
-    crypto::secp256k1,
+    crypto::secp256k1::SigningKey,
     dev, rpc,
     tx::{self, AccountNumber, Fee, Msg, SignDoc, SignerInfo},
     Coin,
@@ -39,13 +39,35 @@ const MEMO: &str = "test memo";
 
 #[test]
 fn local_single_node_chain_test() {
-    let sender_private_key = secp256k1::SigningKey::random();
+    let chain_id = CHAIN_ID.parse().expect("Could not parse chain id");
+    let sequence_number = 0;
+    let gas = 100_000;
+    let timeout_height = 9001u16;
+
+    let mut temp_ring = Keyring::new_file_store(None).expect("Could not create keyring.");
+    let mnemonic = temp_ring
+        .create_cosmos_key("key", "", false)
+        .expect("Could not create key");
+
+    let seed = mnemonic.to_seed("");
+    let path = &"m/44'/118'/0'/0/0"
+        .parse::<bip32::DerivationPath>()
+        .expect("Could not parse derivation path.");
+
+    let sender_private_key: SigningKey = SigningKey::from_bytes(
+        &bip32::XPrv::derive_from_path(seed, path)
+            .expect("Could not create key.")
+            .private_key()
+            .to_bytes(),
+    )
+    .expect("Could not create key.");
+
     let sender_public_key = sender_private_key.public_key();
     let sender_account_id = sender_public_key
         .account_id(ACCOUNT_PREFIX)
         .expect("Could not create account id.");
 
-    let recipient_private_key = secp256k1::SigningKey::random();
+    let recipient_private_key = SigningKey::random();
     let recipient_account_id = recipient_private_key
         .public_key()
         .account_id(ACCOUNT_PREFIX)
@@ -64,11 +86,7 @@ fn local_single_node_chain_test() {
     .to_any()
     .expect("Could not serlialize msg.");
 
-    let chain_id = CHAIN_ID.parse().expect("Could not parse chain id");
-    let sequence_number = 0;
-    let gas = 100_000;
-    let fee = Fee::from_amount_and_gas(amount, gas);
-    let timeout_height = 9001u16;
+    let fee = Fee::from_amount_and_gas(amount.clone(), gas);
 
     let expected_tx_body = tx::Body::new(vec![msg_send], MEMO, timeout_height);
     let expected_auth_info =
@@ -80,7 +98,9 @@ fn local_single_node_chain_test() {
         ACCOUNT_NUMBER,
     )
     .expect("Could not parse sign doc.");
-    let expected_tx_raw = expected_sign_doc.sign(&sender_private_key).expect("Could not parse tx.");
+    let _expected_tx_raw = expected_sign_doc
+        .sign(&sender_private_key)
+        .expect("Could not parse tx.");
 
     let docker_args = [
         "-d",
@@ -91,24 +111,25 @@ fn local_single_node_chain_test() {
         &sender_account_id.to_string(),
     ];
 
-    let rpc_address = format!("http://localhost:{}", RPC_PORT);
-    let rpc_client = rpc::HttpClient::new(rpc_address.as_str()).expect("Could not create RPC");
-
-    let chain_client = ChainClient {
-        config: ChainClientConfig {
-            chain_id: chain_id.to_string(),
-            rpc_address: rpc_address.clone(),
-            grpc_address: rpc_address,
-            account_prefix: ACCOUNT_PREFIX.to_string(),
-            gas_adjustment: 1.2,
-            gas_prices: gas.to_string(),
-        },
-        keyring: Keyring::new_file_store(None).expect("Could not create keyring."),
-        rpc_client: rpc_client.clone(),
-    };
-    
     dev::docker_run(&docker_args, || {
         init_tokio_runtime().block_on(async {
+            let rpc_address = format!("http://localhost:{}", RPC_PORT);
+            let rpc_client =
+                rpc::HttpClient::new(rpc_address.as_str()).expect("Could not create RPC");
+
+            let chain_client = ChainClient {
+                config: ChainClientConfig {
+                    chain_id: chain_id.to_string(),
+                    rpc_address: rpc_address.clone(),
+                    grpc_address: rpc_address,
+                    account_prefix: ACCOUNT_PREFIX.to_string(),
+                    gas_adjustment: 1.2,
+                    gas_prices: gas.to_string(),
+                },
+                keyring: Keyring::new_file_store(None).expect("Could not create keyring."),
+                rpc_client: rpc_client.clone(),
+            };
+
             dev::poll_for_first_block(&rpc_client).await;
 
             let tx_metadata = TransactionMetadata {
@@ -120,22 +141,37 @@ fn local_single_node_chain_test() {
                 memo: MEMO.to_string(),
             };
 
+            let seed = mnemonic.to_seed("");
+            let sender_private_key: SigningKey = SigningKey::from_bytes(
+                &bip32::XPrv::derive_from_path(seed, path)
+                    .expect("Could not create key.")
+                    .private_key()
+                    .to_bytes(),
+            )
+            .expect("Could not create key.");
+
             // Test MsgSend functionality
-            let actual_tx_commit_response = chain_client.sign_and_send_msg_send(
-                sender_account_id,
-                sender_public_key,
-                sender_private_key,
-                recipient_account_id,
-                amount,
-                tx_metadata,
-            ).await.expect("Could not broadcast msg.");
+            let actual_tx_commit_response = chain_client
+                .sign_and_send_msg_send(
+                    sender_account_id,
+                    sender_public_key,
+                    sender_private_key,
+                    recipient_account_id,
+                    amount,
+                    tx_metadata,
+                )
+                .await
+                .expect("Could not broadcast msg.");
 
             if actual_tx_commit_response.check_tx.code.is_err() {
                 panic!("check_tx failed: {:?}", actual_tx_commit_response.check_tx);
             }
 
             if actual_tx_commit_response.deliver_tx.code.is_err() {
-                panic!("deliver_tx failed: {:?}", actual_tx_commit_response.deliver_tx);
+                panic!(
+                    "deliver_tx failed: {:?}",
+                    actual_tx_commit_response.deliver_tx
+                );
             }
 
             let actual_tx = dev::poll_for_tx(&rpc_client, actual_tx_commit_response.hash).await;
