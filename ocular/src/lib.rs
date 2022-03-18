@@ -13,7 +13,6 @@ pub mod cosmos_modules {
     pub use cosmos_sdk_proto::cosmos::params::v1beta1 as params;
     pub use cosmos_sdk_proto::cosmos::slashing::v1beta1 as slashing;
     pub use cosmos_sdk_proto::cosmos::staking::v1beta1 as staking;
-    pub use cosmos_sdk_proto::cosmos::tx::v1beta1 as tx;
 }
 pub mod error;
 pub mod keyring;
