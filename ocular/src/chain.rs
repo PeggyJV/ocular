@@ -1,187 +1,59 @@
-use std::str::FromStr;
-
-use crate::ChainRegistryError;
-
 pub mod client;
 pub mod config;
 pub mod info;
 pub mod registry;
 
-pub enum Chains {
-    Agoric,
-    Akash,
-    Arkh,
-    Bandchain,
-    Bitcanna,
-    Bitsong,
-    Bostrom,
-    Carbon,
-    Cheqd,
-    Chihuahua,
-    Comdex,
-    CosmosHub,
-    Cronos,
-    CryptoOrgChain,
-    Decentr,
-    Desmos,
-    Dig,
-    Emoney,
-    Evmos,
-    FetchHub,
-    Firmachain,
-    GravityBridge,
-    ImpactHub,
-    Injective,
-    Irisnet,
-    Juno,
-    Kava,
-    Kichain,
-    Konstellation,
-    Likecoin,
-    LumNetwork,
-    Microtick,
-    Nomic,
-    Odin,
-    Oraichain,
-    Osmosis,
-    Panacea,
-    Persistence,
-    Provenance,
-    Regen,
-    Rizon,
-    SecretNetwork,
-    Sentinel,
-    Shentu,
-    Sifchain,
-    Sommelier,
-    Stargaze,
-    Starname,
-    Terra,
-    Thorchain,
-    Umee,
-    Vidulum,
-}
+pub type ChainName = tendermint::chain::Id;
 
-impl FromStr for Chains {
-    type Err = ChainRegistryError;
-
-    fn from_str(chain_name: &str) -> Result<Chains, Self::Err> {
-        match chain_name {
-           "agoric" => Ok(Chains::Agoric),
-           "akash" => Ok(Chains::Akash),
-           "arkh" => Ok(Chains::Arkh),
-           "bandchain" => Ok(Chains::Bandchain),
-           "bitcanna" => Ok(Chains::Bitcanna),
-           "bitsong" => Ok(Chains::Bitsong),
-           "bostrom" => Ok(Chains::Bostrom),
-           "carbon" => Ok(Chains::Carbon),
-           "cheqd" => Ok(Chains::Cheqd),
-           "chihuahua" => Ok(Chains::Chihuahua),
-           "comdex" => Ok(Chains::Comdex),
-           "cosmoshub" => Ok(Chains::CosmosHub),
-           "cronos" => Ok(Chains::Cronos),
-           "cryptoorgchain" => Ok(Chains::CryptoOrgChain),
-           "decentr" => Ok(Chains::Decentr),
-           "desmos" => Ok(Chains::Desmos),
-           "dig" => Ok(Chains::Dig),
-           "emoney" => Ok(Chains::Emoney),
-           "evmos" => Ok(Chains::Evmos),
-           "fetchhub" => Ok(Chains::FetchHub),
-           "firmachain" => Ok(Chains::Firmachain),
-           "gravitybridge" => Ok(Chains::GravityBridge),
-           "impacthub" => Ok(Chains::ImpactHub),
-           "injective" => Ok(Chains::Injective),
-           "irisnet" => Ok(Chains::Irisnet),
-           "juno" => Ok(Chains::Juno),
-           "kava" => Ok(Chains::Kava),
-           "kichain" => Ok(Chains::Kichain),
-           "konstellation" => Ok(Chains::Konstellation),
-           "likecoin" => Ok(Chains::Likecoin),
-           "lumnetwork" => Ok(Chains::LumNetwork),
-           "microtick" => Ok(Chains::Microtick),
-           "nomic" => Ok(Chains::Nomic),
-           "odin" => Ok(Chains::Odin),
-           "oraichain" => Ok(Chains::Oraichain),
-           "osmosis" => Ok(Chains::Osmosis),
-           "panacea" => Ok(Chains::Panacea),
-           "persistence" => Ok(Chains::Persistence),
-           "provenance" => Ok(Chains::Provenance),
-           "regen" => Ok(Chains::Regen),
-           "rizon" => Ok(Chains::Rizon),
-           "secretnetwork" => Ok(Chains::SecretNetwork),
-           "sentinel" => Ok(Chains::Sentinel),
-           "shentu" => Ok(Chains::Shentu),
-           "sifchain" => Ok(Chains::Sifchain),
-           "sommelier" => Ok(Chains::Sommelier),
-           "stargaze" => Ok(Chains::Stargaze),
-           "starname" => Ok(Chains::Starname),
-           "terra" => Ok(Chains::Terra),
-           "thorchain" => Ok(Chains::Thorchain),
-           "umee" => Ok(Chains::Umee),
-           "vidulum" => Ok(Chains::Vidulum),
-           _ => Err(ChainRegistryError::UnsupportedChain(format!(
-               "unsupported chain name. if you need a client for an unsupported Chains::chain, try ChainClient::new_unsupported(\"{}\"",
-               chain_name
-           )))
-        }
-    }
-}
-
-impl Chains {
-    fn as_str(&self) -> &'static str {
-        match self {
-            Chains::Agoric => "agoric",
-            Chains::Akash => "akash",
-            Chains::Arkh => "arkh",
-            Chains::Bandchain => "bandchain",
-            Chains::Bitcanna => "bitcanna",
-            Chains::Bitsong => "bitsong",
-            Chains::Bostrom => "bostrom",
-            Chains::Carbon => "carbon",
-            Chains::Cheqd => "cheqd",
-            Chains::Chihuahua => "chihuahua",
-            Chains::Comdex => "comdex",
-            Chains::CosmosHub => "cosmoshub",
-            Chains::Cronos => "cronos",
-            Chains::CryptoOrgChain => "cryptoorgchain",
-            Chains::Decentr => "decentr",
-            Chains::Desmos => "desmos",
-            Chains::Dig => "dig",
-            Chains::Emoney => "emoney",
-            Chains::Evmos => "evmos",
-            Chains::FetchHub => "fetchhub",
-            Chains::Firmachain => "firmachain",
-            Chains::GravityBridge => "gravitybridge",
-            Chains::ImpactHub => "impacthub",
-            Chains::Injective => "injective",
-            Chains::Irisnet => "irisnet",
-            Chains::Juno => "juno",
-            Chains::Kava => "kava",
-            Chains::Kichain => "kichain",
-            Chains::Konstellation => "konstellation",
-            Chains::Likecoin => "likecoin",
-            Chains::LumNetwork => "lumnetwork",
-            Chains::Microtick => "microtick",
-            Chains::Nomic => "nomic",
-            Chains::Odin => "odin",
-            Chains::Oraichain => "oraichain",
-            Chains::Osmosis => "osmosis",
-            Chains::Panacea => "panacea",
-            Chains::Persistence => "persistence",
-            Chains::Provenance => "provenance",
-            Chains::Regen => "regen",
-            Chains::Rizon => "rizon",
-            Chains::SecretNetwork => "secretnetwork",
-            Chains::Sentinel => "sentinel",
-            Chains::Shentu => "shentu",
-            Chains::Sifchain => "sifchain",
-            Chains::Sommelier => "sommelier",
-            Chains::Stargaze => "stargaze",
-            Chains::Starname => "starname",
-            Chains::Terra => "terra",
-            Chains::Thorchain => "thorchain",
-            Chains::Umee => "umee",
-            Chains::Vidulum => "vidulum",
-        }
-    }
-}
+pub const AGORIC: ChainName = ChainName::new("agoric");
+pub const AKASH: ChainName = ChainName::new("akash");
+pub const ARKH: ChainName = ChainName::new("arkh");
+pub const BANDCHAIN: ChainName = ChainName::new("bandchain");
+pub const BITCANNA: ChainName = ChainName::new("bitcanna");
+pub const BITSONG: ChainName = ChainName::new("bitsong");
+pub const BOSTROM: ChainName = ChainName::new("bostrom");
+pub const CARBON: ChainName = ChainName::new("carbon");
+pub const CHEQD: ChainName = ChainName::new("cheqd");
+pub const CHIHUAHUA: ChainName = ChainName::new("chihuahua");
+pub const COMDEX: ChainName = ChainName::new("comdex");
+pub const COSMOSHUB: ChainName = ChainName::new("cosmoshub");
+pub const CRONOS: ChainName = ChainName::new("cronos");
+pub const CRYPTOORGCHAIN: ChainName = ChainName::new("cryptoorgchain");
+pub const DECENTR: ChainName = ChainName::new("decentr");
+pub const DESMOS: ChainName = ChainName::new("desmos");
+pub const DIG: ChainName = ChainName::new("dig");
+pub const EMONEY: ChainName = ChainName::new("emoney");
+pub const EVMOS: ChainName = ChainName::new("evmos");
+pub const FETCHHUB: ChainName = ChainName::new("fetchhub");
+pub const FIRMACHAIN: ChainName = ChainName::new("firmachain");
+pub const GRAVITYBRIDGE: ChainName = ChainName::new("gravitybridhe");
+pub const IMPACTHUB: ChainName = ChainName::new("impacthub");
+pub const INJECTIVE: ChainName = ChainName::new("injective");
+pub const IRISNET: ChainName = ChainName::new("irisnet");
+pub const JUNO: ChainName = ChainName::new("juno");
+pub const KAVA: ChainName = ChainName::new("kava");
+pub const KICHAIN: ChainName = ChainName::new("kichain");
+pub const KONSTELLATION: ChainName = ChainName::new("konstellation");
+pub const LIKECOIN: ChainName = ChainName::new("likecoin");
+pub const LUMNETWORK: ChainName = ChainName::new("lumnetwork");
+pub const MICROTICK: ChainName = ChainName::new("microtick");
+pub const NOMIC: ChainName = ChainName::new("nomic");
+pub const ODIN: ChainName = ChainName::new("odin");
+pub const ORAICHAIN: ChainName = ChainName::new("oraichain");
+pub const OSMOSIS: ChainName = ChainName::new("osmosis");
+pub const PANACEA: ChainName = ChainName::new("panacea");
+pub const PERSISTENCE: ChainName = ChainName::new("persistence");
+pub const PROVENANCE: ChainName = ChainName::new("provenance");
+pub const REGEN: ChainName = ChainName::new("regen");
+pub const RIZON: ChainName = ChainName::new("rizon");
+pub const SECRETNETWORK: ChainName = ChainName::new("secretnetwork");
+pub const SENTINEL: ChainName = ChainName::new("sentinel");
+pub const SHENTU: ChainName = ChainName::new("shentu");
+pub const SIFCHAIN: ChainName = ChainName::new("sifchain");
+pub const SOMMELIER: ChainName = ChainName::new("sommelier");
+pub const STARGAZE: ChainName = ChainName::new("stargaze");
+pub const STARNAME: ChainName = ChainName::new("starname");
+pub const TERRA: ChainName = ChainName::new("terra");
+pub const THORCHAIN: ChainName = ChainName::new("thorchain");
+pub const UMEE: ChainName = ChainName::new("umee");
+pub const VIDULUM: ChainName = ChainName::new("vidulum");

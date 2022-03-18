@@ -8,7 +8,7 @@ use crate::{
 use futures::executor;
 use tendermint_rpc;
 
-use super::Chains;
+use super::ChainName;
 
 pub mod query;
 
@@ -26,12 +26,8 @@ pub struct ChainClient {
 }
 
 impl ChainClient {
-    pub fn new(chain: Chains) -> Result<Self, ChainClientError> {
-        get_client(chain.as_str())
-    }
-
-    pub fn new_unsupported(chain_name: &str) -> Result<Self, ChainClientError> {
-        get_client(chain_name)
+    pub fn new(chain_name: ChainName) -> Result<Self, ChainClientError> {
+        get_client(chain_name.as_str())
     }
 }
 
