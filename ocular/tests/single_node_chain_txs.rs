@@ -129,12 +129,28 @@ fn local_single_node_chain_test() {
         .expect("Could not parse tx.");
 
     // Expected MsgUndelegate
+    let msg_undelegate = MsgUndelegate {
+        delegator_address: sender_account_id.clone(),
+        validator_address: recipient_account_id.clone(),
+        amount: amount.clone(),
+    }
+    .to_any()
+    .expect("Could not serlialize msg.");
 
-
-
-
-
-    
+    let expected_msg_undelegate_body = tx::Body::new(vec![msg_undelegate], MEMO, timeout_height);
+    let expected_msg_undelegate_auth_info =
+        SignerInfo::single_direct(Some(sender_public_key), sequence_number + 2)
+            .auth_info(fee.clone());
+    let expected_msg_undelegate_sign_doc = SignDoc::new(
+        &expected_msg_undelegate_body,
+        &expected_msg_undelegate_auth_info,
+        &chain_id,
+        ACCOUNT_NUMBER,
+    )
+    .expect("Could not parse sign doc.");
+    let _expected_msg_undelegate_raw = expected_msg_undelegate_sign_doc
+        .sign(&sender_private_key)
+        .expect("Could not parse tx.");
 
     let docker_args = [
         "-d",
@@ -226,7 +242,7 @@ fn local_single_node_chain_test() {
             .expect("Could not create key.");
 
             let tx_metadata = TransactionMetadata {
-                chain_id: chain_id,
+                chain_id: chain_id.clone(),
                 account_number: ACCOUNT_NUMBER,
                 sequence_number: sequence_number + 1,
                 gas_limit: gas,
@@ -236,11 +252,11 @@ fn local_single_node_chain_test() {
 
             let actual_msg_delegate_commit_response = chain_client
                 .sign_and_send_msg_delegate(
-                    sender_account_id,
+                    sender_account_id.clone(),
                     sender_public_key,
                     sender_private_key,
-                    recipient_account_id,
-                    amount,
+                    recipient_account_id.clone(),
+                    amount.clone(),
                     tx_metadata,
                 )
                 .await
@@ -272,13 +288,60 @@ fn local_single_node_chain_test() {
             );
 
             // Test MsgUndelegate functionality
+            let seed = mnemonic.to_seed("");
+            let sender_private_key: SigningKey = SigningKey::from_bytes(
+                &bip32::XPrv::derive_from_path(seed, path)
+                    .expect("Could not create key.")
+                    .private_key()
+                    .to_bytes(),
+            )
+            .expect("Could not create key.");
 
+            let tx_metadata = TransactionMetadata {
+                chain_id: chain_id,
+                account_number: ACCOUNT_NUMBER,
+                sequence_number: sequence_number + 2,
+                gas_limit: gas,
+                timeout_height: timeout_height,
+                memo: MEMO.to_string(),
+            };
 
+            let actual_msg_undelegate_commit_response = chain_client
+                .sign_and_send_msg_undelegate(
+                    sender_account_id,
+                    sender_public_key,
+                    sender_private_key,
+                    recipient_account_id,
+                    amount,
+                    tx_metadata,
+                )
+                .await
+                .expect("Could not broadcast msg.");
 
+            if actual_msg_undelegate_commit_response.check_tx.code.is_err() {
+                panic!(
+                    "check_tx for msg_undelegate failed: {:?}",
+                    actual_msg_undelegate_commit_response.check_tx
+                );
+            }
 
+            // Expect error code 1 since delegator address is not funded
+            if actual_msg_undelegate_commit_response.deliver_tx.code
+                != cosmrs::tendermint::abci::Code::Err(1)
+            {
+                panic!(
+                    "deliver_tx for msg_undelegate failed: {:?}",
+                    actual_msg_undelegate_commit_response.deliver_tx
+                );
+            }
 
-
-
+            let actual_msg_undelegate =
+                dev::poll_for_tx(&rpc_client, actual_msg_undelegate_commit_response.hash).await;
+            assert_eq!(&expected_msg_undelegate_body, &actual_msg_undelegate.body);
+            assert_eq!(
+                &expected_msg_undelegate_auth_info,
+                &actual_msg_undelegate.auth_info
+            );
         })
     });
 }
