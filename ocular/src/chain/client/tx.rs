@@ -22,6 +22,13 @@ pub struct TxMetadata {
     pub memo: String,
 }
 
+///  Type to hold all information around an account.
+pub struct Account {
+    pub id: AccountId,
+    pub public_key: PublicKey,
+    pub private_key: SigningKey,
+}
+
 impl ChainClient {
     // TODO: Make this extensible to multisig and multicoin (or add new methods for that)
     /// Helper method for signing and broadcasting messages.
@@ -70,17 +77,15 @@ impl ChainClient {
     /// Signs and sends a simple transaction message.
     pub async fn send(
         &self,
-        sender_account: AccountId,
-        sender_public_key: PublicKey,
-        sender_private_key: SigningKey,
-        recipient_account: AccountId,
+        sender_account: Account,
+        recipient_account_id: AccountId,
         amount: Coin,
         tx_metadata: TxMetadata,
     ) -> Result<Response, TxError> {
         // Create send message for amount
         let msg = MsgSend {
-            from_address: sender_account,
-            to_address: recipient_account,
+            from_address: sender_account.id,
+            to_address: recipient_account_id,
             amount: vec![amount.clone()],
         };
 
@@ -91,8 +96,8 @@ impl ChainClient {
         };
 
         self.sign_and_send_msg(
-            sender_public_key,
-            sender_private_key,
+            sender_account.public_key,
+            sender_account.private_key,
             amount,
             tx_body,
             tx_metadata,
@@ -103,17 +108,15 @@ impl ChainClient {
     /// Sign and send delegate message
     pub async fn delegate(
         &self,
-        delegator_account: AccountId,
-        delegator_public_key: PublicKey,
-        delegator_private_key: SigningKey,
-        validator_account: AccountId,
+        delegator_account: Account,
+        validator_account_id: AccountId,
         amount: Coin,
         tx_metadata: TxMetadata,
     ) -> Result<Response, TxError> {
         // Create delegate message for amount
         let msg = MsgDelegate {
-            delegator_address: delegator_account,
-            validator_address: validator_account,
+            delegator_address: delegator_account.id,
+            validator_address: validator_account_id,
             amount: amount.clone(),
         };
 
@@ -124,8 +127,8 @@ impl ChainClient {
         };
 
         self.sign_and_send_msg(
-            delegator_public_key,
-            delegator_private_key,
+            delegator_account.public_key,
+            delegator_account.private_key,
             amount,
             tx_body,
             tx_metadata,
@@ -136,17 +139,15 @@ impl ChainClient {
     /// Sign and send undelegate message
     pub async fn undelegate(
         &self,
-        delegator_account: AccountId,
-        delegator_public_key: PublicKey,
-        delegator_private_key: SigningKey,
-        validator_account: AccountId,
+        delegator_account: Account,
+        validator_account_id: AccountId,
         amount: Coin,
         tx_metadata: TxMetadata,
     ) -> Result<Response, TxError> {
         // Create undelegate message for amount
         let msg = MsgUndelegate {
-            delegator_address: delegator_account,
-            validator_address: validator_account,
+            delegator_address: delegator_account.id,
+            validator_address: validator_account_id,
             amount: amount.clone(),
         };
 
@@ -157,8 +158,8 @@ impl ChainClient {
         };
 
         self.sign_and_send_msg(
-            delegator_public_key,
-            delegator_private_key,
+            delegator_account.public_key,
+            delegator_account.private_key,
             amount,
             tx_body,
             tx_metadata,

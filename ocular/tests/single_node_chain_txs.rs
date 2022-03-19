@@ -4,7 +4,10 @@
 
 // Requies docker
 use ocular::{
-    chain::{client::tx::TxMetadata, config::ChainClientConfig},
+    chain::{
+        client::tx::{Account, TxMetadata},
+        config::ChainClientConfig,
+    },
     keyring::Keyring,
 };
 
@@ -203,9 +206,11 @@ fn local_single_node_chain_test() {
             // Test MsgSend functionality
             let actual_tx_commit_response = chain_client
                 .send(
-                    sender_account_id.clone(),
-                    sender_public_key,
-                    sender_private_key,
+                    Account {
+                        id: sender_account_id.clone(),
+                        public_key: sender_public_key,
+                        private_key: sender_private_key,
+                    },
                     recipient_account_id.clone(),
                     amount.clone(),
                     tx_metadata,
@@ -252,9 +257,11 @@ fn local_single_node_chain_test() {
 
             let actual_msg_delegate_commit_response = chain_client
                 .delegate(
-                    sender_account_id.clone(),
-                    sender_public_key,
-                    sender_private_key,
+                    Account {
+                        id: sender_account_id.clone(),
+                        public_key: sender_public_key,
+                        private_key: sender_private_key,
+                    },
                     recipient_account_id.clone(),
                     amount.clone(),
                     tx_metadata,
@@ -308,9 +315,11 @@ fn local_single_node_chain_test() {
 
             let actual_msg_undelegate_commit_response = chain_client
                 .undelegate(
-                    sender_account_id,
-                    sender_public_key,
-                    sender_private_key,
+                    Account {
+                        id: sender_account_id,
+                        public_key: sender_public_key,
+                        private_key: sender_private_key,
+                    },
                     recipient_account_id,
                     amount,
                     tx_metadata,
