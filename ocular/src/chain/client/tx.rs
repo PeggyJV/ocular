@@ -68,7 +68,7 @@ impl ChainClient {
 
     // TODO: Make this extensible to multisig and multicoin (or add new methods for that)
     /// Signs and sends a simple transaction message.
-    pub async fn sign_and_send_msg_send(
+    pub async fn send(
         &self,
         sender_account: AccountId,
         sender_public_key: PublicKey,
@@ -101,7 +101,7 @@ impl ChainClient {
     }
 
     /// Sign and send delegate message
-    pub async fn sign_and_send_msg_delegate(
+    pub async fn delegate(
         &self,
         delegator_account: AccountId,
         delegator_public_key: PublicKey,
@@ -134,7 +134,7 @@ impl ChainClient {
     }
 
     /// Sign and send undelegate message
-    pub async fn sign_and_send_msg_undelegate(
+    pub async fn undelegate(
         &self,
         delegator_account: AccountId,
         delegator_public_key: PublicKey,

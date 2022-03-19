@@ -202,7 +202,7 @@ fn local_single_node_chain_test() {
 
             // Test MsgSend functionality
             let actual_tx_commit_response = chain_client
-                .sign_and_send_msg_send(
+                .send(
                     sender_account_id.clone(),
                     sender_public_key,
                     sender_private_key,
@@ -251,7 +251,7 @@ fn local_single_node_chain_test() {
             };
 
             let actual_msg_delegate_commit_response = chain_client
-                .sign_and_send_msg_delegate(
+                .delegate(
                     sender_account_id.clone(),
                     sender_public_key,
                     sender_private_key,
@@ -307,7 +307,7 @@ fn local_single_node_chain_test() {
             };
 
             let actual_msg_undelegate_commit_response = chain_client
-                .sign_and_send_msg_undelegate(
+                .undelegate(
                     sender_account_id,
                     sender_public_key,
                     sender_private_key,
