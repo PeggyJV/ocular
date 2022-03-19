@@ -1,4 +1,4 @@
-use crate::error::TransactionError;
+use crate::error::TxError;
 use cosmrs::{
     bank::MsgSend,
     crypto::{secp256k1::SigningKey, PublicKey},
@@ -13,7 +13,7 @@ use super::ChainClient;
 
 /// Metadata wrapper for transactions
 #[derive(Clone, Debug)]
-pub struct TransactionMetadata {
+pub struct TxMetadata {
     pub chain_id: Id,
     pub account_number: u64,
     pub sequence_number: u64,
@@ -31,8 +31,8 @@ impl ChainClient {
         sender_private_key: SigningKey,
         amount: Coin,
         tx_body: tx::Body,
-        tx_metadata: TransactionMetadata,
-    ) -> Result<Response, TransactionError> {
+        tx_metadata: TxMetadata,
+    ) -> Result<Response, TxError> {
         // Create signer info.
         let signer_info =
             SignerInfo::single_direct(Some(sender_public_key), tx_metadata.sequence_number);
@@ -50,19 +50,19 @@ impl ChainClient {
             tx_metadata.account_number,
         ) {
             Ok(doc) => doc,
-            Err(err) => return Err(TransactionError::TypeConversionError(err.to_string())),
+            Err(err) => return Err(TxError::TypeConversionError(err.to_string())),
         };
 
         // Create raw signed transaction.
         let tx_signed = match sign_doc.sign(&sender_private_key) {
             Ok(raw) => raw,
-            Err(err) => return Err(TransactionError::SigningError(err.to_string())),
+            Err(err) => return Err(TxError::SigningError(err.to_string())),
         };
 
         // Broadcast transaction
         match tx_signed.broadcast_commit(&self.rpc_client).await {
             Ok(response) => Ok(response),
-            Err(err) => Err(TransactionError::BroadcastError(err.to_string())),
+            Err(err) => Err(TxError::BroadcastError(err.to_string())),
         }
     }
 
@@ -75,8 +75,8 @@ impl ChainClient {
         sender_private_key: SigningKey,
         recipient_account: AccountId,
         amount: Coin,
-        tx_metadata: TransactionMetadata,
-    ) -> Result<Response, TransactionError> {
+        tx_metadata: TxMetadata,
+    ) -> Result<Response, TxError> {
         // Create send message for amount
         let msg = MsgSend {
             from_address: sender_account,
@@ -87,7 +87,7 @@ impl ChainClient {
         // Build tx body.
         let tx_body = match msg.to_any() {
             Ok(msg) => tx::Body::new(vec![msg], &tx_metadata.memo, tx_metadata.timeout_height),
-            Err(err) => return Err(TransactionError::SerializationError(err.to_string())),
+            Err(err) => return Err(TxError::SerializationError(err.to_string())),
         };
 
         self.sign_and_send_msg(
@@ -108,8 +108,8 @@ impl ChainClient {
         delegator_private_key: SigningKey,
         validator_account: AccountId,
         amount: Coin,
-        tx_metadata: TransactionMetadata,
-    ) -> Result<Response, TransactionError> {
+        tx_metadata: TxMetadata,
+    ) -> Result<Response, TxError> {
         // Create delegate message for amount
         let msg = MsgDelegate {
             delegator_address: delegator_account,
@@ -120,7 +120,7 @@ impl ChainClient {
         // Build tx body.
         let tx_body = match msg.to_any() {
             Ok(msg) => tx::Body::new(vec![msg], &tx_metadata.memo, tx_metadata.timeout_height),
-            Err(err) => return Err(TransactionError::SerializationError(err.to_string())),
+            Err(err) => return Err(TxError::SerializationError(err.to_string())),
         };
 
         self.sign_and_send_msg(
@@ -141,8 +141,8 @@ impl ChainClient {
         delegator_private_key: SigningKey,
         validator_account: AccountId,
         amount: Coin,
-        tx_metadata: TransactionMetadata,
-    ) -> Result<Response, TransactionError> {
+        tx_metadata: TxMetadata,
+    ) -> Result<Response, TxError> {
         // Create undelegate message for amount
         let msg = MsgUndelegate {
             delegator_address: delegator_account,
@@ -153,7 +153,7 @@ impl ChainClient {
         // Build tx body.
         let tx_body = match msg.to_any() {
             Ok(msg) => tx::Body::new(vec![msg], &tx_metadata.memo, tx_metadata.timeout_height),
-            Err(err) => return Err(TransactionError::SerializationError(err.to_string())),
+            Err(err) => return Err(TxError::SerializationError(err.to_string())),
         };
 
         self.sign_and_send_msg(

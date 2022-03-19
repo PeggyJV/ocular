@@ -4,7 +4,7 @@
 
 // Requies docker
 use ocular::{
-    chain::{client::transactions::TransactionMetadata, config::ChainClientConfig},
+    chain::{client::tx::TxMetadata, config::ChainClientConfig},
     keyring::Keyring,
 };
 
@@ -182,7 +182,7 @@ fn local_single_node_chain_test() {
 
             dev::poll_for_first_block(&rpc_client).await;
 
-            let tx_metadata = TransactionMetadata {
+            let tx_metadata = TxMetadata {
                 chain_id: chain_id.clone(),
                 account_number: ACCOUNT_NUMBER,
                 sequence_number: sequence_number,
@@ -241,7 +241,7 @@ fn local_single_node_chain_test() {
             )
             .expect("Could not create key.");
 
-            let tx_metadata = TransactionMetadata {
+            let tx_metadata = TxMetadata {
                 chain_id: chain_id.clone(),
                 account_number: ACCOUNT_NUMBER,
                 sequence_number: sequence_number + 1,
@@ -297,7 +297,7 @@ fn local_single_node_chain_test() {
             )
             .expect("Could not create key.");
 
-            let tx_metadata = TransactionMetadata {
+            let tx_metadata = TxMetadata {
                 chain_id: chain_id,
                 account_number: ACCOUNT_NUMBER,
                 sequence_number: sequence_number + 2,

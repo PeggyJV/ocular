@@ -16,7 +16,7 @@ pub enum ChainClientError {
     #[error("error during RPC call: {0}")]
     Rpc(#[from] RpcError),
     #[error("{0}")]
-    TransactionError(#[from] TransactionError),
+    TxError(#[from] TxError),
 }
 
 #[derive(Debug, Error)]
@@ -90,7 +90,7 @@ pub enum KeyStoreError {
 }
 
 #[derive(Debug, Error)]
-pub enum TransactionError {
+pub enum TxError {
     #[error("serialization error: {0}")]
     SerializationError(String),
 
