@@ -11,6 +11,7 @@ use tendermint_rpc;
 use super::ChainName;
 
 pub mod query;
+pub mod tx;
 
 type RpcClient = tendermint_rpc::HttpClient;
 
