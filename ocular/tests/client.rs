@@ -1,16 +1,16 @@
 use assay::assay;
-use ocular::chain::client::ChainClient;
+use ocular::chain::{self, client::ChainClient};
 
 #[assay]
 async fn create_chain_client() {
-    let client = ChainClient::new("cosmoshub");
+    let client = ChainClient::new(chain::COSMOSHUB);
 
     client.unwrap();
 }
 
 #[assay]
 async fn query_latest_block_height() {
-    let client = ChainClient::new("cosmoshub").expect("failed to get test client");
+    let client = ChainClient::new(chain::COSMOSHUB).expect("failed to get test client");
 
     client
         .query_latest_height()
@@ -20,7 +20,7 @@ async fn query_latest_block_height() {
 
 #[assay]
 async fn bank_queries() {
-    let client = ChainClient::new("cosmoshub").expect("failed to get test client");
+    let client = ChainClient::new(chain::COSMOSHUB).expect("failed to get test client");
 
     // TO-DO need an address for testing balance query. Maybe include test-specific keys?
     let _denom_metadata = client

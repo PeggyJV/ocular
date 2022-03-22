@@ -152,12 +152,12 @@ impl ChainClient {
 
 #[cfg(test)]
 mod tests {
-    use crate::chain::client::ChainClient;
+    use crate::chain::{self, client::ChainClient};
     use assay::assay;
 
     #[assay]
     async fn gets_bank_client() {
-        let client = ChainClient::new("cosmoshub").unwrap();
+        let client = ChainClient::new(chain::COSMOSHUB).unwrap();
 
         client
             .get_bank_query_client()
