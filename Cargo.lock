@@ -507,9 +507,9 @@ checksum = "5827cebf4670468b8772dd191856768aedcb1b0278a04f989f7766351917b9dc"
 
 [[package]]
 name = "cosmos-sdk-proto"
-version = "0.9.0"
+version = "0.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c0254ffee603f5301d6a66963d9e1cc5091479c22e2e925e1f7689c8027a0828"
+checksum = "60e0c62ee1728512be390ff6eb5471f674e846de06feba800c8e926583878cf0"
 dependencies = [
  "prost",
  "prost-types",
@@ -519,9 +519,9 @@ dependencies = [
 
 [[package]]
 name = "cosmrs"
-version = "0.4.1"
+version = "0.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "505ea048e9ff2f906d6b954f9f8157d903ca468bfb301d906b40ecc25ba6838d"
+checksum = "7389d72937808cb14c4a93873b070c31e418e7d23313150e9f3bcf34f1461d12"
 dependencies = [
  "bip32",
  "cosmos-sdk-proto",
@@ -536,7 +536,9 @@ dependencies = [
  "serde_json",
  "subtle-encoding",
  "tendermint",
+ "tendermint-rpc",
  "thiserror",
+ "tokio",
 ]
 
 [[package]]
@@ -1241,11 +1243,12 @@ dependencies = [
  "headers",
  "http",
  "hyper",
- "hyper-tls",
- "native-tls",
+ "hyper-rustls",
+ "rustls-native-certs",
  "tokio",
- "tokio-native-tls",
+ "tokio-rustls",
  "tower-service",
+ "webpki",
 ]
 
 [[package]]
@@ -1732,9 +1735,11 @@ dependencies = [
  "serde",
  "serde_json",
  "signatory",
+ "tendermint-proto",
  "tendermint-rpc",
  "thiserror",
  "tiny-bip39",
+ "tokio",
  "tonic",
  "url",
 ]
@@ -2805,9 +2810,9 @@ dependencies = [
 
 [[package]]
 name = "tendermint"
-version = "0.23.3"
+version = "0.23.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a9ef686b8ecd36550d0581f0989c9d8607090b23005df479d8e6ba348b5800b9"
+checksum = "df8150cb636f400ead6de6f4893824d40ecf71214c5d9f8a1d445b5f38fff7b3"
 dependencies = [
  "async-trait",
  "bytes",
@@ -2836,9 +2841,9 @@ dependencies = [
 
 [[package]]
 name = "tendermint-config"
-version = "0.23.3"
+version = "0.23.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ecc127f82e7a8c7337c1f293d65a821380d3407c4c44bc979ef4da0ebc3b31ed"
+checksum = "c5a5c41141b56f1e0463182d910b8ccb84fd4abe61a4290a89794d44ad3e15a9"
 dependencies = [
  "flex-error",
  "serde",
@@ -2850,9 +2855,9 @@ dependencies = [
 
 [[package]]
 name = "tendermint-proto"
-version = "0.23.3"
+version = "0.23.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a9e0a0251fd81bed7420bea0f4d91c2a58f6c9fa34d5b2f70bed0ba8890de5aa"
+checksum = "10ba5f19afd52d69aa139cbf2a2ad129673a87aebeb66742b852a4d91b482e7b"
 dependencies = [
  "bytes",
  "flex-error",
@@ -2868,9 +2873,9 @@ dependencies = [
 
 [[package]]
 name = "tendermint-rpc"
-version = "0.23.3"
+version = "0.23.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "626c493e9ced3a9de37583bbd929f4b6dbd49aa513ab9b4776aa44a9332ce9b5"
+checksum = "7c4a92790ed1f844984ce78436c9bdd0931034b387ee6158f0f0731956285d6f"
 dependencies = [
  "async-trait",
  "bytes",

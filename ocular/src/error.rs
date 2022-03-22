@@ -15,6 +15,8 @@ pub enum ChainClientError {
     ModuleQuery(String),
     #[error("error during RPC call: {0}")]
     Rpc(#[from] RpcError),
+    #[error("{0}")]
+    TxError(#[from] TxError),
 }
 
 #[derive(Debug, Error)]
@@ -85,4 +87,19 @@ pub enum KeyStoreError {
 
     #[error("unable to retrieve key: {0}")]
     UnableToRetrieveKey(String),
+}
+
+#[derive(Debug, Error)]
+pub enum TxError {
+    #[error("serialization error: {0}")]
+    SerializationError(String),
+
+    #[error("error converting types: {0}")]
+    TypeConversionError(String),
+
+    #[error("error signing message: {0}")]
+    SigningError(String),
+
+    #[error("error broadcasting message: {0}")]
+    BroadcastError(String),
 }

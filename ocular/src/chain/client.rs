@@ -9,6 +9,7 @@ use futures::executor;
 use tendermint_rpc;
 
 pub mod query;
+pub mod tx;
 
 type RpcClient = tendermint_rpc::HttpClient;
 
