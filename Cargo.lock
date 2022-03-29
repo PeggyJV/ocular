@@ -522,7 +522,7 @@ dependencies = [
 [[package]]
 name = "cosmos-sdk-proto"
 version = "0.10.0"
-source = "git+https://github.com/philipjames44/cosmos-rust?branch=main#12fb4e27aaea6b0da197ddd038516c226e47c949"
+source = "git+https://github.com/cosmos/cosmos-rust?branch=main#63b0d2f2645b1390a747af76a92e90f36962e29d"
 dependencies = [
  "prost",
  "prost-types",
@@ -1759,7 +1759,7 @@ dependencies = [
  "assay",
  "bech32",
  "bip32",
- "cosmos-sdk-proto 0.10.0 (git+https://github.com/philipjames44/cosmos-rust?branch=main)",
+ "cosmos-sdk-proto 0.10.0 (git+https://github.com/cosmos/cosmos-rust?branch=main)",
  "cosmrs",
  "dirs 1.0.5",
  "futures",
@@ -1769,6 +1769,8 @@ dependencies = [
  "keyring",
  "octocrab",
  "pkcs8",
+ "prost",
+ "prost-types",
  "rand 0.8.5",
  "rand_core 0.6.3",
  "reqwest",
