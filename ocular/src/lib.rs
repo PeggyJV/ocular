@@ -3,6 +3,7 @@ pub use error::ChainRegistryError;
 pub mod chain;
 pub mod cosmos_modules {
     pub use cosmos_sdk_proto::cosmos::auth::v1beta1 as auth;
+    pub use cosmos_sdk_proto::cosmos::authz::v1beta1 as authz;
     pub use cosmos_sdk_proto::cosmos::bank::v1beta1 as bank;
     pub use cosmos_sdk_proto::cosmos::base::v1beta1 as base;
     pub use cosmos_sdk_proto::cosmos::crisis::v1beta1 as crisis;

@@ -9,12 +9,13 @@ repository = "https://github.com/PeggyJV/ocular"
 readme = "README.md"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+# TODO: point cosmos-sdk-proto back to official repo once https://github.com/cosmos/cosmos-rust/issues/184 is addressed
 
 [dependencies]
 assay = "0.1"
 bech32 = "0.6"
 bip32 = "0.3"
-cosmos-sdk-proto = { version = "0.10", features = ["grpc"] }
+cosmos-sdk-proto = { git = "https://github.com/philipjames44/cosmos-rust", branch = "main", features = ["grpc"]}
 cosmrs = {version = "0.5.1", features = ["dev"] }
 dirs = "1.0.4"
 futures = { version = "0.3.19", features = ["executor"] }

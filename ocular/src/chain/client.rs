@@ -10,6 +10,7 @@ use tendermint_rpc;
 
 use super::ChainName;
 
+pub mod authz;
 pub mod query;
 pub mod tx;
 
