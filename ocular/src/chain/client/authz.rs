@@ -1,22 +1,15 @@
 use crate::{
     chain::client::tx::{Account, TxMetadata},
     cosmos_modules::*,
-    error::{ChainClientError, GrpcError, TxError},
+    error::TxError,
 };
-use cosmos_sdk_proto::cosmos::authz::v1beta1::{GenericAuthorization, MsgExec, MsgGrant, MsgRevoke};
-use k256::elliptic_curve::group::GroupEncoding;
+use cosmos_sdk_proto::cosmos::authz::v1beta1::{
+    GenericAuthorization, MsgExec, MsgGrant, MsgRevoke,
+};
 use prost::Message;
 use tendermint_rpc::endpoint::broadcast::tx_commit::Response;
-use tonic::transport::Channel;
 
-use cosmrs::{
-    bank::MsgSend,
-    crypto::{secp256k1::SigningKey, PublicKey},
-    staking::{MsgDelegate, MsgUndelegate},
-    tendermint::chain::Id,
-    tx::{self, Fee, Msg, SignDoc, SignerInfo},
-    AccountId, Coin,
-};
+use cosmrs::{tx, Coin};
 
 use super::ChainClient;
 
@@ -79,7 +72,7 @@ impl ChainClient {
         let msg = MsgRevoke {
             granter: granter.id.to_string(),
             grantee: grantee.id.to_string(),
-            msg_type_url: String::from("/cosmos.bank.v1beta1.MsgSend")
+            msg_type_url: String::from("/cosmos.bank.v1beta1.MsgSend"),
         };
 
         // Build tx body.
@@ -113,7 +106,7 @@ impl ChainClient {
     ) -> Result<Response, TxError> {
         let msg = MsgExec {
             grantee: grantee.id.to_string(),
-            msgs: msgs,
+            msgs,
         };
 
         // Build tx body.
