@@ -36,7 +36,7 @@ impl ChainClient {
         &self,
         sender_public_key: PublicKey,
         sender_private_key: SigningKey,
-        amount: Coin,
+        gas_fee: Coin,
         tx_body: tx::Body,
         tx_metadata: TxMetadata,
     ) -> Result<Response, TxError> {
@@ -47,7 +47,7 @@ impl ChainClient {
         // Compute auth info from signer info by associating a fee.
         // TODO: Add ability to specify payers and granters for fees.
         let auth_info =
-            signer_info.auth_info(Fee::from_amount_and_gas(amount, tx_metadata.gas_limit));
+            signer_info.auth_info(Fee::from_amount_and_gas(gas_fee, tx_metadata.gas_limit));
 
         // Create doc to be signed
         let sign_doc = match SignDoc::new(
@@ -80,6 +80,7 @@ impl ChainClient {
         sender_account: Account,
         recipient_account_id: AccountId,
         amount: Coin,
+        gas_fee: Coin,
         tx_metadata: TxMetadata,
     ) -> Result<Response, TxError> {
         // Create send message for amount
@@ -98,7 +99,7 @@ impl ChainClient {
         self.sign_and_send_msg(
             sender_account.public_key,
             sender_account.private_key,
-            amount,
+            gas_fee,
             tx_body,
             tx_metadata,
         )
@@ -111,6 +112,7 @@ impl ChainClient {
         delegator_account: Account,
         validator_account_id: AccountId,
         amount: Coin,
+        gas_fee: Coin,
         tx_metadata: TxMetadata,
     ) -> Result<Response, TxError> {
         // Create delegate message for amount
@@ -129,7 +131,7 @@ impl ChainClient {
         self.sign_and_send_msg(
             delegator_account.public_key,
             delegator_account.private_key,
-            amount,
+            gas_fee,
             tx_body,
             tx_metadata,
         )
@@ -142,6 +144,7 @@ impl ChainClient {
         delegator_account: Account,
         validator_account_id: AccountId,
         amount: Coin,
+        gas_fee: Coin,
         tx_metadata: TxMetadata,
     ) -> Result<Response, TxError> {
         // Create undelegate message for amount
@@ -160,7 +163,7 @@ impl ChainClient {
         self.sign_and_send_msg(
             delegator_account.public_key,
             delegator_account.private_key,
-            amount,
+            gas_fee,
             tx_body,
             tx_metadata,
         )

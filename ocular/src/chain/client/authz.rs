@@ -21,8 +21,8 @@ impl ChainClient {
         granter: Account,
         grantee: Account,
         expiration_timestamp: Option<prost_types::Timestamp>,
+        gas_fee: Coin,
         tx_metadata: TxMetadata,
-        denom: &str,
     ) -> Result<Response, TxError> {
         let msg = MsgGrant {
             granter: granter.id.to_string(),
@@ -50,10 +50,7 @@ impl ChainClient {
         self.sign_and_send_msg(
             granter.public_key,
             granter.private_key,
-            Coin {
-                amount: 0u8.into(),
-                denom: denom.parse().expect("Could not parse denom."),
-            },
+            gas_fee,
             tx_body,
             tx_metadata,
         )
@@ -66,8 +63,8 @@ impl ChainClient {
         &self,
         granter: Account,
         grantee: Account,
+        gas_fee: Coin,
         tx_metadata: TxMetadata,
-        denom: &str,
     ) -> Result<Response, TxError> {
         let msg = MsgRevoke {
             granter: granter.id.to_string(),
@@ -86,10 +83,7 @@ impl ChainClient {
         self.sign_and_send_msg(
             granter.public_key,
             granter.private_key,
-            Coin {
-                amount: 0u8.into(),
-                denom: denom.parse().expect("Could not parse denom."),
-            },
+            gas_fee,
             tx_body,
             tx_metadata,
         )
@@ -101,8 +95,8 @@ impl ChainClient {
         &self,
         grantee: Account,
         msgs: Vec<::prost_types::Any>,
+        gas_fee: Coin,
         tx_metadata: TxMetadata,
-        denom: &str,
     ) -> Result<Response, TxError> {
         let msg = MsgExec {
             grantee: grantee.id.to_string(),
@@ -120,10 +114,7 @@ impl ChainClient {
         self.sign_and_send_msg(
             grantee.public_key,
             grantee.private_key,
-            Coin {
-                amount: 0u8.into(),
-                denom: denom.parse().expect("Could not parse denom."),
-            },
+            gas_fee,
             tx_body,
             tx_metadata,
         )

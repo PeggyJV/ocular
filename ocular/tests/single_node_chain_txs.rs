@@ -213,6 +213,7 @@ fn local_single_node_chain_test() {
                     },
                     recipient_account_id.clone(),
                     amount.clone(),
+                    amount.clone(),
                     tx_metadata,
                 )
                 .await
@@ -263,6 +264,7 @@ fn local_single_node_chain_test() {
                         private_key: sender_private_key,
                     },
                     recipient_account_id.clone(),
+                    amount.clone(),
                     amount.clone(),
                     tx_metadata,
                 )
@@ -321,6 +323,7 @@ fn local_single_node_chain_test() {
                         private_key: sender_private_key,
                     },
                     recipient_account_id,
+                    amount.clone(),
                     amount,
                     tx_metadata,
                 )
