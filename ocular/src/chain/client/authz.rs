@@ -3,7 +3,7 @@ use crate::{
     cosmos_modules::*,
     error::{ChainClientError, GrpcError, TxError},
 };
-use cosmos_sdk_proto::cosmos::authz::v1beta1::{GenericAuthorization, MsgExec, MsgGrant};
+use cosmos_sdk_proto::cosmos::authz::v1beta1::{GenericAuthorization, MsgExec, MsgGrant, MsgRevoke};
 use k256::elliptic_curve::group::GroupEncoding;
 use prost::Message;
 use tendermint_rpc::endpoint::broadcast::tx_commit::Response;
@@ -49,6 +49,42 @@ impl ChainClient {
         // Build tx body.
         let msg_any = prost_types::Any {
             type_url: String::from("/cosmos.authz.v1beta1.MsgGrant"),
+            value: msg.encode_to_vec(),
+        };
+
+        let tx_body = tx::Body::new(vec![msg_any], &tx_metadata.memo, tx_metadata.timeout_height);
+
+        self.sign_and_send_msg(
+            granter.public_key,
+            granter.private_key,
+            Coin {
+                amount: 0u8.into(),
+                denom: denom.parse().expect("Could not parse denom."),
+            },
+            tx_body,
+            tx_metadata,
+        )
+        .await
+    }
+
+    // Revoke Authorization
+    // TODO: support other types of authorization revokes other than send messages.
+    pub async fn revoke_send_authorization(
+        &self,
+        granter: Account,
+        grantee: Account,
+        tx_metadata: TxMetadata,
+        denom: &str,
+    ) -> Result<Response, TxError> {
+        let msg = MsgRevoke {
+            granter: granter.id.as_ref().to_string(),
+            grantee: grantee.id.as_ref().to_string(),
+            msg_type_url: String::from("/cosmos.bank.v1beta1.MsgSend")
+        };
+
+        // Build tx body.
+        let msg_any = prost_types::Any {
+            type_url: String::from("/cosmos.authz.v1beta1.MsgRevoke"),
             value: msg.encode_to_vec(),
         };
 
