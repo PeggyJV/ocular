@@ -102,6 +102,19 @@ impl ChainClient {
         )
         .await
     }
+
+    // Execute a transaction previously authorized by granter
+    pub async fn execute_authorized_tx(
+        &self,
+        grantee_account: Account,
+        recipient_account_id: AccountId,
+        amount: Coin,
+        tx_metadata: TxMetadata,
+    ) -> Result<Vec<Response>, TxError> {
+
+
+        Ok(Vec::new())
+    }
 }
 
 // Disclaimer on testing: Since the above commands inherently require chains to operate, testing is primarily deferred to integration tests in ocular/tests/single_node_chain_txs.rs
