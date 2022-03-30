@@ -32,8 +32,8 @@ impl ChainClient {
         denom: &str,
     ) -> Result<Response, TxError> {
         let msg = MsgGrant {
-            granter: granter.id.as_ref().to_string(),
-            grantee: grantee.id.as_ref().to_string(),
+            granter: granter.id.to_string(),
+            grantee: grantee.id.to_string(),
             grant: Some(authz::Grant {
                 authorization: Some(prost_types::Any {
                     type_url: String::from("/cosmos.authz.v1beta1.GenericAuthorization"),
@@ -77,8 +77,8 @@ impl ChainClient {
         denom: &str,
     ) -> Result<Response, TxError> {
         let msg = MsgRevoke {
-            granter: granter.id.as_ref().to_string(),
-            grantee: grantee.id.as_ref().to_string(),
+            granter: granter.id.to_string(),
+            grantee: grantee.id.to_string(),
             msg_type_url: String::from("/cosmos.bank.v1beta1.MsgSend")
         };
 
@@ -106,14 +106,35 @@ impl ChainClient {
     // Execute a transaction previously authorized by granter
     pub async fn execute_authorized_tx(
         &self,
-        grantee_account: Account,
-        recipient_account_id: AccountId,
-        amount: Coin,
+        grantee: Account,
+        msgs: Vec<::prost_types::Any>,
         tx_metadata: TxMetadata,
-    ) -> Result<Vec<Response>, TxError> {
+        denom: &str,
+    ) -> Result<Response, TxError> {
+        let msg = MsgExec {
+            grantee: grantee.id.to_string(),
+            msgs: msgs,
+        };
 
+        // Build tx body.
+        let msg_any = prost_types::Any {
+            type_url: String::from("/cosmos.authz.v1beta1.MsgExec"),
+            value: msg.encode_to_vec(),
+        };
 
-        Ok(Vec::new())
+        let tx_body = tx::Body::new(vec![msg_any], &tx_metadata.memo, tx_metadata.timeout_height);
+
+        self.sign_and_send_msg(
+            grantee.public_key,
+            grantee.private_key,
+            Coin {
+                amount: 0u8.into(),
+                denom: denom.parse().expect("Could not parse denom."),
+            },
+            tx_body,
+            tx_metadata,
+        )
+        .await
     }
 }
 
