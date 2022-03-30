@@ -463,10 +463,7 @@ fn local_single_node_chain_test() {
                 );
             }
 
-            // Expect error code 1 since delegator address is not funded
-            if actual_msg_grant_commit_response.deliver_tx.code
-                != cosmrs::tendermint::abci::Code::Err(1)
-            {
+            if actual_msg_grant_commit_response.deliver_tx.code.is_err() {
                 panic!(
                     "deliver_tx for msg_grant failed: {:?}",
                     actual_msg_grant_commit_response.deliver_tx
@@ -521,10 +518,7 @@ fn local_single_node_chain_test() {
                 );
             }
 
-            // Expect error code 1 since delegator address is not funded
-            if actual_msg_revoke_commit_response.deliver_tx.code
-                != cosmrs::tendermint::abci::Code::Err(1)
-            {
+            if actual_msg_revoke_commit_response.deliver_tx.code.is_err() {
                 panic!(
                     "deliver_tx for msg_revoke failed: {:?}",
                     actual_msg_revoke_commit_response.deliver_tx
