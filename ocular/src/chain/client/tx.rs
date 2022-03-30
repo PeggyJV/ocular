@@ -32,7 +32,7 @@ pub struct Account {
 impl ChainClient {
     // TODO: Make this extensible to multisig and multicoin (or add new methods for that)
     /// Helper method for signing and broadcasting messages.
-    async fn sign_and_send_msg(
+    pub async fn sign_and_send_msg(
         &self,
         sender_public_key: PublicKey,
         sender_private_key: SigningKey,
