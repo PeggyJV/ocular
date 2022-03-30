@@ -9,6 +9,7 @@ use ocular::{
         config::ChainClientConfig,
     },
     keyring::Keyring,
+    cosmos_modules::*,
 };
 
 use ocular::chain::client::ChainClient;
@@ -21,6 +22,11 @@ use cosmrs::{
     tx::{self, AccountNumber, Fee, Msg, SignDoc, SignerInfo},
     Coin,
 };
+use cosmos_sdk_proto::cosmos::authz::v1beta1::{
+    GenericAuthorization, MsgExec, MsgGrant, MsgRevoke,
+};
+use prost::Message;
+
 use std::{panic, str};
 
 /// Chain ID to use for tests
@@ -154,6 +160,67 @@ fn local_single_node_chain_test() {
     let _expected_msg_undelegate_raw = expected_msg_undelegate_sign_doc
         .sign(&sender_private_key)
         .expect("Could not parse tx.");
+
+    // Expected MsgGrant
+    let msg_grant = MsgGrant {
+        granter: sender_account_id.to_string(),
+        grantee: recipient_account_id.to_string(),
+        grant: Some(authz::Grant {
+            authorization: Some(prost_types::Any {
+                type_url: String::from("/cosmos.authz.v1beta1.GenericAuthorization"),
+                value: GenericAuthorization {
+                    msg: String::from("/cosmos.bank.v1beta1.MsgSend"),
+                }
+                .encode_to_vec(),
+            }),
+            expiration: Some(prost_types::Timestamp{seconds: 100, nanos: 0}),
+        }),
+    };
+
+    let msg_grant = prost_types::Any {
+        type_url: String::from("/cosmos.authz.v1beta1.MsgGrant"),
+        value: msg_grant.encode_to_vec(),
+    };
+
+    let expected_msg_grant_body = tx::Body::new(vec![msg_grant], MEMO, timeout_height);
+    let expected_msg_grant_auth_info =
+        SignerInfo::single_direct(Some(sender_public_key), sequence_number + 3)
+            .auth_info(fee.clone());
+    let expected_msg_grant_sign_doc = SignDoc::new(
+        &expected_msg_grant_body,
+        &expected_msg_grant_auth_info,
+        &chain_id,
+        ACCOUNT_NUMBER,
+    )
+    .expect("Could not parse sign doc.");
+    let _expected_msg_grant_raw = expected_msg_grant_sign_doc
+        .sign(&sender_private_key);
+
+    // Expected MsgRevoke
+    let msg_revoke = MsgRevoke {
+        granter: sender_account_id.to_string(),
+        grantee: recipient_account_id.to_string(),
+        msg_type_url: String::from("/cosmos.bank.v1beta1.MsgSend")
+    };
+
+    let msg_revoke = prost_types::Any {
+        type_url: String::from("/cosmos.authz.v1beta1.MsgRevoke"),
+        value: msg_revoke.encode_to_vec(),
+    };
+
+    let expected_msg_revoke_body = tx::Body::new(vec![msg_revoke], MEMO, timeout_height);
+    let expected_msg_revoke_auth_info =
+        SignerInfo::single_direct(Some(sender_public_key), sequence_number + 4)
+            .auth_info(fee.clone());
+    let expected_msg_revoke_sign_doc = SignDoc::new(
+        &expected_msg_revoke_body,
+        &expected_msg_revoke_auth_info,
+        &chain_id,
+        ACCOUNT_NUMBER,
+    )
+    .expect("Could not parse sign doc.");
+    let _expected_msg_revoke_raw = expected_msg_revoke_sign_doc
+        .sign(&sender_private_key);
 
     let docker_args = [
         "-d",
@@ -307,7 +374,7 @@ fn local_single_node_chain_test() {
             .expect("Could not create key.");
 
             let tx_metadata = TxMetadata {
-                chain_id: chain_id,
+                chain_id: chain_id.clone(),
                 account_number: ACCOUNT_NUMBER,
                 sequence_number: sequence_number + 2,
                 gas_limit: gas,
@@ -318,13 +385,13 @@ fn local_single_node_chain_test() {
             let actual_msg_undelegate_commit_response = chain_client
                 .undelegate(
                     Account {
-                        id: sender_account_id,
+                        id: sender_account_id.clone(),
                         public_key: sender_public_key,
                         private_key: sender_private_key,
                     },
-                    recipient_account_id,
+                    recipient_account_id.clone(),
                     amount.clone(),
-                    amount,
+                    amount.clone(),
                     tx_metadata,
                 )
                 .await
@@ -354,6 +421,124 @@ fn local_single_node_chain_test() {
                 &expected_msg_undelegate_auth_info,
                 &actual_msg_undelegate.auth_info
             );
+
+            // Test MsgGrant functionality
+            let seed = mnemonic.to_seed("");
+            let sender_private_key: SigningKey = SigningKey::from_bytes(
+                &bip32::XPrv::derive_from_path(seed, path)
+                    .expect("Could not create key.")
+                    .private_key()
+                    .to_bytes(),
+            )
+            .expect("Could not create key.");
+
+            let tx_metadata = TxMetadata {
+                chain_id: chain_id.clone(),
+                account_number: ACCOUNT_NUMBER,
+                sequence_number: sequence_number + 3,
+                gas_limit: gas,
+                timeout_height: timeout_height,
+                memo: MEMO.to_string(),
+            };
+
+            let actual_msg_grant_commit_response = chain_client
+                .grant_send_authorization(
+                    Account {
+                        id: sender_account_id.clone(),
+                        public_key: sender_public_key,
+                        private_key: sender_private_key,
+                    },
+                    recipient_account_id.clone(),
+                    Some(prost_types::Timestamp{seconds: 100, nanos: 0}),
+                    amount.clone(),
+                    tx_metadata,
+                )
+                .await
+                .expect("Could not broadcast msg.");
+
+            if actual_msg_grant_commit_response.check_tx.code.is_err() {
+                panic!(
+                    "check_tx for msg_grant failed: {:?}",
+                    actual_msg_grant_commit_response.check_tx
+                );
+            }
+
+            // Expect error code 1 since delegator address is not funded
+            if actual_msg_grant_commit_response.deliver_tx.code
+                != cosmrs::tendermint::abci::Code::Err(1)
+            {
+                panic!(
+                    "deliver_tx for msg_grant failed: {:?}",
+                    actual_msg_grant_commit_response.deliver_tx
+                );
+            }
+
+            let actual_msg_grant =
+                dev::poll_for_tx(&rpc_client, actual_msg_grant_commit_response.hash).await;
+            assert_eq!(&expected_msg_grant_body, &actual_msg_grant.body);
+            assert_eq!(
+                &expected_msg_grant_auth_info,
+                &actual_msg_grant.auth_info
+            );
+
+            // Test MsgRevoke functionality
+            let seed = mnemonic.to_seed("");
+            let sender_private_key: SigningKey = SigningKey::from_bytes(
+                &bip32::XPrv::derive_from_path(seed, path)
+                    .expect("Could not create key.")
+                    .private_key()
+                    .to_bytes(),
+            )
+            .expect("Could not create key.");
+
+            let tx_metadata = TxMetadata {
+                chain_id: chain_id.clone(),
+                account_number: ACCOUNT_NUMBER,
+                sequence_number: sequence_number + 4,
+                gas_limit: gas,
+                timeout_height: timeout_height,
+                memo: MEMO.to_string(),
+            };
+
+            let actual_msg_revoke_commit_response = chain_client
+                .revoke_send_authorization(
+                    Account {
+                        id: sender_account_id.clone(),
+                        public_key: sender_public_key,
+                        private_key: sender_private_key,
+                    },
+                    recipient_account_id.clone(),
+                    amount.clone(),
+                    tx_metadata,
+                )
+                .await
+                .expect("Could not broadcast msg.");
+
+            if actual_msg_revoke_commit_response.check_tx.code.is_err() {
+                panic!(
+                    "check_tx for msg_revoke failed: {:?}",
+                    actual_msg_revoke_commit_response.check_tx
+                );
+            }
+
+            // Expect error code 1 since delegator address is not funded
+            if actual_msg_revoke_commit_response.deliver_tx.code
+                != cosmrs::tendermint::abci::Code::Err(1)
+            {
+                panic!(
+                    "deliver_tx for msg_revoke failed: {:?}",
+                    actual_msg_revoke_commit_response.deliver_tx
+                );
+            }
+
+            let actual_msg_revoke =
+                dev::poll_for_tx(&rpc_client, actual_msg_revoke_commit_response.hash).await;
+            assert_eq!(&expected_msg_revoke_body, &actual_msg_revoke.body);
+            assert_eq!(
+                &expected_msg_revoke_auth_info,
+                &actual_msg_revoke.auth_info
+            );
+                    
         })
     });
 }

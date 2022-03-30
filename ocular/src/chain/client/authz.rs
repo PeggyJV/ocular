@@ -9,7 +9,7 @@ use cosmos_sdk_proto::cosmos::authz::v1beta1::{
 use prost::Message;
 use tendermint_rpc::endpoint::broadcast::tx_commit::Response;
 
-use cosmrs::{tx, Coin};
+use cosmrs::{tx, Coin, AccountId};
 
 use super::ChainClient;
 
@@ -19,14 +19,14 @@ impl ChainClient {
     pub async fn grant_send_authorization(
         &self,
         granter: Account,
-        grantee: Account,
+        grantee: AccountId,
         expiration_timestamp: Option<prost_types::Timestamp>,
         gas_fee: Coin,
         tx_metadata: TxMetadata,
     ) -> Result<Response, TxError> {
         let msg = MsgGrant {
             granter: granter.id.to_string(),
-            grantee: grantee.id.to_string(),
+            grantee: grantee.to_string(),
             grant: Some(authz::Grant {
                 authorization: Some(prost_types::Any {
                     type_url: String::from("/cosmos.authz.v1beta1.GenericAuthorization"),
@@ -62,13 +62,13 @@ impl ChainClient {
     pub async fn revoke_send_authorization(
         &self,
         granter: Account,
-        grantee: Account,
+        grantee: AccountId,
         gas_fee: Coin,
         tx_metadata: TxMetadata,
     ) -> Result<Response, TxError> {
         let msg = MsgRevoke {
             granter: granter.id.to_string(),
-            grantee: grantee.id.to_string(),
+            grantee: grantee.to_string(),
             msg_type_url: String::from("/cosmos.bank.v1beta1.MsgSend"),
         };
 
