@@ -257,7 +257,7 @@ fn local_single_node_chain_test() {
                 account_number: ACCOUNT_NUMBER,
                 sequence_number: sequence_number,
                 gas_limit: gas,
-                timeout_height: timeout_height,
+                timeout_height: timeout_height.into(),
                 memo: MEMO.to_string(),
             };
 
@@ -319,7 +319,7 @@ fn local_single_node_chain_test() {
                 account_number: ACCOUNT_NUMBER,
                 sequence_number: sequence_number + 1,
                 gas_limit: gas,
-                timeout_height: timeout_height,
+                timeout_height: timeout_height.into(),
                 memo: MEMO.to_string(),
             };
 
@@ -378,7 +378,7 @@ fn local_single_node_chain_test() {
                 account_number: ACCOUNT_NUMBER,
                 sequence_number: sequence_number + 2,
                 gas_limit: gas,
-                timeout_height: timeout_height,
+                timeout_height: timeout_height.into(),
                 memo: MEMO.to_string(),
             };
 
@@ -437,7 +437,7 @@ fn local_single_node_chain_test() {
                 account_number: ACCOUNT_NUMBER,
                 sequence_number: sequence_number + 3,
                 gas_limit: gas,
-                timeout_height: timeout_height,
+                timeout_height: timeout_height.into(),
                 memo: MEMO.to_string(),
             };
 
@@ -493,7 +493,7 @@ fn local_single_node_chain_test() {
                 account_number: ACCOUNT_NUMBER,
                 sequence_number: sequence_number + 4,
                 gas_limit: gas,
-                timeout_height: timeout_height,
+                timeout_height: timeout_height.into(),
                 memo: MEMO.to_string(),
             };
 

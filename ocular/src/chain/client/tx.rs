@@ -18,7 +18,7 @@ pub struct TxMetadata {
     pub account_number: u64,
     pub sequence_number: u64,
     pub gas_limit: u64,
-    pub timeout_height: u16,
+    pub timeout_height: u32,
     pub memo: String,
 }
 

@@ -1759,6 +1759,7 @@ dependencies = [
  "assay",
  "bech32",
  "bip32",
+ "chrono",
  "cosmos-sdk-proto 0.10.0 (git+https://github.com/cosmos/cosmos-rust?branch=main)",
  "cosmrs",
  "dirs 1.0.5",
@@ -1783,6 +1784,7 @@ dependencies = [
  "thiserror",
  "tiny-bip39",
  "tokio",
+ "toml",
  "tonic",
  "url",
 ]

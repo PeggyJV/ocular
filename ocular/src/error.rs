@@ -17,6 +17,8 @@ pub enum ChainClientError {
     Rpc(#[from] RpcError),
     #[error("{0}")]
     TxError(#[from] TxError),
+    #[error("{0}")]
+    AutomatedTxHandlerError(#[from] AutomatedTxHandlerError),
 }
 
 #[derive(Debug, Error)]
@@ -102,4 +104,16 @@ pub enum TxError {
 
     #[error("error broadcasting message: {0}")]
     BroadcastError(String),
+}
+
+#[derive(Debug, Error)]
+pub enum AutomatedTxHandlerError {
+    #[error("error reading file: {0}")]
+    FileIO(String),
+    #[error("error reading toml: {0}")]
+    Toml(String),
+    #[error("error handling key: {0}")]
+    KeyHandling(String),
+    #[error("error sending tx: {0}")]
+    TxBroadcast(String),
 }
