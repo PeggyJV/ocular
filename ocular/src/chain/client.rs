@@ -11,9 +11,9 @@ use tendermint_rpc;
 use super::ChainName;
 
 pub mod authz;
+pub mod automated_tx_handler;
 pub mod query;
 pub mod tx;
-pub mod automated_tx_handler;
 
 type RpcClient = tendermint_rpc::HttpClient;
 

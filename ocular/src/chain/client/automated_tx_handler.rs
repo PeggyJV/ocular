@@ -8,17 +8,17 @@ use crate::{
     error::{AutomatedTxHandlerError, TxError},
     keyring::Keyring,
 };
-use bip32::{PrivateKey, Mnemonic};
+use bip32::{Mnemonic, PrivateKey};
 use cosmrs::{
     crypto::{secp256k1::SigningKey, PublicKey},
     rpc, AccountId, Coin,
 };
+use rand_core::OsRng;
 use serde::{Deserialize, Serialize};
 use signatory::{pkcs8::der::Document, pkcs8::LineEnding};
+use std::time::{Duration, SystemTime};
 use std::{fs, path::Path, str::FromStr};
 use tendermint_rpc::endpoint::broadcast::tx_commit::Response;
-use rand_core::OsRng;
-use std::time::{Duration, SystemTime};
 
 use super::ChainClient;
 
@@ -54,13 +54,14 @@ pub struct Transaction<'a> {
 
 // Return type for delegated tx workflow
 pub struct DelegatedTransactionOutput {
-    pub delegated_mnemonic: Mnemonic, 
+    pub delegated_mnemonic: Mnemonic,
     pub response: Vec<Response>,
 }
- 
+
 impl ChainClient {
-    // Creates a brand new key  
-    pub async fn execute_delegated_transacton_toml( &self,
+    // Creates a brand new key
+    pub async fn execute_delegated_transacton_toml(
+        &self,
         toml_path: String,
     ) -> Result<DelegatedTransactionOutput, AutomatedTxHandlerError> {
         let content = match fs::read_to_string(toml_path) {
@@ -79,8 +80,10 @@ impl ChainClient {
 
         dbg!(&toml);
 
-
-        Ok(DelegatedTransactionOutput{delegated_mnemonic:  Mnemonic::random(&mut OsRng, Default::default()), response: Vec::new()})
+        Ok(DelegatedTransactionOutput {
+            delegated_mnemonic: Mnemonic::random(&mut OsRng, Default::default()),
+            response: Vec::new(),
+        })
     }
 }
 
@@ -145,7 +148,11 @@ mod tests {
 
         let source_key_path = test_dir.clone() + &String::from("/Zeus.pem");
         file.sender.source_private_key_path = source_key_path.as_str();
-        file.sender.delegate_until_unix_seconds = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).unwrap().as_secs() + 50000;
+        file.sender.delegate_until_unix_seconds = SystemTime::now()
+            .duration_since(SystemTime::UNIX_EPOCH)
+            .unwrap()
+            .as_secs()
+            + 50000;
 
         // Make some transactions
         chain_client
@@ -169,7 +176,6 @@ mod tests {
             timeout_height: 9001u32,
             memo: "Don't spend it all in one place.",
         });
-
 
         chain_client
             .keyring
@@ -202,10 +208,14 @@ mod tests {
         fs::write(&toml_save_path, toml_string).expect("Could not write to file.");
 
         // Execute on toml; expect tx error, but ONLY tx error, everything else should work fine. Tx fails b/c this is unit test so no network connectivity
-        dbg!(chain_client
-            .execute_delegated_transacton_toml(toml_save_path)
-            .await.unwrap().response);
-        /* 
+        dbg!(
+            chain_client
+                .execute_delegated_transacton_toml(toml_save_path)
+                .await
+                .unwrap()
+                .response
+        );
+        /*
         let err = chain_client
             .execute_delegated_transacton_toml(toml_save_path)
             .await

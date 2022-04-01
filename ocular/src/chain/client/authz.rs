@@ -9,7 +9,7 @@ use cosmos_sdk_proto::cosmos::authz::v1beta1::{
 use prost::Message;
 use tendermint_rpc::endpoint::broadcast::tx_commit::Response;
 
-use cosmrs::{tx, Coin, AccountId};
+use cosmrs::{tx, AccountId, Coin};
 
 use super::ChainClient;
 

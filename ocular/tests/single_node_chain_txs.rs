@@ -8,12 +8,15 @@ use ocular::{
         client::tx::{Account, TxMetadata},
         config::ChainClientConfig,
     },
-    keyring::Keyring,
     cosmos_modules::*,
+    keyring::Keyring,
 };
 
 use ocular::chain::client::ChainClient;
 
+use cosmos_sdk_proto::cosmos::authz::v1beta1::{
+    GenericAuthorization, MsgExec, MsgGrant, MsgRevoke,
+};
 use cosmrs::{
     bank::MsgSend,
     crypto::secp256k1::SigningKey,
@@ -21,9 +24,6 @@ use cosmrs::{
     staking::{MsgDelegate, MsgUndelegate},
     tx::{self, AccountNumber, Fee, Msg, SignDoc, SignerInfo},
     Coin,
-};
-use cosmos_sdk_proto::cosmos::authz::v1beta1::{
-    GenericAuthorization, MsgExec, MsgGrant, MsgRevoke,
 };
 use prost::Message;
 
@@ -46,6 +46,11 @@ const DENOM: &str = "samoleans";
 
 /// Example memo
 const MEMO: &str = "test memo";
+
+// Gaia node test image built and uploaded from https://github.com/cosmos/relayer/tree/main/docker/gaiad; 
+// note some adaptations to file strucutre needed to build successfully (moving scripts and making directories)
+// Disclaimer: Upon cosmos sdk (and other) updates, this image may need to be rebuilt and reuploaded.
+const DOCKER_HUB_GAIA_SINGLE_NODE_TEST_IMAGE: &str = "philipjames11/gaia-test";
 
 #[test]
 fn local_single_node_chain_test() {
@@ -173,7 +178,10 @@ fn local_single_node_chain_test() {
                 }
                 .encode_to_vec(),
             }),
-            expiration: Some(prost_types::Timestamp{seconds: 100, nanos: 0}),
+            expiration: Some(prost_types::Timestamp {
+                seconds: 100,
+                nanos: 0,
+            }),
         }),
     };
 
@@ -193,14 +201,13 @@ fn local_single_node_chain_test() {
         ACCOUNT_NUMBER,
     )
     .expect("Could not parse sign doc.");
-    let _expected_msg_grant_raw = expected_msg_grant_sign_doc
-        .sign(&sender_private_key);
+    let _expected_msg_grant_raw = expected_msg_grant_sign_doc.sign(&sender_private_key);
 
     // Expected MsgRevoke
     let msg_revoke = MsgRevoke {
         granter: sender_account_id.to_string(),
         grantee: recipient_account_id.to_string(),
-        msg_type_url: String::from("/cosmos.bank.v1beta1.MsgSend")
+        msg_type_url: String::from("/cosmos.bank.v1beta1.MsgSend"),
     };
 
     let msg_revoke = prost_types::Any {
@@ -219,14 +226,13 @@ fn local_single_node_chain_test() {
         ACCOUNT_NUMBER,
     )
     .expect("Could not parse sign doc.");
-    let _expected_msg_revoke_raw = expected_msg_revoke_sign_doc
-        .sign(&sender_private_key);
+    let _expected_msg_revoke_raw = expected_msg_revoke_sign_doc.sign(&sender_private_key);
 
     let docker_args = [
         "-d",
         "-p",
         &format!("{}:{}", RPC_PORT, RPC_PORT),
-        dev::GAIA_DOCKER_IMAGE,
+        DOCKER_HUB_GAIA_SINGLE_NODE_TEST_IMAGE,
         CHAIN_ID,
         &sender_account_id.to_string(),
     ];
@@ -449,7 +455,10 @@ fn local_single_node_chain_test() {
                         private_key: sender_private_key,
                     },
                     recipient_account_id.clone(),
-                    Some(prost_types::Timestamp{seconds: 100, nanos: 0}),
+                    Some(prost_types::Timestamp {
+                        seconds: 100,
+                        nanos: 0,
+                    }),
                     amount.clone(),
                     tx_metadata,
                 )
@@ -473,10 +482,7 @@ fn local_single_node_chain_test() {
             let actual_msg_grant =
                 dev::poll_for_tx(&rpc_client, actual_msg_grant_commit_response.hash).await;
             assert_eq!(&expected_msg_grant_body, &actual_msg_grant.body);
-            assert_eq!(
-                &expected_msg_grant_auth_info,
-                &actual_msg_grant.auth_info
-            );
+            assert_eq!(&expected_msg_grant_auth_info, &actual_msg_grant.auth_info);
 
             // Test MsgRevoke functionality
             let seed = mnemonic.to_seed("");
@@ -528,11 +534,7 @@ fn local_single_node_chain_test() {
             let actual_msg_revoke =
                 dev::poll_for_tx(&rpc_client, actual_msg_revoke_commit_response.hash).await;
             assert_eq!(&expected_msg_revoke_body, &actual_msg_revoke.body);
-            assert_eq!(
-                &expected_msg_revoke_auth_info,
-                &actual_msg_revoke.auth_info
-            );
-                    
+            assert_eq!(&expected_msg_revoke_auth_info, &actual_msg_revoke.auth_info);
         })
     });
 }
