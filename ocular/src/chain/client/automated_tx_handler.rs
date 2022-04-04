@@ -19,6 +19,7 @@ use signatory::{pkcs8::der::Document, pkcs8::LineEnding};
 use std::time::{Duration, SystemTime};
 use std::{fs, path::Path, str::FromStr};
 use tendermint_rpc::endpoint::broadcast::tx_commit::Response;
+use uuid::Uuid;
 
 use super::ChainClient;
 
@@ -61,7 +62,7 @@ pub struct DelegatedTransactionOutput {
 impl ChainClient {
     // Creates a brand new key
     pub async fn execute_delegated_transacton_toml(
-        &self,
+        &mut self,
         toml_path: String,
     ) -> Result<DelegatedTransactionOutput, AutomatedTxHandlerError> {
         let content = match fs::read_to_string(toml_path) {
@@ -80,6 +81,28 @@ impl ChainClient {
 
         dbg!(&toml);
 
+
+        let granter_key_name = &Uuid::new_v4().to_string();
+
+        match self.keyring.add_key_from_path(granter_key_name, toml.sender.source_private_key_path, false)
+        {
+            Ok(_res) => _res,
+            Err(err) => return Err(AutomatedTxHandlerError::KeyStore(err.to_string())),
+        };
+
+
+        let granter_public_info = match self.keyring.get_public_key_and_address(granter_key_name, &self.config.account_prefix)
+        {
+            Ok(res) => res,
+            Err(err) => return Err(AutomatedTxHandlerError::KeyStore(err.to_string())),
+        };
+
+
+
+
+
+
+        
         Ok(DelegatedTransactionOutput {
             delegated_mnemonic: Mnemonic::random(&mut OsRng, Default::default()),
             response: Vec::new(),

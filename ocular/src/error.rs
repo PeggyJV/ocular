@@ -89,6 +89,9 @@ pub enum KeyStoreError {
 
     #[error("unable to retrieve key: {0}")]
     UnableToRetrieveKey(String),
+
+    #[error("error reading file: {0}")]
+    FileIO(String),
 }
 
 #[derive(Debug, Error)]
@@ -116,4 +119,6 @@ pub enum AutomatedTxHandlerError {
     KeyHandling(String),
     #[error("error sending tx: {0}")]
     TxBroadcast(String),
+    #[error("keystore error: {0}")]
+    KeyStore(String),
 }
