@@ -47,7 +47,7 @@ impl ChainClient {
 
         // Compute auth info from signer info by associating a fee.
         let auth_info = signer_info.auth_info(Fee {
-            amount: vec![tx_metadata.gas_fee; 1],
+            amount: vec![tx_metadata.gas_fee],
             gas_limit: tx_metadata.gas_limit.into(),
             payer: fee_payer,
             granter: fee_granter,

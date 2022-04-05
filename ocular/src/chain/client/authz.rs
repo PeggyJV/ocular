@@ -135,7 +135,7 @@ impl ChainClient {
         tx_metadata: TxMetadata,
     ) -> Result<Response, TxError> {
         let allowance = BasicAllowance {
-            spend_limit: vec![spend_limit; 1],
+            spend_limit: vec![spend_limit],
             expiration,
         };
 
