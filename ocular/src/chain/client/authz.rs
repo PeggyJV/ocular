@@ -92,12 +92,14 @@ impl ChainClient {
     }
 
     // Execute a transaction previously authorized by granter
-    pub async fn execute_authorized_tx(
+    pub async fn execute_authorized_tx_with_fee_grant(
         &self,
         grantee: Account,
         msgs: Vec<::prost_types::Any>,
         gas_fee: Coin,
         tx_metadata: TxMetadata,
+        fee_payer: AccountId,
+        fee_granter: AccountId,
     ) -> Result<Response, TxError> {
         let msg = MsgExec {
             grantee: grantee.id.to_string(),
@@ -112,12 +114,14 @@ impl ChainClient {
 
         let tx_body = tx::Body::new(vec![msg_any], &tx_metadata.memo, tx_metadata.timeout_height);
 
-        self.sign_and_send_msg(
+        self.sign_and_send_msg_with_fee_grant(
             grantee.public_key,
             grantee.private_key,
             gas_fee,
             tx_body,
             tx_metadata,
+            fee_payer,
+            fee_granter,
         )
         .await
     }

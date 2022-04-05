@@ -192,7 +192,7 @@ impl ChainClient {
 
         // Send Msg Exec from grantee
         let response = match self
-            .execute_authorized_tx(
+            .execute_authorized_tx_with_fee_grant(
                 Account {
                     id: grantee_public_info.account.clone(),
                     public_key: grantee_public_info.public_key,

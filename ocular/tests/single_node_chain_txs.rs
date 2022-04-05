@@ -316,9 +316,6 @@ fn local_single_node_chain_test() {
         name: "A",
         destination_account: recipient_account_id.as_ref(),
         amount: 1u8.into(),
-        denom: DENOM,
-        gas_fee: 50_000,
-        gas_limit: gas,
     });
 
     // Save toml for later use
@@ -631,7 +628,7 @@ fn local_single_node_chain_test() {
             );
 
             let actual_msg_exec_commit_response = chain_client
-                .execute_authorized_tx(
+                .execute_authorized_tx_with_fee_grant(
                     Account {
                         id: recipient_account_id.clone(),
                         public_key: grantee_private_key.public_key(),
@@ -746,7 +743,7 @@ fn local_single_node_chain_test() {
             );
 
             let actual_msg_exec_commit_response = chain_client
-                .execute_authorized_tx(
+                .execute_authorized_tx_with_fee_grant(
                     Account {
                         id: recipient_account_id.clone(),
                         public_key: grantee_private_key.public_key(),
