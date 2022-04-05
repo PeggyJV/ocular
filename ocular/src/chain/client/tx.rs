@@ -45,9 +45,55 @@ impl ChainClient {
             SignerInfo::single_direct(Some(sender_public_key), tx_metadata.sequence_number);
 
         // Compute auth info from signer info by associating a fee.
-        // TODO: Add ability to specify payers and granters for fees.
         let auth_info =
             signer_info.auth_info(Fee::from_amount_and_gas(gas_fee, tx_metadata.gas_limit));
+
+        // Create doc to be signed
+        let sign_doc = match SignDoc::new(
+            &tx_body,
+            &auth_info,
+            &tx_metadata.chain_id,
+            tx_metadata.account_number,
+        ) {
+            Ok(doc) => doc,
+            Err(err) => return Err(TxError::TypeConversionError(err.to_string())),
+        };
+
+        // Create raw signed transaction.
+        let tx_signed = match sign_doc.sign(&sender_private_key) {
+            Ok(raw) => raw,
+            Err(err) => return Err(TxError::SigningError(err.to_string())),
+        };
+
+        // Broadcast transaction
+        match tx_signed.broadcast_commit(&self.rpc_client).await {
+            Ok(response) => Ok(response),
+            Err(err) => Err(TxError::BroadcastError(err.to_string())),
+        }
+    }
+
+    /// Helper method for signing and broadcasting messages with a fee grant.
+    pub async fn sign_and_send_msg_with_fee_grant(
+        &self,
+        sender_public_key: PublicKey,
+        sender_private_key: SigningKey,
+        gas_fee: Coin,
+        tx_body: tx::Body,
+        tx_metadata: TxMetadata,
+        fee_payer: AccountId,
+        fee_granter: AccountId,
+    ) -> Result<Response, TxError> {
+        // Create signer info.
+        let signer_info =
+            SignerInfo::single_direct(Some(sender_public_key), tx_metadata.sequence_number);
+
+        // Compute auth info from signer info by associating a fee.
+        let auth_info = signer_info.auth_info(Fee {
+            amount: vec![gas_fee; 1],
+            gas_limit: tx_metadata.gas_limit.into(),
+            payer: Some(fee_payer),
+            granter: Some(fee_granter),
+        });
 
         // Create doc to be signed
         let sign_doc = match SignDoc::new(

@@ -34,14 +34,21 @@ pub struct DelegatedToml<'a> {
 pub struct DelegatedSender<'a> {
     pub source_private_key_path: &'a str,
     pub delegate_expiration_unix_seconds: i64,
+
+    pub fee_grant_expiration_unix_seconds: i64,
+    pub fee_grant_amount: u64,
     pub denom: &'a str,
-    // TODO: Remove account and sequence number. Get automatically from account type via https://github.com/PeggyJV/ocular/issues/25
+
+    // TODO: Remove account and sequence numbers. Get automatically from account type via https://github.com/PeggyJV/ocular/issues/25
     pub grant_account_number: u64,
     pub grant_sequence_number: u64,
     pub grant_gas_fee: u64,
     pub grant_gas_limit: u64,
     pub grant_timeout_height: u32,
     pub grant_memo: &'a str,
+
+    pub exec_gas_fee: u64,
+    pub exec_gas_limit: u64,
     pub exec_account_number: u64,
     pub exec_sequence_number: u64,
     pub exec_timeout_height: u32,
@@ -54,9 +61,6 @@ pub struct DelegateTransaction<'a> {
     pub name: &'a str,
     pub destination_account: &'a str,
     pub amount: u64,
-    pub denom: &'a str,
-    pub gas_fee: u64,
-    pub gas_limit: u64,
 }
 
 // Return type for delegated tx workflow
@@ -162,8 +166,6 @@ impl ChainClient {
 
         // Build messages to delegate
         let mut msgs: Vec<prost_types::Any> = Vec::new();
-        let mut gas_fee = 0;
-        let mut gas_limit = 0;
 
         for tx in toml.transaction.iter() {
             let recipient_account_id = match AccountId::from_str(tx.destination_account) {
@@ -177,7 +179,7 @@ impl ChainClient {
                     to_address: recipient_account_id,
                     amount: vec![
                         Coin {
-                            denom: tx.denom.parse().expect("Could not parse denom."),
+                            denom: toml.sender.denom.parse().expect("Could not parse denom."),
                             amount: tx.amount.into(),
                         };
                         1
@@ -186,9 +188,6 @@ impl ChainClient {
                 .to_any()
                 .expect("Could not serialize msg."),
             );
-
-            gas_fee += tx.gas_fee;
-            gas_limit += tx.gas_limit;
         }
 
         // Send Msg Exec from grantee
@@ -205,7 +204,7 @@ impl ChainClient {
                 msgs,
                 Coin {
                     denom: toml.sender.denom.parse().expect("Could not parse denom."),
-                    amount: gas_fee.into(),
+                    amount: toml.sender.exec_gas_fee.into(),
                 },
                 TxMetadata {
                     chain_id: self
@@ -216,7 +215,7 @@ impl ChainClient {
                     // TODO: replace account and sequence numbers with pulled numbers from Account type once implemented in https://github.com/PeggyJV/ocular/issues/25
                     account_number: toml.sender.exec_account_number,
                     sequence_number: toml.sender.exec_sequence_number,
-                    gas_limit,
+                    gas_limit: toml.sender.exec_gas_limit,
                     timeout_height: toml.sender.exec_timeout_height,
                     memo: toml.sender.exec_memo.to_string(),
                 },
@@ -303,13 +302,25 @@ mod tests {
                 + 50000,
         )
         .expect("Could not convert to i64");
+
+        file.sender.fee_grant_expiration_unix_seconds = i64::try_from(
+            SystemTime::now()
+                .duration_since(SystemTime::UNIX_EPOCH)
+                .unwrap()
+                .as_secs()
+                + 50000,
+        )
+        .expect("Could not convert to i64");
+        file.sender.fee_grant_amount = 500_000;
         file.sender.denom = "usomm";
+
         file.sender.grant_account_number = 1;
         file.sender.grant_sequence_number = 0;
         file.sender.grant_gas_fee = 50_000;
         file.sender.grant_gas_limit = 100_000;
         file.sender.grant_timeout_height = 9001u32;
         file.sender.grant_memo = "Delegation memo";
+
         file.sender.exec_account_number = 1;
         file.sender.exec_sequence_number = 0;
         file.sender.exec_timeout_height = 9001u32;
@@ -329,9 +340,6 @@ mod tests {
             name: "Dionysus",
             destination_account: pub_key_output.account.as_ref(),
             amount: 50u64,
-            denom: "usomm",
-            gas_fee: 50_000,
-            gas_limit: 100_000,
         });
 
         chain_client
@@ -347,9 +355,6 @@ mod tests {
             name: "Silenus",
             destination_account: pub_key_output.account.as_ref(),
             amount: 500u64,
-            denom: "usomm",
-            gas_fee: 50_000,
-            gas_limit: 100_000,
         });
 
         let toml_string = toml::to_string(&file).expect("Could not encode toml value.");

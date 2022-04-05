@@ -3,7 +3,10 @@
 // Requies docker
 use ocular::{
     chain::{
-        client::tx::{Account, TxMetadata},
+        client::{
+            automated_tx_handler::{DelegateTransaction, DelegatedToml},
+            tx::{Account, TxMetadata},
+        },
         config::ChainClientConfig,
     },
     cosmos_modules::*,
@@ -278,6 +281,69 @@ fn local_single_node_chain_test() {
     .expect("Could not parse sign doc.");
     let _expected_msg_exec_raw = expected_msg_exec_sign_doc.sign(&sender_private_key);
 
+    // Automated tx handler delegated workflow
+    let mut file = DelegatedToml::default();
+    let granter_pem_path = dirs::home_dir()
+        .unwrap()
+        .into_os_string()
+        .into_string()
+        .unwrap()
+        + "/.ocular/keys"
+        + "/test_only_key_override_safe.pem";
+
+    file.sender.delegate_expiration_unix_seconds = i64::try_from(
+        std::time::SystemTime::now()
+            .duration_since(std::time::SystemTime::UNIX_EPOCH)
+            .unwrap()
+            .as_secs()
+            + 50000,
+    )
+    .expect("Could not convert to i64");
+    file.sender.source_private_key_path = &granter_pem_path;
+    file.sender.denom = DENOM;
+    file.sender.grant_account_number = SENDER_ACCOUNT_NUMBER;
+    file.sender.grant_sequence_number = sequence_number + 5;
+    file.sender.grant_gas_fee = 50_000;
+    file.sender.grant_gas_limit = 100_000;
+    file.sender.grant_timeout_height = timeout_height.into();
+    file.sender.grant_memo = MEMO;
+    file.sender.exec_account_number = 1;
+    file.sender.exec_sequence_number = sequence_number;
+    file.sender.exec_timeout_height = timeout_height.into();
+    file.sender.exec_memo = MEMO;
+
+    file.transaction.push(DelegateTransaction {
+        name: "A",
+        destination_account: recipient_account_id.as_ref(),
+        amount: 1u8.into(),
+        denom: DENOM,
+        gas_fee: 50_000,
+        gas_limit: gas,
+    });
+
+    // Save toml for later use
+    let toml_path = dirs::home_dir()
+        .unwrap()
+        .into_os_string()
+        .into_string()
+        .unwrap()
+        + "/.ocular/keys"
+        + "/delegated_test.toml";
+
+    let toml_string = toml::to_string(&file).expect("Could not encode toml value.");
+    std::fs::write(&toml_path, toml_string).expect("Could not write to file.");
+
+    let automated_delegated_msg_send = MsgSend {
+        from_address: sender_account_id.clone(),
+        to_address: recipient_account_id.clone(),
+        amount: vec![amount.clone()],
+    }
+    .to_any()
+    .expect("Could not serlialize msg.");
+
+    let mut msgs: Vec<::prost_types::Any> = Vec::new();
+    msgs.push(automated_delegated_msg_send);
+
     let docker_args = [
         "-d",
         "-p",
@@ -293,7 +359,7 @@ fn local_single_node_chain_test() {
             let rpc_client =
                 rpc::HttpClient::new(rpc_address.as_str()).expect("Could not create RPC");
 
-            let chain_client = ChainClient {
+            let mut chain_client = ChainClient {
                 config: ChainClientConfig {
                     chain_id: chain_id.to_string(),
                     rpc_address: rpc_address.clone(),
@@ -702,6 +768,40 @@ fn local_single_node_chain_test() {
 
             // Assert permission error since acct delegation permission was revoked
             assert_eq!(&actual_msg_exec_commit_response.deliver_tx.log.to_string()[..82], "failed to execute message; message index: 0: authorization not found: unauthorized");
+
+            // Test delegated automated tx workflow
+            let actual_automated_delegated_commit_response = &chain_client
+                .execute_delegated_transacton_toml(toml_path)
+                .await
+                .expect("Could not broadcast msg.");
+
+            if actual_automated_delegated_commit_response
+                .response
+                .check_tx
+                .code
+                .is_err()
+            {
+                panic!(
+                    "check_tx for automated_delegated failed: {:?}",
+                    actual_automated_delegated_commit_response.response.check_tx
+                );
+            }
+
+            if actual_automated_delegated_commit_response
+                .response
+                .deliver_tx
+                .code
+                .is_err()
+            {
+                panic!(
+                    "deliver_tx for automated_delegated failed: {:?}",
+                    actual_automated_delegated_commit_response.response.deliver_tx
+                );
+            }
+
+
+
+
         })
     });
 }
