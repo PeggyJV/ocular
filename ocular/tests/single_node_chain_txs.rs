@@ -22,7 +22,6 @@ use cosmrs::{
     bank::MsgSend,
     crypto::secp256k1::SigningKey,
     dev, rpc,
-    staking::{MsgDelegate, MsgUndelegate},
     tx::{self, AccountNumber, Fee, Msg, SignDoc, SignerInfo},
     Coin,
 };
@@ -136,54 +135,6 @@ fn local_single_node_chain_test() {
         .sign(&sender_private_key)
         .expect("Could not parse tx.");
 
-    // Expected MsgDelegate
-    let msg_delegate = MsgDelegate {
-        delegator_address: sender_account_id.clone(),
-        validator_address: recipient_account_id.clone(),
-        amount: amount.clone(),
-    }
-    .to_any()
-    .expect("Could not serlialize msg.");
-
-    let expected_msg_delegate_body = tx::Body::new(vec![msg_delegate], MEMO, timeout_height);
-    let expected_msg_delegate_auth_info =
-        SignerInfo::single_direct(Some(sender_public_key), sequence_number + 1)
-            .auth_info(fee.clone());
-    let expected_msg_delegate_sign_doc = SignDoc::new(
-        &expected_msg_delegate_body,
-        &expected_msg_delegate_auth_info,
-        &chain_id,
-        SENDER_ACCOUNT_NUMBER,
-    )
-    .expect("Could not parse sign doc.");
-    let _expected_msg_delegate_raw = expected_msg_delegate_sign_doc
-        .sign(&sender_private_key)
-        .expect("Could not parse tx.");
-
-    // Expected MsgUndelegate
-    let msg_undelegate = MsgUndelegate {
-        delegator_address: sender_account_id.clone(),
-        validator_address: recipient_account_id.clone(),
-        amount: amount.clone(),
-    }
-    .to_any()
-    .expect("Could not serlialize msg.");
-
-    let expected_msg_undelegate_body = tx::Body::new(vec![msg_undelegate], MEMO, timeout_height);
-    let expected_msg_undelegate_auth_info =
-        SignerInfo::single_direct(Some(sender_public_key), sequence_number + 2)
-            .auth_info(fee.clone());
-    let expected_msg_undelegate_sign_doc = SignDoc::new(
-        &expected_msg_undelegate_body,
-        &expected_msg_undelegate_auth_info,
-        &chain_id,
-        SENDER_ACCOUNT_NUMBER,
-    )
-    .expect("Could not parse sign doc.");
-    let _expected_msg_undelegate_raw = expected_msg_undelegate_sign_doc
-        .sign(&sender_private_key)
-        .expect("Could not parse tx.");
-
     // Expected MsgGrant
     let msg_grant = MsgGrant {
         granter: sender_account_id.to_string(),
@@ -210,7 +161,7 @@ fn local_single_node_chain_test() {
 
     let expected_msg_grant_body = tx::Body::new(vec![msg_grant], MEMO, timeout_height);
     let expected_msg_grant_auth_info =
-        SignerInfo::single_direct(Some(sender_public_key), sequence_number + 3)
+        SignerInfo::single_direct(Some(sender_public_key), sequence_number + 1)
             .auth_info(fee.clone());
     let expected_msg_grant_sign_doc = SignDoc::new(
         &expected_msg_grant_body,
@@ -235,7 +186,7 @@ fn local_single_node_chain_test() {
 
     let expected_msg_revoke_body = tx::Body::new(vec![msg_revoke], MEMO, timeout_height);
     let expected_msg_revoke_auth_info =
-        SignerInfo::single_direct(Some(sender_public_key), sequence_number + 4)
+        SignerInfo::single_direct(Some(sender_public_key), sequence_number + 2)
             .auth_info(fee.clone());
     let expected_msg_revoke_sign_doc = SignDoc::new(
         &expected_msg_revoke_body,
@@ -302,7 +253,7 @@ fn local_single_node_chain_test() {
     file.sender.source_private_key_path = &granter_pem_path;
     file.sender.denom = DENOM;
     file.sender.grant_account_number = SENDER_ACCOUNT_NUMBER;
-    file.sender.grant_sequence_number = sequence_number + 5;
+    file.sender.grant_sequence_number = sequence_number + 3;
     file.sender.grant_gas_fee = 50_000;
     file.sender.grant_gas_limit = 100_000;
     file.sender.grant_timeout_height = timeout_height.into();
@@ -423,124 +374,6 @@ fn local_single_node_chain_test() {
             assert_eq!(&expected_tx_body, &actual_tx.body);
             assert_eq!(&expected_auth_info, &actual_tx.auth_info);
 
-            // Test MsgDelegate functionality
-            let sender_seed = sender_mnemonic.to_seed("");
-            let sender_private_key: SigningKey = SigningKey::from_bytes(
-                &bip32::XPrv::derive_from_path(sender_seed, path)
-                    .expect("Could not create key.")
-                    .private_key()
-                    .to_bytes(),
-            )
-            .expect("Could not create key.");
-
-            let tx_metadata = TxMetadata {
-                chain_id: chain_id.clone(),
-                account_number: SENDER_ACCOUNT_NUMBER,
-                sequence_number: sequence_number + 1,
-                gas_fee: amount.clone(),
-                gas_limit: gas,
-                timeout_height: timeout_height.into(),
-                memo: MEMO.to_string(),
-            };
-
-            let actual_msg_delegate_commit_response = chain_client
-                .delegate(
-                    Account {
-                        id: sender_account_id.clone(),
-                        public_key: sender_public_key,
-                        private_key: sender_private_key,
-                    },
-                    recipient_account_id.clone(),
-                    amount.clone(),
-                    tx_metadata,
-                )
-                .await
-                .expect("Could not broadcast msg.");
-
-            if actual_msg_delegate_commit_response.check_tx.code.is_err() {
-                panic!(
-                    "check_tx for msg_delegate failed: {:?}",
-                    actual_msg_delegate_commit_response.check_tx
-                );
-            }
-
-            // Expect error code 1 since delegator address is not funded
-            if actual_msg_delegate_commit_response.deliver_tx.code
-                != cosmrs::tendermint::abci::Code::Err(1)
-            {
-                panic!(
-                    "deliver_tx for msg_delegate failed: {:?}",
-                    actual_msg_delegate_commit_response.deliver_tx
-                );
-            }
-
-            let actual_msg_delegate =
-                dev::poll_for_tx(&rpc_client, actual_msg_delegate_commit_response.hash).await;
-            assert_eq!(&expected_msg_delegate_body, &actual_msg_delegate.body);
-            assert_eq!(
-                &expected_msg_delegate_auth_info,
-                &actual_msg_delegate.auth_info
-            );
-
-            // Test MsgUndelegate functionality
-            let sender_seed = sender_mnemonic.to_seed("");
-            let sender_private_key: SigningKey = SigningKey::from_bytes(
-                &bip32::XPrv::derive_from_path(sender_seed, path)
-                    .expect("Could not create key.")
-                    .private_key()
-                    .to_bytes(),
-            )
-            .expect("Could not create key.");
-
-            let tx_metadata = TxMetadata {
-                chain_id: chain_id.clone(),
-                account_number: SENDER_ACCOUNT_NUMBER,
-                sequence_number: sequence_number + 2,
-                gas_fee: amount.clone(),
-                gas_limit: gas,
-                timeout_height: timeout_height.into(),
-                memo: MEMO.to_string(),
-            };
-
-            let actual_msg_undelegate_commit_response = chain_client
-                .undelegate(
-                    Account {
-                        id: sender_account_id.clone(),
-                        public_key: sender_public_key,
-                        private_key: sender_private_key,
-                    },
-                    recipient_account_id.clone(),
-                    amount.clone(),
-                    tx_metadata,
-                )
-                .await
-                .expect("Could not broadcast msg.");
-
-            if actual_msg_undelegate_commit_response.check_tx.code.is_err() {
-                panic!(
-                    "check_tx for msg_undelegate failed: {:?}",
-                    actual_msg_undelegate_commit_response.check_tx
-                );
-            }
-
-            // Expect error code 1 since delegator address is not funded
-            if actual_msg_undelegate_commit_response.deliver_tx.code
-                != cosmrs::tendermint::abci::Code::Err(1)
-            {
-                panic!(
-                    "deliver_tx for msg_undelegate failed: {:?}",
-                    actual_msg_undelegate_commit_response.deliver_tx
-                );
-            }
-
-            let actual_msg_undelegate =
-                dev::poll_for_tx(&rpc_client, actual_msg_undelegate_commit_response.hash).await;
-            assert_eq!(&expected_msg_undelegate_body, &actual_msg_undelegate.body);
-            assert_eq!(
-                &expected_msg_undelegate_auth_info,
-                &actual_msg_undelegate.auth_info
-            );
-
             // Test MsgGrant functionality
             let sender_seed = sender_mnemonic.to_seed("");
             let sender_private_key: SigningKey = SigningKey::from_bytes(
@@ -554,7 +387,7 @@ fn local_single_node_chain_test() {
             let tx_metadata = TxMetadata {
                 chain_id: chain_id.clone(),
                 account_number: SENDER_ACCOUNT_NUMBER,
-                sequence_number: sequence_number + 3,
+                sequence_number: sequence_number + 1,
                 gas_fee: amount.clone(),
                 gas_limit: gas,
                 timeout_height: timeout_height.into(),
@@ -675,7 +508,7 @@ fn local_single_node_chain_test() {
             let tx_metadata = TxMetadata {
                 chain_id: chain_id.clone(),
                 account_number: SENDER_ACCOUNT_NUMBER,
-                sequence_number: sequence_number + 4,
+                sequence_number: sequence_number + 2,
                 gas_fee: amount.clone(),
                 gas_limit: gas,
                 timeout_height: timeout_height.into(),

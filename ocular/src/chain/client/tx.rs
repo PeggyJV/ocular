@@ -2,7 +2,6 @@ use crate::error::TxError;
 use cosmrs::{
     bank::MsgSend,
     crypto::{secp256k1::SigningKey, PublicKey},
-    staking::{MsgDelegate, MsgUndelegate},
     tendermint::chain::Id,
     tx::{self, Fee, Msg, SignDoc, SignerInfo},
     AccountId, Coin,
@@ -103,70 +102,6 @@ impl ChainClient {
         self.sign_and_send_msg(
             sender_account.public_key,
             sender_account.private_key,
-            tx_body,
-            tx_metadata,
-            None,
-            None,
-        )
-        .await
-    }
-
-    /// Sign and send delegate message
-    pub async fn delegate(
-        &self,
-        delegator_account: Account,
-        validator_account_id: AccountId,
-        amount: Coin,
-        tx_metadata: TxMetadata,
-    ) -> Result<Response, TxError> {
-        // Create delegate message for amount
-        let msg = MsgDelegate {
-            delegator_address: delegator_account.id,
-            validator_address: validator_account_id,
-            amount: amount.clone(),
-        };
-
-        // Build tx body.
-        let tx_body = match msg.to_any() {
-            Ok(msg) => tx::Body::new(vec![msg], &tx_metadata.memo, tx_metadata.timeout_height),
-            Err(err) => return Err(TxError::SerializationError(err.to_string())),
-        };
-
-        self.sign_and_send_msg(
-            delegator_account.public_key,
-            delegator_account.private_key,
-            tx_body,
-            tx_metadata,
-            None,
-            None,
-        )
-        .await
-    }
-
-    /// Sign and send undelegate message
-    pub async fn undelegate(
-        &self,
-        delegator_account: Account,
-        validator_account_id: AccountId,
-        amount: Coin,
-        tx_metadata: TxMetadata,
-    ) -> Result<Response, TxError> {
-        // Create undelegate message for amount
-        let msg = MsgUndelegate {
-            delegator_address: delegator_account.id,
-            validator_address: validator_account_id,
-            amount: amount.clone(),
-        };
-
-        // Build tx body.
-        let tx_body = match msg.to_any() {
-            Ok(msg) => tx::Body::new(vec![msg], &tx_metadata.memo, tx_metadata.timeout_height),
-            Err(err) => return Err(TxError::SerializationError(err.to_string())),
-        };
-
-        self.sign_and_send_msg(
-            delegator_account.public_key,
-            delegator_account.private_key,
             tx_body,
             tx_metadata,
             None,
