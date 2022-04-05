@@ -522,7 +522,7 @@ dependencies = [
 [[package]]
 name = "cosmos-sdk-proto"
 version = "0.10.0"
-source = "git+https://github.com/philipjames44/cosmos-rust?branch=main#5339d26d06124da2d56fee22713bd6f6bf8c3d25"
+source = "git+https://github.com/cosmos/cosmos-rust?branch=main#861de6d4f31a9ad8e99ef48ad902f84f85ef9394"
 dependencies = [
  "prost",
  "prost-types",
@@ -1760,7 +1760,7 @@ dependencies = [
  "bech32",
  "bip32",
  "chrono",
- "cosmos-sdk-proto 0.10.0 (git+https://github.com/philipjames44/cosmos-rust?branch=main)",
+ "cosmos-sdk-proto 0.10.0 (git+https://github.com/cosmos/cosmos-rust?branch=main)",
  "cosmrs",
  "dirs 1.0.5",
  "futures",

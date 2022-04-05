@@ -375,6 +375,7 @@ fn local_single_node_chain_test() {
                 chain_id: chain_id.clone(),
                 account_number: SENDER_ACCOUNT_NUMBER,
                 sequence_number: sequence_number,
+                gas_fee: amount.clone(),
                 gas_limit: gas,
                 timeout_height: timeout_height.into(),
                 memo: MEMO.to_string(),
@@ -398,7 +399,6 @@ fn local_single_node_chain_test() {
                         private_key: sender_private_key,
                     },
                     recipient_account_id.clone(),
-                    amount.clone(),
                     amount.clone(),
                     tx_metadata,
                 )
@@ -437,6 +437,7 @@ fn local_single_node_chain_test() {
                 chain_id: chain_id.clone(),
                 account_number: SENDER_ACCOUNT_NUMBER,
                 sequence_number: sequence_number + 1,
+                gas_fee: amount.clone(),
                 gas_limit: gas,
                 timeout_height: timeout_height.into(),
                 memo: MEMO.to_string(),
@@ -450,7 +451,6 @@ fn local_single_node_chain_test() {
                         private_key: sender_private_key,
                     },
                     recipient_account_id.clone(),
-                    amount.clone(),
                     amount.clone(),
                     tx_metadata,
                 )
@@ -496,6 +496,7 @@ fn local_single_node_chain_test() {
                 chain_id: chain_id.clone(),
                 account_number: SENDER_ACCOUNT_NUMBER,
                 sequence_number: sequence_number + 2,
+                gas_fee: amount.clone(),
                 gas_limit: gas,
                 timeout_height: timeout_height.into(),
                 memo: MEMO.to_string(),
@@ -509,7 +510,6 @@ fn local_single_node_chain_test() {
                         private_key: sender_private_key,
                     },
                     recipient_account_id.clone(),
-                    amount.clone(),
                     amount.clone(),
                     tx_metadata,
                 )
@@ -555,6 +555,7 @@ fn local_single_node_chain_test() {
                 chain_id: chain_id.clone(),
                 account_number: SENDER_ACCOUNT_NUMBER,
                 sequence_number: sequence_number + 3,
+                gas_fee: amount.clone(),
                 gas_limit: gas,
                 timeout_height: timeout_height.into(),
                 memo: MEMO.to_string(),
@@ -572,7 +573,6 @@ fn local_single_node_chain_test() {
                         seconds: 4110314268,
                         nanos: 0,
                     }),
-                    amount.clone(),
                     tx_metadata,
                 )
                 .await
@@ -611,6 +611,7 @@ fn local_single_node_chain_test() {
                 chain_id: chain_id.clone(),
                 account_number: RECIPIENT_ACCOUNT_NUMBER,
                 sequence_number: sequence_number,
+                gas_fee: amount.clone(),
                 gas_limit: gas,
                 timeout_height: timeout_height.into(),
                 memo: MEMO.to_string(),
@@ -628,15 +629,16 @@ fn local_single_node_chain_test() {
             );
 
             let actual_msg_exec_commit_response = chain_client
-                .execute_authorized_tx_with_fee_grant(
+                .execute_authorized_tx(
                     Account {
                         id: recipient_account_id.clone(),
                         public_key: grantee_private_key.public_key(),
                         private_key: grantee_private_key,
                     },
                     msgs_to_send,
-                    amount.clone(),
                     tx_metadata,
+                    None,
+                    None
                 )
                 .await
                 .expect("Could not broadcast msg.");
@@ -674,6 +676,7 @@ fn local_single_node_chain_test() {
                 chain_id: chain_id.clone(),
                 account_number: SENDER_ACCOUNT_NUMBER,
                 sequence_number: sequence_number + 4,
+                gas_fee: amount.clone(),
                 gas_limit: gas,
                 timeout_height: timeout_height.into(),
                 memo: MEMO.to_string(),
@@ -687,7 +690,6 @@ fn local_single_node_chain_test() {
                         private_key: sender_private_key,
                     },
                     recipient_account_id.clone(),
-                    amount.clone(),
                     tx_metadata,
                 )
                 .await
@@ -726,6 +728,7 @@ fn local_single_node_chain_test() {
                 chain_id: chain_id.clone(),
                 account_number: RECIPIENT_ACCOUNT_NUMBER,
                 sequence_number: sequence_number + 1,
+                gas_fee: amount.clone(),
                 gas_limit: gas,
                 timeout_height: timeout_height.into(),
                 memo: String::from("Exec tx #2"),
@@ -743,15 +746,16 @@ fn local_single_node_chain_test() {
             );
 
             let actual_msg_exec_commit_response = chain_client
-                .execute_authorized_tx_with_fee_grant(
+                .execute_authorized_tx(
                     Account {
                         id: recipient_account_id.clone(),
                         public_key: grantee_private_key.public_key(),
                         private_key: grantee_private_key,
                     },
                     msgs_to_send,
-                    amount.clone(),
                     tx_metadata,
+                    None,
+                    None
                 )
                 .await
                 .expect("Could not broadcast msg.");
@@ -795,10 +799,6 @@ fn local_single_node_chain_test() {
                     actual_automated_delegated_commit_response.response.deliver_tx
                 );
             }
-
-
-
-
         })
     });
 }

@@ -125,7 +125,7 @@ impl ChainClient {
             Err(err) => return Err(AutomatedTxHandlerError::KeyStore(err.to_string())),
         };
 
-        // Perform grant
+        // Perform msg send grant
         let _response = match self
             .grant_send_authorization(
                 Account {
@@ -141,10 +141,6 @@ impl ChainClient {
                     seconds: toml.sender.delegate_expiration_unix_seconds,
                     nanos: 0,
                 }),
-                Coin {
-                    denom: toml.sender.denom.parse().expect("Could not parse denom."),
-                    amount: toml.sender.grant_gas_fee.into(),
-                },
                 TxMetadata {
                     chain_id: self
                         .config
@@ -153,6 +149,53 @@ impl ChainClient {
                         .expect("Could not parse chain id"),
                     account_number: toml.sender.grant_account_number,
                     sequence_number: toml.sender.grant_sequence_number,
+                    gas_fee: Coin {
+                        denom: toml.sender.denom.parse().expect("Could not parse denom."),
+                        amount: toml.sender.grant_gas_fee.into(),
+                    },
+                    gas_limit: toml.sender.grant_gas_limit,
+                    timeout_height: toml.sender.grant_timeout_height,
+                    memo: toml.sender.grant_memo.to_string(),
+                },
+            )
+            .await
+        {
+            Ok(res) => res,
+            Err(err) => return Err(AutomatedTxHandlerError::TxBroadcast(err.to_string())),
+        };
+
+        // Perform fee grant
+        let _response = match self
+            .perform_basic_allowance_fee_grant(
+                Account {
+                    id: granter_public_info.account.clone(),
+                    public_key: granter_public_info.public_key,
+                    private_key: self
+                        .keyring
+                        .get_key(granter_key_name)
+                        .expect("Could not load granter key."),
+                },
+                grantee_public_info.account.clone(),
+                Some(prost_types::Timestamp {
+                    seconds: toml.sender.fee_grant_expiration_unix_seconds,
+                    nanos: 0,
+                }),
+                cosmos_sdk_proto::cosmos::base::v1beta1::Coin {
+                    denom: toml.sender.denom.parse().expect("Could not parse denom."),
+                    amount: toml.sender.fee_grant_amount.to_string(),
+                },
+                TxMetadata {
+                    chain_id: self
+                        .config
+                        .chain_id
+                        .parse()
+                        .expect("Could not parse chain id"),
+                    account_number: toml.sender.grant_account_number,
+                    sequence_number: toml.sender.grant_sequence_number + 1,
+                    gas_fee: Coin {
+                        denom: toml.sender.denom.parse().expect("Could not parse denom."),
+                        amount: toml.sender.grant_gas_fee.into(),
+                    },
                     gas_limit: toml.sender.grant_gas_limit,
                     timeout_height: toml.sender.grant_timeout_height,
                     memo: toml.sender.grant_memo.to_string(),
@@ -192,7 +235,7 @@ impl ChainClient {
 
         // Send Msg Exec from grantee
         let response = match self
-            .execute_authorized_tx_with_fee_grant(
+            .execute_authorized_tx(
                 Account {
                     id: grantee_public_info.account.clone(),
                     public_key: grantee_public_info.public_key,
@@ -202,10 +245,6 @@ impl ChainClient {
                         .expect("Could not load grantee key."),
                 },
                 msgs,
-                Coin {
-                    denom: toml.sender.denom.parse().expect("Could not parse denom."),
-                    amount: toml.sender.exec_gas_fee.into(),
-                },
                 TxMetadata {
                     chain_id: self
                         .config
@@ -215,10 +254,16 @@ impl ChainClient {
                     // TODO: replace account and sequence numbers with pulled numbers from Account type once implemented in https://github.com/PeggyJV/ocular/issues/25
                     account_number: toml.sender.exec_account_number,
                     sequence_number: toml.sender.exec_sequence_number,
+                    gas_fee: Coin {
+                        denom: toml.sender.denom.parse().expect("Could not parse denom."),
+                        amount: toml.sender.exec_gas_fee.into(),
+                    },
                     gas_limit: toml.sender.exec_gas_limit,
                     timeout_height: toml.sender.exec_timeout_height,
                     memo: toml.sender.exec_memo.to_string(),
                 },
+                Some(granter_public_info.account.clone()),
+                Some(granter_public_info.account.clone()),
             )
             .await
         {

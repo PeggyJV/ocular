@@ -14,7 +14,7 @@ readme = "README.md"
 assay = "0.1"
 bech32 = "0.6"
 bip32 = "0.3"
-cosmos-sdk-proto = { git = "https://github.com/philipjames44/cosmos-rust", branch = "main", features = ["grpc"]}
+cosmos-sdk-proto = { git = "https://github.com/cosmos/cosmos-rust", branch = "main", features = ["grpc"]}
 cosmrs = {version = "0.5.1", features = ["dev"] }
 dirs = "1.0.4"
 futures = { version = "0.3.19", features = ["executor"] }

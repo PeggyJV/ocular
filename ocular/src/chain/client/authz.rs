@@ -10,7 +10,7 @@ use cosmos_sdk_proto::cosmos::{
 use prost::Message;
 use tendermint_rpc::endpoint::broadcast::tx_commit::Response;
 
-use cosmrs::{tx, AccountId, Coin};
+use cosmrs::{tx, AccountId};
 
 use super::ChainClient;
 
@@ -22,7 +22,6 @@ impl ChainClient {
         granter: Account,
         grantee: AccountId,
         expiration_timestamp: Option<prost_types::Timestamp>,
-        gas_fee: Coin,
         tx_metadata: TxMetadata,
     ) -> Result<Response, TxError> {
         let msg = MsgGrant {
@@ -51,9 +50,10 @@ impl ChainClient {
         self.sign_and_send_msg(
             granter.public_key,
             granter.private_key,
-            gas_fee,
             tx_body,
             tx_metadata,
+            None,
+            None,
         )
         .await
     }
@@ -64,7 +64,6 @@ impl ChainClient {
         &self,
         granter: Account,
         grantee: AccountId,
-        gas_fee: Coin,
         tx_metadata: TxMetadata,
     ) -> Result<Response, TxError> {
         let msg = MsgRevoke {
@@ -84,22 +83,22 @@ impl ChainClient {
         self.sign_and_send_msg(
             granter.public_key,
             granter.private_key,
-            gas_fee,
             tx_body,
             tx_metadata,
+            None,
+            None,
         )
         .await
     }
 
     // Execute a transaction previously authorized by granter
-    pub async fn execute_authorized_tx_with_fee_grant(
+    pub async fn execute_authorized_tx(
         &self,
         grantee: Account,
         msgs: Vec<::prost_types::Any>,
-        gas_fee: Coin,
         tx_metadata: TxMetadata,
-        fee_payer: AccountId,
-        fee_granter: AccountId,
+        fee_payer: Option<AccountId>,
+        fee_granter: Option<AccountId>,
     ) -> Result<Response, TxError> {
         let msg = MsgExec {
             grantee: grantee.id.to_string(),
@@ -114,10 +113,9 @@ impl ChainClient {
 
         let tx_body = tx::Body::new(vec![msg_any], &tx_metadata.memo, tx_metadata.timeout_height);
 
-        self.sign_and_send_msg_with_fee_grant(
+        self.sign_and_send_msg(
             grantee.public_key,
             grantee.private_key,
-            gas_fee,
             tx_body,
             tx_metadata,
             fee_payer,
@@ -132,7 +130,7 @@ impl ChainClient {
         granter: Account,
         grantee: AccountId,
         expiration: Option<prost_types::Timestamp>,
-        gas_fee: Coin,
+        // TODO: Standardize below Coin type to common cosmrs coin type once FeeGrants get looped in.
         spend_limit: cosmos_sdk_proto::cosmos::base::v1beta1::Coin,
         tx_metadata: TxMetadata,
     ) -> Result<Response, TxError> {
@@ -161,9 +159,10 @@ impl ChainClient {
         self.sign_and_send_msg(
             granter.public_key,
             granter.private_key,
-            gas_fee,
             tx_body,
             tx_metadata,
+            None,
+            None,
         )
         .await
     }
