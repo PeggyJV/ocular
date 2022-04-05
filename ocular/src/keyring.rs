@@ -353,24 +353,28 @@ impl Keyring {
     }
 
     /// Load private key from filepath into keyring. If override_if_exists is set to true, it will override any existing key with the same name.
-    pub fn add_key_from_path(&mut self,  name: &str, file_path: &str, override_if_exists: bool) -> Result<(), KeyStoreError> {
+    pub fn add_key_from_path(
+        &mut self,
+        name: &str,
+        file_path: &str,
+        override_if_exists: bool,
+    ) -> Result<(), KeyStoreError> {
         // Check if key already exists
         if self.key_exists(name)? && !override_if_exists {
             eprintln!("Key '{}', already exists.", name);
             return Err(KeyStoreError::Exists(name.to_string()));
         }
 
-        let pem =
-            match pkcs8::PrivateKeyDocument::read_pem_file(file_path) {
-                Ok(res) => res,
-                Err(err) => return Err(KeyStoreError::FileIO(err.to_string())),
-            };
+        let pem = match pkcs8::PrivateKeyDocument::read_pem_file(file_path) {
+            Ok(res) => res,
+            Err(err) => return Err(KeyStoreError::FileIO(err.to_string())),
+        };
 
         let key_name = &KeyName::new(name)
             .unwrap_or_else(|_| panic!("Could not create KeyName for '{}'.", name));
 
         // Store the key
-        self.key_store.add_key(&key_name, pem)?;
+        self.key_store.add_key(key_name, pem)?;
 
         self.records.insert(String::from(name));
 

@@ -1,22 +1,20 @@
 #![warn(unused_qualifications)]
+#![allow(unused_imports)]
+// Clippy broken; doesn't recognize certain imports are used and sees them as unused
 
 use crate::{
     chain::{
         client::tx::{Account, TxMetadata},
         config::ChainClientConfig,
     },
-    error::{AutomatedTxHandlerError, TxError},
+    error::AutomatedTxHandlerError,
     keyring::Keyring,
 };
-use bip32::{Mnemonic, PrivateKey};
-use cosmrs::{
-    crypto::{secp256k1::SigningKey, PublicKey},
-    rpc, AccountId, Coin,
-};
-use rand_core::OsRng;
+use bip32::Mnemonic;
+use cosmrs::{bank::MsgSend, rpc, tx::Msg, AccountId, Coin};
+
 use serde::{Deserialize, Serialize};
-use signatory::{pkcs8::der::Document, pkcs8::LineEnding};
-use std::time::{Duration, SystemTime};
+use std::time::SystemTime;
 use std::{fs, path::Path, str::FromStr};
 use tendermint_rpc::endpoint::broadcast::tx_commit::Response;
 use uuid::Uuid;
@@ -29,7 +27,7 @@ pub struct DelegatedToml<'a> {
     pub sender: DelegatedSender<'a>,
 
     #[serde(borrow)]
-    pub transaction: Vec<Transaction<'a>>,
+    pub transaction: Vec<DelegateTransaction<'a>>,
 }
 
 #[derive(Debug, Default, Serialize, Deserialize)]
@@ -38,34 +36,33 @@ pub struct DelegatedSender<'a> {
     pub delegate_expiration_unix_seconds: i64,
     pub denom: &'a str,
     // TODO: Remove account and sequence number. Get automatically from account type via https://github.com/PeggyJV/ocular/issues/25
-    pub account_number: u64,
-    pub sequence_number: u64,
-    pub gas_fee: u64,
-    pub gas_limit: u64,
-    pub timeout_height: u32,
-    pub memo: &'a str,
+    pub grant_account_number: u64,
+    pub grant_sequence_number: u64,
+    pub grant_gas_fee: u64,
+    pub grant_gas_limit: u64,
+    pub grant_timeout_height: u32,
+    pub grant_memo: &'a str,
+    pub exec_account_number: u64,
+    pub exec_sequence_number: u64,
+    pub exec_timeout_height: u32,
+    pub exec_memo: &'a str,
 }
 
 // TODO: Auto fetch account_number & sequence_number (& potentially gas limit) from account type once https://github.com/PeggyJV/ocular/issues/25 implemented
 #[derive(Debug, Default, Serialize, Deserialize)]
-pub struct Transaction<'a> {
+pub struct DelegateTransaction<'a> {
     pub name: &'a str,
     pub destination_account: &'a str,
     pub amount: u64,
     pub denom: &'a str,
-    // TODO: Remove account and sequence number. Get automatically from account type via https://github.com/PeggyJV/ocular/issues/25
-    pub account_number: u64,
-    pub sequence_number: u64,
     pub gas_fee: u64,
     pub gas_limit: u64,
-    pub timeout_height: u32,
-    pub memo: &'a str,
 }
 
 // Return type for delegated tx workflow
 pub struct DelegatedTransactionOutput {
     pub grantee_mnemonic: Mnemonic,
-    pub response: Vec<Response>,
+    pub response: Response,
 }
 
 impl ChainClient {
@@ -92,81 +89,147 @@ impl ChainClient {
 
         let granter_key_name = &(String::from("granter") + &Uuid::new_v4().to_string());
 
-        match self.keyring.add_key_from_path(granter_key_name, toml.sender.source_private_key_path, false)
-        {
+        match self.keyring.add_key_from_path(
+            granter_key_name,
+            toml.sender.source_private_key_path,
+            false,
+        ) {
             Ok(_res) => _res,
             Err(err) => return Err(AutomatedTxHandlerError::KeyStore(err.to_string())),
         };
 
-
-        let granter_public_info = match self.keyring.get_public_key_and_address(granter_key_name, &self.config.account_prefix)
+        let granter_public_info = match self
+            .keyring
+            .get_public_key_and_address(granter_key_name, &self.config.account_prefix)
         {
             Ok(res) => res,
             Err(err) => return Err(AutomatedTxHandlerError::KeyStore(err.to_string())),
         };
-
 
         let grantee_key_name = &(String::from("grantee") + &Uuid::new_v4().to_string());
 
-        let grantee_mnemonic = match self.keyring.create_cosmos_key(grantee_key_name, "", false)
-        {
+        let grantee_mnemonic = match self.keyring.create_cosmos_key(grantee_key_name, "", false) {
             Ok(res) => res,
             Err(err) => return Err(AutomatedTxHandlerError::KeyStore(err.to_string())),
         };
 
-        let grantee_public_info = match self.keyring.get_public_key_and_address(grantee_key_name, &self.config.account_prefix)
+        let grantee_public_info = match self
+            .keyring
+            .get_public_key_and_address(grantee_key_name, &self.config.account_prefix)
         {
             Ok(res) => res,
             Err(err) => return Err(AutomatedTxHandlerError::KeyStore(err.to_string())),
         };
 
         // Perform grant
-        let _response = match self.grant_send_authorization(
-            Account {
-                id: granter_public_info.account,
-                public_key: granter_public_info.public_key,
-                private_key: self.keyring.get_key(granter_key_name).expect("Could not load granter key.")
-            }, 
-            grantee_public_info.account,
-            Some(prost_types::Timestamp{seconds: toml.sender.delegate_expiration_unix_seconds, nanos: 0}), 
-            Coin {
-                denom: toml.sender.denom.parse().expect("Could not parse denom."),
-                amount: toml.sender.gas_fee.into(),
-            },
-            TxMetadata {
-                chain_id: self.config
-                    .chain_id
-                    .parse()
-                    .expect("Could not parse chain id"),
-                account_number: toml.sender.account_number,
-                sequence_number: toml.sender.sequence_number,
-                gas_limit: toml.sender.gas_limit,
-                timeout_height: toml.sender.timeout_height,
-                memo: toml.sender.memo.to_string(),
-            }
-        )
-        .await
+        let _response = match self
+            .grant_send_authorization(
+                Account {
+                    id: granter_public_info.account.clone(),
+                    public_key: granter_public_info.public_key,
+                    private_key: self
+                        .keyring
+                        .get_key(granter_key_name)
+                        .expect("Could not load granter key."),
+                },
+                grantee_public_info.account.clone(),
+                Some(prost_types::Timestamp {
+                    seconds: toml.sender.delegate_expiration_unix_seconds,
+                    nanos: 0,
+                }),
+                Coin {
+                    denom: toml.sender.denom.parse().expect("Could not parse denom."),
+                    amount: toml.sender.grant_gas_fee.into(),
+                },
+                TxMetadata {
+                    chain_id: self
+                        .config
+                        .chain_id
+                        .parse()
+                        .expect("Could not parse chain id"),
+                    account_number: toml.sender.grant_account_number,
+                    sequence_number: toml.sender.grant_sequence_number,
+                    gas_limit: toml.sender.grant_gas_limit,
+                    timeout_height: toml.sender.grant_timeout_height,
+                    memo: toml.sender.grant_memo.to_string(),
+                },
+            )
+            .await
         {
             Ok(res) => res,
             Err(err) => return Err(AutomatedTxHandlerError::TxBroadcast(err.to_string())),
         };
 
         // Build messages to delegate
-        let msgs: Vec<prost_types::Any> = Vec::new();
+        let mut msgs: Vec<prost_types::Any> = Vec::new();
+        let mut gas_fee = 0;
+        let mut gas_limit = 0;
 
         for tx in toml.transaction.iter() {
+            let recipient_account_id = match AccountId::from_str(tx.destination_account) {
+                Ok(res) => res,
+                Err(err) => return Err(AutomatedTxHandlerError::KeyHandling(err.to_string())),
+            };
 
+            msgs.push(
+                MsgSend {
+                    from_address: granter_public_info.account.clone(),
+                    to_address: recipient_account_id,
+                    amount: vec![
+                        Coin {
+                            denom: tx.denom.parse().expect("Could not parse denom."),
+                            amount: tx.amount.into(),
+                        };
+                        1
+                    ],
+                }
+                .to_any()
+                .expect("Could not serialize msg."),
+            );
 
-            
+            gas_fee += tx.gas_fee;
+            gas_limit += tx.gas_limit;
         }
 
         // Send Msg Exec from grantee
-
-
+        let response = match self
+            .execute_authorized_tx(
+                Account {
+                    id: grantee_public_info.account.clone(),
+                    public_key: grantee_public_info.public_key,
+                    private_key: self
+                        .keyring
+                        .get_key(grantee_key_name)
+                        .expect("Could not load grantee key."),
+                },
+                msgs,
+                Coin {
+                    denom: toml.sender.denom.parse().expect("Could not parse denom."),
+                    amount: gas_fee.into(),
+                },
+                TxMetadata {
+                    chain_id: self
+                        .config
+                        .chain_id
+                        .parse()
+                        .expect("Could not parse chain id"),
+                    // TODO: replace account and sequence numbers with pulled numbers from Account type once implemented in https://github.com/PeggyJV/ocular/issues/25
+                    account_number: toml.sender.exec_account_number,
+                    sequence_number: toml.sender.exec_sequence_number,
+                    gas_limit,
+                    timeout_height: toml.sender.exec_timeout_height,
+                    memo: toml.sender.exec_memo.to_string(),
+                },
+            )
+            .await
+        {
+            Ok(res) => res,
+            Err(err) => return Err(AutomatedTxHandlerError::TxBroadcast(err.to_string())),
+        };
 
         Ok(DelegatedTransactionOutput {
-            grantee_mnemonic: grantee_mnemonic,
-            response: Vec::new(),
+            grantee_mnemonic,
+            response,
         })
     }
 }
@@ -232,18 +295,25 @@ mod tests {
 
         let source_key_path = test_dir.clone() + &String::from("/Zeus.pem");
         file.sender.source_private_key_path = source_key_path.as_str();
-        file.sender.delegate_expiration_unix_seconds = i64::try_from(SystemTime::now()
-            .duration_since(SystemTime::UNIX_EPOCH)
-            .unwrap()
-            .as_secs()
-            + 50000).expect("Could not convert to i64");
-        file.sender.denom = "usomm"; 
-        file.sender.account_number = 1;
-        file.sender.sequence_number = 0;
-        file.sender.gas_fee = 50_000;
-        file.sender.gas_limit = 100_000;
-        file.sender.timeout_height = 9001u32;
-        file.sender.memo = "Delegation memo";
+        file.sender.delegate_expiration_unix_seconds = i64::try_from(
+            SystemTime::now()
+                .duration_since(SystemTime::UNIX_EPOCH)
+                .unwrap()
+                .as_secs()
+                + 50000,
+        )
+        .expect("Could not convert to i64");
+        file.sender.denom = "usomm";
+        file.sender.grant_account_number = 1;
+        file.sender.grant_sequence_number = 0;
+        file.sender.grant_gas_fee = 50_000;
+        file.sender.grant_gas_limit = 100_000;
+        file.sender.grant_timeout_height = 9001u32;
+        file.sender.grant_memo = "Delegation memo";
+        file.sender.exec_account_number = 1;
+        file.sender.exec_sequence_number = 0;
+        file.sender.exec_timeout_height = 9001u32;
+        file.sender.exec_memo = "Delegation memo";
 
         // Make some transactions
         chain_client
@@ -255,17 +325,13 @@ mod tests {
             .get_public_key_and_address("Dionysus", "somm")
             .expect("Could not get public key.");
 
-        file.transaction.push(Transaction {
+        file.transaction.push(DelegateTransaction {
             name: "Dionysus",
             destination_account: pub_key_output.account.as_ref(),
             amount: 50u64,
             denom: "usomm",
-            account_number: 1,
-            sequence_number: 0,
             gas_fee: 50_000,
             gas_limit: 100_000,
-            timeout_height: 9001u32,
-            memo: "Don't spend it all in one place.",
         });
 
         chain_client
@@ -277,21 +343,17 @@ mod tests {
             .get_public_key_and_address("Silenus", "somm")
             .expect("Could not get public key.");
 
-        file.transaction.push(Transaction {
+        file.transaction.push(DelegateTransaction {
             name: "Silenus",
             destination_account: pub_key_output.account.as_ref(),
             amount: 500u64,
             denom: "usomm",
-            account_number: 1,
-            sequence_number: 0,
             gas_fee: 50_000,
             gas_limit: 100_000,
-            timeout_height: 9001u32,
-            memo: "Lorem Ipsum",
         });
 
         let toml_string = toml::to_string(&file).expect("Could not encode toml value.");
-        let toml_save_path = /*test_dir.clone()*/ String::from("/Users/phil/Desktop/peggyJV/ocular") + &String::from("/test_file.toml");
+        let toml_save_path = test_dir.clone() + &String::from("/test_file.toml");
 
         dbg!(&toml_string);
         dbg!(&toml_save_path);
@@ -299,20 +361,22 @@ mod tests {
         fs::write(&toml_save_path, toml_string).expect("Could not write to file.");
 
         // Execute on toml; expect tx error, but ONLY tx error, everything else should work fine. Tx fails b/c this is unit test so no network connectivity
-        dbg!(
-            chain_client
-                .execute_delegated_transacton_toml(toml_save_path)
-                .await
-                .unwrap()
-                .response
-        );
-        /*
         let err = chain_client
             .execute_delegated_transacton_toml(toml_save_path)
             .await
             .err()
             .unwrap()
             .to_string();
-            */
+
+        // Expect Tx error b/c unit test has no network connectivity; do string matching b/c exact error type matching is messy
+        assert_eq!(&err[..45], "error sending tx: error broadcasting message:");
+
+        // Clean up dir + toml
+        std::fs::remove_dir_all(test_dir)
+            .expect(&format!("Failed to delete test directory {}", test_dir));
+
+        // Assert deleted
+        let result = std::panic::catch_unwind(|| std::fs::metadata(test_dir).unwrap());
+        assert!(result.is_err());
     }
 }
