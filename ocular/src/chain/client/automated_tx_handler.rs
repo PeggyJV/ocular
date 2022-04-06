@@ -34,11 +34,11 @@ pub struct DelegatedToml<'a> {
 pub struct DelegatedSender<'a> {
     pub source_private_key_path: &'a str,
     pub delegate_expiration_unix_seconds: i64,
-
+    // Feegrant data
     pub fee_grant_expiration_unix_seconds: i64,
     pub fee_grant_amount: u64,
     pub denom: &'a str,
-
+    // MsgGrant data
     // TODO: Remove account and sequence numbers. Get automatically from account type via https://github.com/PeggyJV/ocular/issues/25
     pub grant_account_number: u64,
     pub grant_sequence_number: u64,
@@ -46,7 +46,7 @@ pub struct DelegatedSender<'a> {
     pub grant_gas_limit: u64,
     pub grant_timeout_height: u32,
     pub grant_memo: &'a str,
-
+    // MsgExec data    
     pub exec_gas_fee: u64,
     pub exec_gas_limit: u64,
     pub exec_timeout_height: u32,
