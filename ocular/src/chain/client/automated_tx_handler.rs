@@ -53,7 +53,6 @@ pub struct DelegatedSender<'a> {
     pub exec_memo: &'a str,
 }
 
-// TODO: Auto fetch account_number & sequence_number (& potentially gas limit) from account type once https://github.com/PeggyJV/ocular/issues/25 implemented
 #[derive(Debug, Default, Serialize, Deserialize)]
 pub struct DelegateTransaction<'a> {
     pub name: &'a str,
@@ -68,7 +67,7 @@ pub struct DelegatedTransactionOutput {
 }
 
 impl ChainClient {
-    // Creates a brand new key
+    // Creates a brand new temporary key for delegated tx workflows.
     pub async fn execute_delegated_transacton_toml(
         &mut self,
         toml_path: String,
