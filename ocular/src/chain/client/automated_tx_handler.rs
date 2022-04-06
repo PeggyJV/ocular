@@ -46,7 +46,7 @@ pub struct DelegatedSender<'a> {
     pub grant_gas_limit: u64,
     pub grant_timeout_height: u32,
     pub grant_memo: &'a str,
-    // MsgExec data    
+    // MsgExec data
     pub exec_gas_fee: u64,
     pub exec_gas_limit: u64,
     pub exec_timeout_height: u32,

@@ -293,17 +293,6 @@ fn local_single_node_chain_test() {
     let toml_string = toml::to_string(&file).expect("Could not encode toml value.");
     std::fs::write(&toml_path, toml_string).expect("Could not write to file.");
 
-    let automated_delegated_msg_send = MsgSend {
-        from_address: sender_account_id.clone(),
-        to_address: recipient_account_id.clone(),
-        amount: vec![amount.clone()],
-    }
-    .to_any()
-    .expect("Could not serlialize msg.");
-
-    let mut msgs: Vec<::prost_types::Any> = Vec::new();
-    msgs.push(automated_delegated_msg_send);
-
     dbg!(&sender_account_id.to_string());
 
     let docker_args = [
@@ -600,7 +589,7 @@ fn local_single_node_chain_test() {
                         private_key: grantee_private_key,
                     },
                     msgs_to_send,
-                    tx_metadata,
+                    tx_metadata.clone(),
                     None,
                     None
                 )
@@ -646,7 +635,71 @@ fn local_single_node_chain_test() {
                     actual_automated_delegated_commit_response.response.deliver_tx
                 );
             }
-        })
+
+            // Recreate delegate key from mnemonic to comapre expected and actual msg broadcast
+            let _response = chain_client.keyring.import_cosmos_key("delegate", actual_automated_delegated_commit_response.grantee_mnemonic.phrase(), "", true).expect("Could not import key.");
+            let grantee_private_key = chain_client.keyring.get_key("delegate").expect("Could not get private key");
+            let grantee_pub_info = chain_client.keyring.get_public_key_and_address("delegate", ACCOUNT_PREFIX).expect("Could not get public key info.");
+            let grantee_acct = Account {
+                id: grantee_pub_info.account,
+                public_key: grantee_pub_info.public_key,
+                private_key: grantee_private_key,
+            };
+
+            let automated_delegated_msg_send = MsgSend {
+                from_address: sender_account_id.clone(),
+                to_address: recipient_account_id.clone(),
+                amount: vec![Coin{amount: 1u8.into(), denom: DENOM.parse().expect("Could not parse")}],
+            }
+            .to_any()
+            .expect("Could not serlialize msg.");
+            let mut msgs: Vec<::prost_types::Any> = Vec::new();
+            msgs.push(automated_delegated_msg_send);
+
+            let msg = MsgExec {
+                grantee: grantee_acct.id.to_string(),
+                msgs: msgs,
+            };
+
+            let msg_any = prost_types::Any {
+                type_url: String::from("/cosmos.authz.v1beta1.MsgExec"),
+                value: msg.encode_to_vec(),
+            };
+            let expected_automated_delegated_tx_body = tx::Body::new(vec![msg_any], MEMO, timeout_height);
+            let expected_automated_delegated_auth_info =
+                SignerInfo::single_direct(Some(grantee_acct.public_key), 0)
+                    .auth_info(Fee {
+                        amount: vec![Coin{amount: file.sender.grant_gas_fee.into(), denom: DENOM.parse().expect("Could not parse")}],
+                        gas_limit: file.sender.grant_gas_limit.into(),
+                        payer: Some(grantee_acct.id.clone()),
+                        granter: Some(grantee_acct.id.clone()),
+                    });
+
+            let expected_automated_delegated_sign_doc = SignDoc::new(
+                &expected_automated_delegated_tx_body,
+                &expected_automated_delegated_auth_info,
+                &chain_id,
+                10,
+            )
+            .expect("Could not parse sign doc.");
+
+            let _expected_tx_raw = expected_automated_delegated_sign_doc
+                .sign(&grantee_acct.private_key)
+                .expect("Could not parse tx.");
+            let actual_automated_delegated = dev::poll_for_tx(
+                &rpc_client,
+                actual_automated_delegated_commit_response.response.hash,
+            )
+            .await;
+            assert_eq!(
+                &expected_automated_delegated_tx_body,
+                &actual_automated_delegated.body
+            );
+            assert_eq!(
+                &expected_automated_delegated_auth_info,
+                &actual_automated_delegated.auth_info
+            );
+        });
     });
 }
 
