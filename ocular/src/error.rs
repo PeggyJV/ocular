@@ -98,15 +98,14 @@ pub enum KeyStoreError {
 pub enum TxError {
     #[error("serialization error: {0}")]
     SerializationError(String),
-
     #[error("error converting types: {0}")]
     TypeConversionError(String),
-
     #[error("error signing message: {0}")]
     SigningError(String),
-
     #[error("error broadcasting message: {0}")]
     BroadcastError(String),
+    #[error("error logging response: {0}")]
+    Logging(String),
 }
 
 #[derive(Debug, Error)]

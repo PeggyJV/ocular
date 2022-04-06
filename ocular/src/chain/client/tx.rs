@@ -6,9 +6,17 @@ use cosmrs::{
     tx::{self, Fee, Msg, SignDoc, SignerInfo},
     AccountId, Coin,
 };
+use std::fs::File;
+use std::io::prelude::*;
+use std::os::unix::fs::PermissionsExt;
 use tendermint_rpc::endpoint::broadcast::tx_commit::Response;
 
 use super::ChainClient;
+
+/// Where tx logs are stored.
+const TX_LOGGING_DIR: &str = "/.ocular/logs/txs";
+/// Unix permissions for dir
+const TX_LOGGING_DIR_PERMISSIONS: u32 = 0o700;
 
 /// Metadata wrapper for transactions
 #[derive(Clone, Debug)]
@@ -71,10 +79,64 @@ impl ChainClient {
         };
 
         // Broadcast transaction
-        match tx_signed.broadcast_commit(&self.rpc_client).await {
-            Ok(response) => Ok(response),
-            Err(err) => Err(TxError::BroadcastError(err.to_string())),
+        let response = match tx_signed.broadcast_commit(&self.rpc_client).await {
+            Ok(response) => response,
+            Err(err) => return Err(TxError::BroadcastError(err.to_string())),
+        };
+
+        // Store tx in logs with timestamp id in ~/.ocular/logs/txs
+        let save_path = dirs::home_dir()
+            .unwrap()
+            .into_os_string()
+            .into_string()
+            .expect("Could not obtain home directory.")
+            + TX_LOGGING_DIR;
+
+        let save_file = save_path.clone()
+            + "/"
+            + &std::time::SystemTime::now()
+                .duration_since(std::time::SystemTime::UNIX_EPOCH)
+                .unwrap()
+                .as_secs()
+                .to_string()
+            + &std::time::SystemTime::now()
+                .duration_since(std::time::SystemTime::UNIX_EPOCH)
+                .unwrap()
+                .subsec_nanos()
+                .to_string()
+            + ".txt";
+
+        let st = std::path::Path::new(&save_path).metadata();
+
+        // Create dir if doesn't exist
+        if st.is_err() {
+            match std::fs::create_dir_all(&save_path) {
+                Ok(_res) => _res,
+                Err(err) => return Err(TxError::Logging(err.to_string())),
+            };
         }
+
+        #[cfg(unix)]
+        match std::fs::set_permissions(
+            &save_path,
+            std::fs::Permissions::from_mode(TX_LOGGING_DIR_PERMISSIONS),
+        ) {
+            Ok(_res) => _res,
+            Err(err) => return Err(TxError::Logging(err.to_string())),
+        };
+
+        let mut file = match File::create(save_file) {
+            Ok(res) => res,
+            Err(err) => return Err(TxError::Logging(err.to_string())),
+        };
+
+        match file.write_all(format!("{:#?}", response).as_bytes()) {
+            Ok(res) => res,
+            Err(err) => return Err(TxError::Logging(err.to_string())),
+        };
+
+        // Finally return.
+        Ok(response)
     }
 
     // TODO: Make this extensible to multisig and multicoin (or add new methods for that)
