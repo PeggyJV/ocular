@@ -251,15 +251,27 @@ fn local_single_node_chain_test() {
     )
     .expect("Could not convert to i64");
     file.sender.source_private_key_path = &granter_pem_path;
+
+    file.sender.fee_grant_expiration_unix_seconds = i64::try_from(
+        std::time::SystemTime::now()
+            .duration_since(std::time::SystemTime::UNIX_EPOCH)
+            .unwrap()
+            .as_secs()
+            + 50000,
+    )
+    .expect("Could not convert to i64");
+    file.sender.fee_grant_amount = 500_000;
     file.sender.denom = DENOM;
+
     file.sender.grant_account_number = SENDER_ACCOUNT_NUMBER;
     file.sender.grant_sequence_number = sequence_number + 3;
     file.sender.grant_gas_fee = 50_000;
-    file.sender.grant_gas_limit = 100_000;
+    file.sender.grant_gas_limit = 500_000;
     file.sender.grant_timeout_height = timeout_height.into();
     file.sender.grant_memo = MEMO;
-    file.sender.exec_account_number = 1;
-    file.sender.exec_sequence_number = sequence_number;
+
+    file.sender.exec_gas_fee = 50_000;
+    file.sender.exec_gas_limit = 500_000;
     file.sender.exec_timeout_height = timeout_height.into();
     file.sender.exec_memo = MEMO;
 
@@ -291,6 +303,8 @@ fn local_single_node_chain_test() {
 
     let mut msgs: Vec<::prost_types::Any> = Vec::new();
     msgs.push(automated_delegated_msg_send);
+
+    dbg!(&sender_account_id.to_string());
 
     let docker_args = [
         "-d",

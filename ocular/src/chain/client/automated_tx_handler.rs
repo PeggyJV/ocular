@@ -49,8 +49,6 @@ pub struct DelegatedSender<'a> {
 
     pub exec_gas_fee: u64,
     pub exec_gas_limit: u64,
-    pub exec_account_number: u64,
-    pub exec_sequence_number: u64,
     pub exec_timeout_height: u32,
     pub exec_memo: &'a str,
 }
@@ -126,7 +124,7 @@ impl ChainClient {
         };
 
         // Perform msg send grant
-        let _response = match self
+        let response = match self
             .grant_send_authorization(
                 Account {
                     id: granter_public_info.account.clone(),
@@ -164,8 +162,24 @@ impl ChainClient {
             Err(err) => return Err(AutomatedTxHandlerError::TxBroadcast(err.to_string())),
         };
 
+        dbg!(response.clone());
+
+        if response.check_tx.code.is_err() {
+            return Err(AutomatedTxHandlerError::TxBroadcast(format!(
+                "check_tx for msg grant failed: {:?}",
+                response.check_tx
+            )));
+        }
+
+        if response.deliver_tx.code.is_err() {
+            return Err(AutomatedTxHandlerError::TxBroadcast(format!(
+                "deliver_tx msg grant failed: {:?}",
+                response.deliver_tx
+            )));
+        }
+
         // Perform fee grant
-        let _response = match self
+        let response = match self
             .perform_basic_allowance_fee_grant(
                 Account {
                     id: granter_public_info.account.clone(),
@@ -206,6 +220,22 @@ impl ChainClient {
             Ok(res) => res,
             Err(err) => return Err(AutomatedTxHandlerError::TxBroadcast(err.to_string())),
         };
+
+        dbg!(response.clone());
+
+        if response.check_tx.code.is_err() {
+            return Err(AutomatedTxHandlerError::TxBroadcast(format!(
+                "check_tx for feegrant failed: {:?}",
+                response.check_tx
+            )));
+        }
+
+        if response.deliver_tx.code.is_err() {
+            return Err(AutomatedTxHandlerError::TxBroadcast(format!(
+                "deliver_tx for feegrant failed: {:?}",
+                response.deliver_tx
+            )));
+        }
 
         // Build messages to delegate
         let mut msgs: Vec<prost_types::Any> = Vec::new();
@@ -252,8 +282,8 @@ impl ChainClient {
                         .parse()
                         .expect("Could not parse chain id"),
                     // TODO: replace account and sequence numbers with pulled numbers from Account type once implemented in https://github.com/PeggyJV/ocular/issues/25
-                    account_number: toml.sender.exec_account_number,
-                    sequence_number: toml.sender.exec_sequence_number,
+                    account_number: 10,
+                    sequence_number: 0,
                     gas_fee: Coin {
                         denom: toml.sender.denom.parse().expect("Could not parse denom."),
                         amount: toml.sender.exec_gas_fee.into(),
@@ -262,7 +292,7 @@ impl ChainClient {
                     timeout_height: toml.sender.exec_timeout_height,
                     memo: toml.sender.exec_memo.to_string(),
                 },
-                Some(granter_public_info.account.clone()),
+                Some(grantee_public_info.account.clone()),
                 Some(granter_public_info.account.clone()),
             )
             .await
@@ -270,6 +300,8 @@ impl ChainClient {
             Ok(res) => res,
             Err(err) => return Err(AutomatedTxHandlerError::TxBroadcast(err.to_string())),
         };
+
+        dbg!(response.clone());
 
         Ok(DelegatedTransactionOutput {
             grantee_mnemonic,
@@ -366,8 +398,6 @@ mod tests {
         file.sender.grant_timeout_height = 9001u32;
         file.sender.grant_memo = "Delegation memo";
 
-        file.sender.exec_account_number = 1;
-        file.sender.exec_sequence_number = 0;
         file.sender.exec_timeout_height = 9001u32;
         file.sender.exec_memo = "Delegation memo";
 
