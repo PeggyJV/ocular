@@ -1,7 +1,7 @@
 use crate::{
     chain::client::tx::{Account, TxMetadata},
     cosmos_modules::*,
-    error::TxError,
+    error::{TxError,ChainClientError, GrpcError},
 };
 use cosmos_sdk_proto::cosmos::{
     authz::v1beta1::{GenericAuthorization, MsgExec, MsgGrant, MsgRevoke},
@@ -9,12 +9,43 @@ use cosmos_sdk_proto::cosmos::{
 };
 use prost::Message;
 use tendermint_rpc::endpoint::broadcast::tx_commit::Response;
-
 use cosmrs::{tx, AccountId};
+use tonic::transport::Channel;
 
 use super::ChainClient;
 
+pub type AuthzQueryClient = authz::query_client::QueryClient<Channel>;
+
 impl ChainClient {
+    // Authz queries
+    pub async fn get_authz_query_client(&self) -> Result<AuthzQueryClient, ChainClientError> {
+        self.check_for_grpc_address()?;
+
+        AuthzQueryClient::connect(self.config.grpc_address.clone())
+            .await
+            .map_err(|e| GrpcError::Connection(e).into())
+    }
+
+    // Query for a specific msg grant
+    pub async fn query_authz_grant(&self, granter: &str, grantee: &str, msg_type_url: &str) -> Result<authz::QueryGrantsResponse, ChainClientError> {
+        let mut query_client = self.get_authz_query_client().await?;
+
+        let request = authz::QueryGrantsRequest {
+            granter: granter.to_string(),
+            grantee: grantee.to_string(),
+            msg_type_url: msg_type_url.to_string(),
+            // TODO: Support pagination if use case arises
+            pagination: None,
+        };
+
+        let response = query_client.grants(request)
+            .await
+            .map_err(GrpcError::Request)?
+            .into_inner();
+
+        Ok(response)
+    }
+
     // Grant Authorization
     // TODO: support other types of authorization grants other than GenericAuthorization for send messages.
     pub async fn grant_send_authorization(
@@ -169,3 +200,19 @@ impl ChainClient {
 }
 
 // Disclaimer on testing: Since the above commands inherently require chains to operate, testing is primarily deferred to integration tests in ocular/tests/single_node_chain_txs.rs
+
+#[cfg(test)]
+mod tests {
+    use crate::chain::{self, client::ChainClient};
+    use assay::assay;
+
+    #[assay]
+    async fn gets_authz_client() {
+        let client = ChainClient::new(chain::SOMMELIER).unwrap();
+
+        client
+            .get_authz_query_client()
+            .await
+            .expect("failed to get bank query client");
+    }
+}

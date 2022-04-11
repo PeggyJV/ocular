@@ -100,6 +100,11 @@ impl ChainClient {
             Err(err) => return Err(AutomatedTxHandlerError::KeyStore(err.to_string())),
         };
 
+
+        // Verify grant exists for grantee from granter for MsgSend
+        
+
+
         // Build messages to delegate
         let mut msgs: Vec<prost_types::Any> = Vec::new();
 
