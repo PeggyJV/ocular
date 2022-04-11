@@ -120,4 +120,8 @@ pub enum AutomatedTxHandlerError {
     TxBroadcast(String),
     #[error("keystore error: {0}")]
     KeyStore(String),
+    #[error("chain client error: {0}")]
+    ChainClient(String),
+    #[error("no valid unexpired authorization grants found for msg type: {0}")]
+    Authorization(String),
 }

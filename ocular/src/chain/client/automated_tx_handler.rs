@@ -18,8 +18,13 @@ use std::time::SystemTime;
 use std::{fs, path::Path, str::FromStr};
 use tendermint_rpc::endpoint::broadcast::tx_commit::Response;
 use uuid::Uuid;
+use prost::Message;
 
 use super::ChainClient;
+
+const MSG_SEND_URL: &str = "/cosmos.bank.v1beta1.MsgSend";
+const GENERIC_AUTHORIZATION_URL: &str = "/cosmos.authz.v1beta1.GenericAuthorization";
+const SEND_AUTHORIZATION_URL: &str = "/cosmos.bank.v1beta1.SendAuthorization";
 
 // Toml structs
 #[derive(Debug, Default, Serialize, Deserialize)]
@@ -102,7 +107,61 @@ impl ChainClient {
 
 
         // Verify grant exists for grantee from granter for MsgSend
-        
+        match self.query_authz_grant(granter_account_id.as_ref(), grantee_public_info.account.as_ref(), MSG_SEND_URL).await {
+            Ok(res) => {
+                let mut found = false;
+
+                for grant in res.grants {
+                    // Check expiration is valid (either None or at least 1 min of time remaining)
+                    if !grant.expiration.is_none() && grant.expiration.unwrap().seconds < i64::try_from(
+                        SystemTime::now()
+                            .duration_since(SystemTime::UNIX_EPOCH)
+                            .unwrap()
+                            .as_secs() + 60).expect("Could not convert system time to i64") {
+                        continue;
+                    }
+
+                    // Check grant type is valid now that expiration has been validated
+                    if grant.authorization.is_none() {
+                        continue;
+                    }
+
+                    match grant.authorization.as_ref().unwrap().type_url.as_str() {
+                        GENERIC_AUTHORIZATION_URL=> {
+                            let generic_authorization = cosmos_sdk_proto::cosmos::authz::v1beta1::GenericAuthorization::decode(&*grant.authorization.unwrap().value).expect("Could not decode GenericAuthorization.");
+
+                            if generic_authorization.msg.as_str() != MSG_SEND_URL {
+                                continue;
+                            }
+                        }
+                        SEND_AUTHORIZATION_URL => {
+                            // TODO check limit against tx sum
+
+
+
+                        }
+                        _ => continue
+                    }
+                    
+
+                    if true {
+                        continue
+                    }
+                    
+
+
+                    // If valid grant found exit
+                    found = true;
+                    break;
+                }
+
+                // If no valid grants found, return, otherwise it is implied a valid grant was found.
+                if !found {
+                    return Err(AutomatedTxHandlerError::Authorization(String::from(MSG_SEND_URL)));
+                }
+            },
+            Err(err) => return Err(AutomatedTxHandlerError::ChainClient(err.to_string())),
+        }
 
 
         // Build messages to delegate
