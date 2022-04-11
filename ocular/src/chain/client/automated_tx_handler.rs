@@ -32,25 +32,17 @@ pub struct DelegatedToml<'a> {
 
 #[derive(Debug, Default, Serialize, Deserialize)]
 pub struct DelegatedSender<'a> {
-    pub source_private_key_path: &'a str,
-    pub delegate_expiration_unix_seconds: i64,
-    // Feegrant data
-    pub fee_grant_expiration_unix_seconds: i64,
-    pub fee_grant_amount: u64,
+    pub grantee_private_key_path: &'a str,
+    // TODO: replace account and sequence numbers with pulled numbers from Account type once implemented in https://github.com/PeggyJV/ocular/issues/25
+    pub grantee_account_number: u64,
+    pub grantee_sequence_number: u64,
+    pub granter_account: &'a str,
     pub denom: &'a str,
-    // MsgGrant data
-    // TODO: Remove account and sequence numbers. Get automatically from account type via https://github.com/PeggyJV/ocular/issues/25
-    pub grant_account_number: u64,
-    pub grant_sequence_number: u64,
-    pub grant_gas_fee: u64,
-    pub grant_gas_limit: u64,
-    pub grant_timeout_height: u32,
-    pub grant_memo: &'a str,
     // MsgExec data
-    pub exec_gas_fee: u64,
-    pub exec_gas_limit: u64,
-    pub exec_timeout_height: u32,
-    pub exec_memo: &'a str,
+    pub gas_fee: u64,
+    pub gas_limit: u64,
+    pub timeout_height: u32,
+    pub memo: &'a str,
 }
 
 #[derive(Debug, Default, Serialize, Deserialize)]
@@ -60,18 +52,12 @@ pub struct DelegateTransaction<'a> {
     pub amount: u64,
 }
 
-// Return type for delegated tx workflow
-pub struct DelegatedTransactionOutput {
-    pub grantee_mnemonic: Mnemonic,
-    pub response: Response,
-}
-
 impl ChainClient {
     // Creates a brand new temporary key for delegated tx workflows.
     pub async fn execute_delegated_transacton_toml(
         &mut self,
         toml_path: String,
-    ) -> Result<DelegatedTransactionOutput, AutomatedTxHandlerError> {
+    ) -> Result<Response, AutomatedTxHandlerError> {
         let content = match fs::read_to_string(toml_path) {
             Ok(result) => result,
             Err(err) => {
@@ -88,29 +74,21 @@ impl ChainClient {
 
         dbg!(&toml);
 
-        let granter_key_name = &(String::from("granter") + &Uuid::new_v4().to_string());
+        // Convert granter info into cosmrs types
+        let granter_account_id = match AccountId::from_str(toml.sender.granter_account) {
+            Ok(res) => res,
+            Err(err) => return Err(AutomatedTxHandlerError::KeyHandling(err.to_string())),
+        };
+
+        // Add grantee to keyring & parse out relevant types
+        let grantee_key_name = &(String::from("grantee") + &Uuid::new_v4().to_string());
 
         match self.keyring.add_key_from_path(
-            granter_key_name,
-            toml.sender.source_private_key_path,
+            grantee_key_name,
+            toml.sender.grantee_private_key_path,
             false,
         ) {
             Ok(_res) => _res,
-            Err(err) => return Err(AutomatedTxHandlerError::KeyStore(err.to_string())),
-        };
-
-        let granter_public_info = match self
-            .keyring
-            .get_public_key_and_address(granter_key_name, &self.config.account_prefix)
-        {
-            Ok(res) => res,
-            Err(err) => return Err(AutomatedTxHandlerError::KeyStore(err.to_string())),
-        };
-
-        let grantee_key_name = &(String::from("grantee") + &Uuid::new_v4().to_string());
-
-        let grantee_mnemonic = match self.keyring.create_cosmos_key(grantee_key_name, "", false) {
-            Ok(res) => res,
             Err(err) => return Err(AutomatedTxHandlerError::KeyStore(err.to_string())),
         };
 
@@ -121,120 +99,6 @@ impl ChainClient {
             Ok(res) => res,
             Err(err) => return Err(AutomatedTxHandlerError::KeyStore(err.to_string())),
         };
-
-        // Perform msg send grant
-        let response = match self
-            .grant_send_authorization(
-                Account {
-                    id: granter_public_info.account.clone(),
-                    public_key: granter_public_info.public_key,
-                    private_key: self
-                        .keyring
-                        .get_key(granter_key_name)
-                        .expect("Could not load granter key."),
-                },
-                grantee_public_info.account.clone(),
-                Some(prost_types::Timestamp {
-                    seconds: toml.sender.delegate_expiration_unix_seconds,
-                    nanos: 0,
-                }),
-                TxMetadata {
-                    chain_id: self
-                        .config
-                        .chain_id
-                        .parse()
-                        .expect("Could not parse chain id"),
-                    account_number: toml.sender.grant_account_number,
-                    sequence_number: toml.sender.grant_sequence_number,
-                    gas_fee: Coin {
-                        denom: toml.sender.denom.parse().expect("Could not parse denom."),
-                        amount: toml.sender.grant_gas_fee.into(),
-                    },
-                    gas_limit: toml.sender.grant_gas_limit,
-                    timeout_height: toml.sender.grant_timeout_height,
-                    memo: toml.sender.grant_memo.to_string(),
-                },
-            )
-            .await
-        {
-            Ok(res) => res,
-            Err(err) => return Err(AutomatedTxHandlerError::TxBroadcast(err.to_string())),
-        };
-
-        dbg!(response.clone());
-
-        if response.check_tx.code.is_err() {
-            return Err(AutomatedTxHandlerError::TxBroadcast(format!(
-                "check_tx for msg grant failed: {:?}",
-                response.check_tx
-            )));
-        }
-
-        if response.deliver_tx.code.is_err() {
-            return Err(AutomatedTxHandlerError::TxBroadcast(format!(
-                "deliver_tx msg grant failed: {:?}",
-                response.deliver_tx
-            )));
-        }
-
-        // Perform fee grant
-        let response = match self
-            .perform_basic_allowance_fee_grant(
-                Account {
-                    id: granter_public_info.account.clone(),
-                    public_key: granter_public_info.public_key,
-                    private_key: self
-                        .keyring
-                        .get_key(granter_key_name)
-                        .expect("Could not load granter key."),
-                },
-                grantee_public_info.account.clone(),
-                Some(prost_types::Timestamp {
-                    seconds: toml.sender.fee_grant_expiration_unix_seconds,
-                    nanos: 0,
-                }),
-                cosmos_sdk_proto::cosmos::base::v1beta1::Coin {
-                    denom: toml.sender.denom.parse().expect("Could not parse denom."),
-                    amount: toml.sender.fee_grant_amount.to_string(),
-                },
-                TxMetadata {
-                    chain_id: self
-                        .config
-                        .chain_id
-                        .parse()
-                        .expect("Could not parse chain id"),
-                    account_number: toml.sender.grant_account_number,
-                    sequence_number: toml.sender.grant_sequence_number + 1,
-                    gas_fee: Coin {
-                        denom: toml.sender.denom.parse().expect("Could not parse denom."),
-                        amount: toml.sender.grant_gas_fee.into(),
-                    },
-                    gas_limit: toml.sender.grant_gas_limit,
-                    timeout_height: toml.sender.grant_timeout_height,
-                    memo: toml.sender.grant_memo.to_string(),
-                },
-            )
-            .await
-        {
-            Ok(res) => res,
-            Err(err) => return Err(AutomatedTxHandlerError::TxBroadcast(err.to_string())),
-        };
-
-        dbg!(response.clone());
-
-        if response.check_tx.code.is_err() {
-            return Err(AutomatedTxHandlerError::TxBroadcast(format!(
-                "check_tx for feegrant failed: {:?}",
-                response.check_tx
-            )));
-        }
-
-        if response.deliver_tx.code.is_err() {
-            return Err(AutomatedTxHandlerError::TxBroadcast(format!(
-                "deliver_tx for feegrant failed: {:?}",
-                response.deliver_tx
-            )));
-        }
 
         // Build messages to delegate
         let mut msgs: Vec<prost_types::Any> = Vec::new();
@@ -247,7 +111,7 @@ impl ChainClient {
 
             msgs.push(
                 MsgSend {
-                    from_address: granter_public_info.account.clone(),
+                    from_address: granter_account_id.clone(),
                     to_address: recipient_account_id,
                     amount: vec![
                         Coin {
@@ -280,19 +144,18 @@ impl ChainClient {
                         .chain_id
                         .parse()
                         .expect("Could not parse chain id"),
-                    // TODO: replace account and sequence numbers with pulled numbers from Account type once implemented in https://github.com/PeggyJV/ocular/issues/25
-                    account_number: 10,
-                    sequence_number: 0,
+                    account_number: toml.sender.grantee_account_number,
+                    sequence_number: toml.sender.grantee_sequence_number,
                     gas_fee: Coin {
                         denom: toml.sender.denom.parse().expect("Could not parse denom."),
-                        amount: toml.sender.exec_gas_fee.into(),
+                        amount: toml.sender.gas_fee.into(),
                     },
-                    gas_limit: toml.sender.exec_gas_limit,
-                    timeout_height: toml.sender.exec_timeout_height,
-                    memo: toml.sender.exec_memo.to_string(),
+                    gas_limit: toml.sender.gas_limit,
+                    timeout_height: toml.sender.timeout_height,
+                    memo: toml.sender.memo.to_string(),
                 },
-                Some(grantee_public_info.account.clone()),
-                Some(granter_public_info.account.clone()),
+                None,
+                None,
             )
             .await
         {
@@ -302,10 +165,7 @@ impl ChainClient {
 
         dbg!(response.clone());
 
-        Ok(DelegatedTransactionOutput {
-            grantee_mnemonic,
-            response,
-        })
+        Ok(response)
     }
 }
 
