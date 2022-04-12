@@ -179,10 +179,6 @@ impl ChainClient {
                             _ => continue,
                         }
 
-                        if true {
-                            continue;
-                        }
-
                         // If valid grant found exit
                         found = true;
                         break;
