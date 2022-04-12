@@ -214,11 +214,11 @@ mod tests {
 
     #[assay]
     async fn gets_authz_client() {
-        let client = ChainClient::new(chain::SOMMELIER).unwrap();
+        let client = ChainClient::new(chain::COSMOSHUB).unwrap();
 
         client
             .get_authz_query_client()
             .await
-            .expect("failed to get bank query client");
+            .expect("failed to get authz query client");
     }
 }

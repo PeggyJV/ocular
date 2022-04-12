@@ -62,6 +62,7 @@ impl ChainClient {
     pub async fn execute_delegated_transacton_toml(
         &mut self,
         toml_path: String,
+        verify_msg_grant: bool
     ) -> Result<Response, AutomatedTxHandlerError> {
         let content = match fs::read_to_string(toml_path) {
             Ok(result) => result,
@@ -105,95 +106,97 @@ impl ChainClient {
             Err(err) => return Err(AutomatedTxHandlerError::KeyStore(err.to_string())),
         };
 
-        // Verify grant exists for grantee from granter for MsgSend
-        match self
-            .query_authz_grant(
-                granter_account_id.as_ref(),
-                grantee_public_info.account.as_ref(),
-                MSG_SEND_URL,
-            )
-            .await
-        {
-            Ok(res) => {
-                let mut found = false;
+        if verify_msg_grant {
+            // Verify grant exists for grantee from granter for MsgSend
+            match self
+                .query_authz_grant(
+                    granter_account_id.as_ref(),
+                    grantee_public_info.account.as_ref(),
+                    MSG_SEND_URL,
+                )
+                .await
+            {
+                Ok(res) => {
+                    let mut found = false;
 
-                // Get total tx amount in case we find SendAuthorization so that we can verify grant can satisfy tx's
-                let mut tx_amt_total = 0;
-                for tx in toml.transaction.iter() {
-                    tx_amt_total += tx.amount;
-                }
-
-                for grant in res.grants {
-                    // Check expiration is valid (either None or at least 1 min of time remaining)
-                    if grant.expiration.is_some()
-                        && grant.expiration.unwrap().seconds
-                            < i64::try_from(
-                                SystemTime::now()
-                                    .duration_since(SystemTime::UNIX_EPOCH)
-                                    .unwrap()
-                                    .as_secs()
-                                    + 60,
-                            )
-                            .expect("Could not convert system time to i64")
-                    {
-                        continue;
+                    // Get total tx amount in case we find SendAuthorization so that we can verify grant can satisfy tx's
+                    let mut tx_amt_total = 0;
+                    for tx in toml.transaction.iter() {
+                        tx_amt_total += tx.amount;
                     }
 
-                    // Check grant type is valid now that expiration has been validated
-                    if grant.authorization.is_none() {
-                        continue;
-                    }
-
-                    match grant.authorization.as_ref().unwrap().type_url.as_str() {
-                        GENERIC_AUTHORIZATION_URL => {
-                            let generic_authorization = cosmos_sdk_proto::cosmos::authz::v1beta1::GenericAuthorization::decode(&*grant.authorization.unwrap().value).expect("Could not decode GenericAuthorization.");
-
-                            if generic_authorization.msg.as_str() != MSG_SEND_URL {
-                                continue;
-                            }
-                        }
-                        SEND_AUTHORIZATION_URL => {
-                            // TODO check limit against tx sum
-                            let send_authorization =
-                                cosmos_sdk_proto::cosmos::bank::v1beta1::SendAuthorization::decode(
-                                    &*grant.authorization.unwrap().value,
+                    for grant in res.grants {
+                        // Check expiration is valid (either None or at least 1 min of time remaining)
+                        if grant.expiration.is_some()
+                            && grant.expiration.unwrap().seconds
+                                < i64::try_from(
+                                    SystemTime::now()
+                                        .duration_since(SystemTime::UNIX_EPOCH)
+                                        .unwrap()
+                                        .as_secs()
+                                        + 60,
                                 )
-                                .expect("Could not decode SendAuthorization.");
+                                .expect("Could not convert system time to i64")
+                        {
+                            continue;
+                        }
 
-                            // Calculate total spend limit
-                            // Note: this doesn't mean tx is definitively valid, its possible the spend limit is partially fulfilled already, this is just a rough sanity check.
-                            let mut total_spend_limit = 0;
+                        // Check grant type is valid now that expiration has been validated
+                        if grant.authorization.is_none() {
+                            continue;
+                        }
 
-                            for coin in send_authorization.spend_limit {
-                                if coin.denom.as_str() == toml.sender.denom {
-                                    total_spend_limit += coin.amount.parse::<u64>().unwrap();
+                        match grant.authorization.as_ref().unwrap().type_url.as_str() {
+                            GENERIC_AUTHORIZATION_URL => {
+                                let generic_authorization = cosmos_sdk_proto::cosmos::authz::v1beta1::GenericAuthorization::decode(&*grant.authorization.unwrap().value).expect("Could not decode GenericAuthorization.");
+
+                                if generic_authorization.msg.as_str() != MSG_SEND_URL {
+                                    continue;
                                 }
                             }
+                            SEND_AUTHORIZATION_URL => {
+                                // TODO check limit against tx sum
+                                let send_authorization =
+                                    cosmos_sdk_proto::cosmos::bank::v1beta1::SendAuthorization::decode(
+                                        &*grant.authorization.unwrap().value,
+                                    )
+                                    .expect("Could not decode SendAuthorization.");
 
-                            if total_spend_limit < tx_amt_total {
-                                continue;
+                                // Calculate total spend limit
+                                // Note: this doesn't mean tx is definitively valid, its possible the spend limit is partially fulfilled already, this is just a rough sanity check.
+                                let mut total_spend_limit = 0;
+
+                                for coin in send_authorization.spend_limit {
+                                    if coin.denom.as_str() == toml.sender.denom {
+                                        total_spend_limit += coin.amount.parse::<u64>().unwrap();
+                                    }
+                                }
+
+                                if total_spend_limit < tx_amt_total {
+                                    continue;
+                                }
                             }
+                            _ => continue,
                         }
-                        _ => continue,
+
+                        if true {
+                            continue;
+                        }
+
+                        // If valid grant found exit
+                        found = true;
+                        break;
                     }
 
-                    if true {
-                        continue;
+                    // If no valid grants found, return, otherwise it is implied a valid grant was found.
+                    if !found {
+                        return Err(AutomatedTxHandlerError::Authorization(String::from(
+                            MSG_SEND_URL,
+                        )));
                     }
-
-                    // If valid grant found exit
-                    found = true;
-                    break;
                 }
-
-                // If no valid grants found, return, otherwise it is implied a valid grant was found.
-                if !found {
-                    return Err(AutomatedTxHandlerError::Authorization(String::from(
-                        MSG_SEND_URL,
-                    )));
-                }
+                Err(err) => return Err(AutomatedTxHandlerError::ChainClient(err.to_string())),
             }
-            Err(err) => return Err(AutomatedTxHandlerError::ChainClient(err.to_string())),
         }
 
         // Build messages to delegate
@@ -311,7 +314,7 @@ mod tests {
 
         // Assert error if no toml exists
         assert!(chain_client
-            .execute_delegated_transacton_toml(String::from("toml_path"))
+            .execute_delegated_transacton_toml(String::from("toml_path"), false)
             .await
             .is_err());
 
@@ -389,14 +392,14 @@ mod tests {
 
         // Execute on toml; expect tx error, but ONLY tx error, everything else should work fine. Tx fails b/c this is unit test so no network connectivity
         let err = chain_client
-            .execute_delegated_transacton_toml(toml_save_path)
+            .execute_delegated_transacton_toml(toml_save_path, false)
             .await
             .err()
             .unwrap()
             .to_string();
 
         // Expect Tx error b/c unit test has no network connectivity; do string matching b/c exact error type matching is messy
-        assert_eq!(err, "chain client error: transport error");
+        assert_eq!(&err[..45], "error sending tx: error broadcasting message:");
 
         // Clean up dir + toml
         std::fs::remove_dir_all(test_dir)
