@@ -37,7 +37,7 @@ const RPC_PORT: u16 = 26657;
 
 /// Expected account numbers
 const SENDER_ACCOUNT_NUMBER: AccountNumber = 1;
-const RECIPIENT_ACCOUNT_NUMBER: AccountNumber = 9;
+const GRANTEE_ACCOUNT_NUMBER: AccountNumber = 10;
 
 /// Bech32 prefix for an account
 const ACCOUNT_PREFIX: &str = "cosmos";
@@ -104,6 +104,10 @@ fn local_single_node_chain_test() {
     let recipient_account_id = recipient_public_key
         .account_id(ACCOUNT_PREFIX)
         .expect("Could not create account id.");
+
+    let delegate_mnemonic = temp_ring
+        .create_cosmos_key("test_only_delegate_key_override_safe", "", true)
+        .expect("Could not create key");
 
     let grantee_private_key = temp_ring.get_key("test_only_delegate_key_override_safe").expect("Could not get private key");
     let grantee_pub_info = temp_ring.get_public_key_and_address("test_only_delegate_key_override_safe", ACCOUNT_PREFIX).expect("Could not get public key info.");
@@ -236,16 +240,12 @@ fn local_single_node_chain_test() {
         &expected_msg_exec_body,
         &expected_msg_exec_auth_info,
         &chain_id,
-        RECIPIENT_ACCOUNT_NUMBER,
+        GRANTEE_ACCOUNT_NUMBER,
     )
     .expect("Could not parse sign doc.");
     let _expected_msg_exec_raw = expected_msg_exec_sign_doc.sign(&sender_private_key);
 
     // Automated tx handler delegated workflow
-    let delegate_mnemonic = temp_ring
-        .create_cosmos_key("test_only_delegate_key_override_safe", "", true)
-        .expect("Could not create key");
-
     let grantee_pem_path = dirs::home_dir()
         .unwrap()
         .into_os_string()
@@ -260,7 +260,7 @@ fn local_single_node_chain_test() {
     file.sender.granter_account = sender_account_id.as_ref();
     file.sender.denom = DENOM;
 
-    file.sender.grantee_account_number = RECIPIENT_ACCOUNT_NUMBER;
+    file.sender.grantee_account_number = GRANTEE_ACCOUNT_NUMBER;
     file.sender.grantee_sequence_number = sequence_number;
     file.sender.gas_fee = 50_000;
     file.sender.gas_limit = 500_000;
@@ -319,7 +319,7 @@ fn local_single_node_chain_test() {
         &expected_automated_delegated_tx_body,
         &expected_automated_delegated_auth_info,
         &chain_id,
-        10,
+        GRANTEE_ACCOUNT_NUMBER,
     )
     .expect("Could not parse sign doc.");
 
@@ -478,7 +478,7 @@ fn local_single_node_chain_test() {
 
             let tx_metadata = TxMetadata {
                 chain_id: chain_id.clone(),
-                account_number: RECIPIENT_ACCOUNT_NUMBER,
+                account_number: GRANTEE_ACCOUNT_NUMBER,
                 sequence_number: sequence_number,
                 gas_fee: amount.clone(),
                 gas_limit: gas,
@@ -637,7 +637,7 @@ fn local_single_node_chain_test() {
 
             let tx_metadata = TxMetadata {
                 chain_id: chain_id.clone(),
-                account_number: RECIPIENT_ACCOUNT_NUMBER,
+                account_number: GRANTEE_ACCOUNT_NUMBER,
                 sequence_number: sequence_number + 1,
                 gas_fee: amount.clone(),
                 gas_limit: gas,
