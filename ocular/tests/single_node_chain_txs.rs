@@ -215,7 +215,7 @@ fn local_single_node_chain_test() {
     msgs_to_execute.push(
         MsgSend {
             from_address: sender_account_id.clone(),
-            to_address: recipient_account_id.clone(),
+            to_address: ad_hoc_acct.id.clone(),
             amount: vec![amount.clone()],
         }
         .to_any()
@@ -527,6 +527,7 @@ fn local_single_node_chain_test() {
 
             let actual_msg_exec =
                 dev::poll_for_tx(&rpc_client, actual_msg_exec_commit_response.hash).await;
+
             assert_eq!(&expected_msg_exec_body, &actual_msg_exec.body);
             assert_eq!(&expected_msg_exec_auth_info, &actual_msg_exec.auth_info);
 
@@ -648,7 +649,7 @@ fn local_single_node_chain_test() {
             msgs_to_send.push(
                 MsgSend {
                     from_address: sender_account_id.clone(),
-                    to_address: recipient_account_id.clone(),
+                    to_address: ad_hoc_acct.id.clone(),
                     amount: vec![amount.clone()],
                 }
                 .to_any()
