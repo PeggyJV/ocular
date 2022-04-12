@@ -1,15 +1,15 @@
 use crate::{
     chain::client::tx::{Account, TxMetadata},
     cosmos_modules::*,
-    error::{TxError,ChainClientError, GrpcError},
+    error::{ChainClientError, GrpcError, TxError},
 };
 use cosmos_sdk_proto::cosmos::{
     authz::v1beta1::{GenericAuthorization, MsgExec, MsgGrant, MsgRevoke},
     feegrant::v1beta1::{BasicAllowance, MsgGrantAllowance},
 };
+use cosmrs::{tx, AccountId};
 use prost::Message;
 use tendermint_rpc::endpoint::broadcast::tx_commit::Response;
-use cosmrs::{tx, AccountId};
 use tonic::transport::Channel;
 
 use super::ChainClient;
@@ -27,7 +27,12 @@ impl ChainClient {
     }
 
     // Query for a specific msg grant
-    pub async fn query_authz_grant(&self, granter: &str, grantee: &str, msg_type_url: &str) -> Result<authz::QueryGrantsResponse, ChainClientError> {
+    pub async fn query_authz_grant(
+        &self,
+        granter: &str,
+        grantee: &str,
+        msg_type_url: &str,
+    ) -> Result<authz::QueryGrantsResponse, ChainClientError> {
         let mut query_client = self.get_authz_query_client().await?;
 
         let request = authz::QueryGrantsRequest {
@@ -38,7 +43,8 @@ impl ChainClient {
             pagination: None,
         };
 
-        let response = query_client.grants(request)
+        let response = query_client
+            .grants(request)
             .await
             .map_err(GrpcError::Request)?
             .into_inner();

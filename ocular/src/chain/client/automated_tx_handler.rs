@@ -13,12 +13,12 @@ use crate::{
 use bip32::Mnemonic;
 use cosmrs::{bank::MsgSend, rpc, tx::Msg, AccountId, Coin};
 
+use prost::Message;
 use serde::{Deserialize, Serialize};
 use std::time::SystemTime;
 use std::{fs, path::Path, str::FromStr};
 use tendermint_rpc::endpoint::broadcast::tx_commit::Response;
 use uuid::Uuid;
-use prost::Message;
 
 use super::ChainClient;
 
@@ -105,19 +105,37 @@ impl ChainClient {
             Err(err) => return Err(AutomatedTxHandlerError::KeyStore(err.to_string())),
         };
 
-
         // Verify grant exists for grantee from granter for MsgSend
-        match self.query_authz_grant(granter_account_id.as_ref(), grantee_public_info.account.as_ref(), MSG_SEND_URL).await {
+        match self
+            .query_authz_grant(
+                granter_account_id.as_ref(),
+                grantee_public_info.account.as_ref(),
+                MSG_SEND_URL,
+            )
+            .await
+        {
             Ok(res) => {
                 let mut found = false;
 
+                // Get total tx amount in case we find SendAuthorization so that we can verify grant can satisfy tx's
+                let mut tx_amt_total = 0;
+                for tx in toml.transaction.iter() {
+                    tx_amt_total += tx.amount;
+                }
+
                 for grant in res.grants {
                     // Check expiration is valid (either None or at least 1 min of time remaining)
-                    if !grant.expiration.is_none() && grant.expiration.unwrap().seconds < i64::try_from(
-                        SystemTime::now()
-                            .duration_since(SystemTime::UNIX_EPOCH)
-                            .unwrap()
-                            .as_secs() + 60).expect("Could not convert system time to i64") {
+                    if grant.expiration.is_some()
+                        && grant.expiration.unwrap().seconds
+                            < i64::try_from(
+                                SystemTime::now()
+                                    .duration_since(SystemTime::UNIX_EPOCH)
+                                    .unwrap()
+                                    .as_secs()
+                                    + 60,
+                            )
+                            .expect("Could not convert system time to i64")
+                    {
                         continue;
                     }
 
@@ -127,7 +145,7 @@ impl ChainClient {
                     }
 
                     match grant.authorization.as_ref().unwrap().type_url.as_str() {
-                        GENERIC_AUTHORIZATION_URL=> {
+                        GENERIC_AUTHORIZATION_URL => {
                             let generic_authorization = cosmos_sdk_proto::cosmos::authz::v1beta1::GenericAuthorization::decode(&*grant.authorization.unwrap().value).expect("Could not decode GenericAuthorization.");
 
                             if generic_authorization.msg.as_str() != MSG_SEND_URL {
@@ -136,19 +154,32 @@ impl ChainClient {
                         }
                         SEND_AUTHORIZATION_URL => {
                             // TODO check limit against tx sum
+                            let send_authorization =
+                                cosmos_sdk_proto::cosmos::bank::v1beta1::SendAuthorization::decode(
+                                    &*grant.authorization.unwrap().value,
+                                )
+                                .expect("Could not decode SendAuthorization.");
 
+                            // Calculate total spend limit
+                            // Note: this doesn't mean tx is definitively valid, its possible the spend limit is partially fulfilled already, this is just a rough sanity check.
+                            let mut total_spend_limit = 0;
 
+                            for coin in send_authorization.spend_limit {
+                                if coin.denom.as_str() == toml.sender.denom {
+                                    total_spend_limit += coin.amount.parse::<u64>().unwrap();
+                                }
+                            }
 
+                            if total_spend_limit < tx_amt_total {
+                                continue;
+                            }
                         }
-                        _ => continue
+                        _ => continue,
                     }
-                    
 
                     if true {
-                        continue
+                        continue;
                     }
-                    
-
 
                     // If valid grant found exit
                     found = true;
@@ -157,12 +188,13 @@ impl ChainClient {
 
                 // If no valid grants found, return, otherwise it is implied a valid grant was found.
                 if !found {
-                    return Err(AutomatedTxHandlerError::Authorization(String::from(MSG_SEND_URL)));
+                    return Err(AutomatedTxHandlerError::Authorization(String::from(
+                        MSG_SEND_URL,
+                    )));
                 }
-            },
+            }
             Err(err) => return Err(AutomatedTxHandlerError::ChainClient(err.to_string())),
         }
-
 
         // Build messages to delegate
         let mut msgs: Vec<prost_types::Any> = Vec::new();
@@ -292,37 +324,29 @@ mod tests {
             .create_key("Zeus", "", None, true)
             .expect("Could not create signing key.");
 
-        let source_key_path = test_dir.clone() + &String::from("/Zeus.pem");
-        file.sender.source_private_key_path = source_key_path.as_str();
-        file.sender.delegate_expiration_unix_seconds = i64::try_from(
-            SystemTime::now()
-                .duration_since(SystemTime::UNIX_EPOCH)
-                .unwrap()
-                .as_secs()
-                + 50000,
-        )
-        .expect("Could not convert to i64");
+        chain_client
+            .keyring
+            .create_cosmos_key("test_granter_key", "", true)
+            .expect("Could not create key.");
 
-        file.sender.fee_grant_expiration_unix_seconds = i64::try_from(
-            SystemTime::now()
-                .duration_since(SystemTime::UNIX_EPOCH)
-                .unwrap()
-                .as_secs()
-                + 50000,
-        )
-        .expect("Could not convert to i64");
-        file.sender.fee_grant_amount = 500_000;
+        let source_key_path = test_dir.clone() + &String::from("/Zeus.pem");
+        file.sender.grantee_private_key_path = source_key_path.as_str();
+
+        let granter_key = chain_client
+            .keyring
+            .get_public_key_and_address("test_granter_key", "somm")
+            .expect("Could not find key.")
+            .account;
+        file.sender.granter_account = granter_key.as_ref();
+
         file.sender.denom = "usomm";
 
-        file.sender.grant_account_number = 1;
-        file.sender.grant_sequence_number = 0;
-        file.sender.grant_gas_fee = 50_000;
-        file.sender.grant_gas_limit = 100_000;
-        file.sender.grant_timeout_height = 9001u32;
-        file.sender.grant_memo = "Delegation memo";
-
-        file.sender.exec_timeout_height = 9001u32;
-        file.sender.exec_memo = "Delegation memo";
+        file.sender.grantee_account_number = 1;
+        file.sender.grantee_sequence_number = 0;
+        file.sender.gas_fee = 50_000;
+        file.sender.gas_limit = 100_000;
+        file.sender.timeout_height = 9001u32;
+        file.sender.memo = "Delegation memo";
 
         // Make some transactions
         chain_client
@@ -372,7 +396,7 @@ mod tests {
             .to_string();
 
         // Expect Tx error b/c unit test has no network connectivity; do string matching b/c exact error type matching is messy
-        assert_eq!(&err[..45], "error sending tx: error broadcasting message:");
+        assert_eq!(err, "chain client error: transport error");
 
         // Clean up dir + toml
         std::fs::remove_dir_all(test_dir)
