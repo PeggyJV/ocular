@@ -37,7 +37,7 @@ const RPC_PORT: u16 = 26657;
 
 /// Expected account numbers
 const SENDER_ACCOUNT_NUMBER: AccountNumber = 1;
-const GRANTEE_ACCOUNT_NUMBER: AccountNumber = 10;
+const RECIPIENT_ACCOUNT_NUMBER: AccountNumber = 9;
 
 /// Bech32 prefix for an account
 const ACCOUNT_PREFIX: &str = "cosmos";
@@ -105,17 +105,17 @@ fn local_single_node_chain_test() {
         .account_id(ACCOUNT_PREFIX)
         .expect("Could not create account id.");
 
-    let delegate_mnemonic = temp_ring
+    let _delegate_mnemonic = temp_ring
         .create_cosmos_key("test_only_delegate_key_override_safe", "", true)
         .expect("Could not create key");
 
-    let grantee_private_key = temp_ring.get_key("test_only_delegate_key_override_safe").expect("Could not get private key");
-    let grantee_pub_info = temp_ring.get_public_key_and_address("test_only_delegate_key_override_safe", ACCOUNT_PREFIX).expect("Could not get public key info.");
-    dbg!(grantee_pub_info.account.as_ref());
-    let grantee_acct = Account {
-        id: grantee_pub_info.account,
-        public_key: grantee_pub_info.public_key,
-        private_key: grantee_private_key,
+    let ad_hoc_private_key = temp_ring.get_key("test_only_delegate_key_override_safe").expect("Could not get private key");
+    let ad_hoc_pub_info = temp_ring.get_public_key_and_address("test_only_delegate_key_override_safe", ACCOUNT_PREFIX).expect("Could not get public key info.");
+    dbg!(ad_hoc_pub_info.account.as_ref());
+    let ad_hoc_acct = Account {
+        id: ad_hoc_pub_info.account,
+        public_key: ad_hoc_pub_info.public_key,
+        private_key: ad_hoc_private_key,
     };
 
     let amount = Coin {
@@ -151,7 +151,7 @@ fn local_single_node_chain_test() {
     // Expected MsgGrant
     let msg_grant = MsgGrant {
         granter: sender_account_id.to_string(),
-        grantee: grantee_acct.id.to_string(),
+        grantee: recipient_account_id.to_string(),
         grant: Some(authz::Grant {
             authorization: Some(prost_types::Any {
                 type_url: String::from("/cosmos.authz.v1beta1.GenericAuthorization"),
@@ -188,7 +188,7 @@ fn local_single_node_chain_test() {
     // Expected MsgRevoke
     let msg_revoke = MsgRevoke {
         granter: sender_account_id.to_string(),
-        grantee: grantee_acct.id.to_string(),
+        grantee: recipient_account_id.to_string(),
         msg_type_url: String::from("/cosmos.bank.v1beta1.MsgSend"),
     };
 
@@ -223,7 +223,7 @@ fn local_single_node_chain_test() {
     );
 
     let msg_exec = MsgExec {
-        grantee: grantee_acct.id.to_string(),
+        grantee: recipient_account_id.to_string(),
         msgs: msgs_to_execute,
     };
 
@@ -234,13 +234,13 @@ fn local_single_node_chain_test() {
 
     let expected_msg_exec_body = tx::Body::new(vec![msg_exec], MEMO, timeout_height);
     let expected_msg_exec_auth_info =
-        SignerInfo::single_direct(Some(grantee_acct.public_key), sequence_number)
+        SignerInfo::single_direct(Some(recipient_public_key), sequence_number)
             .auth_info(fee.clone());
     let expected_msg_exec_sign_doc = SignDoc::new(
         &expected_msg_exec_body,
         &expected_msg_exec_auth_info,
         &chain_id,
-        GRANTEE_ACCOUNT_NUMBER,
+        RECIPIENT_ACCOUNT_NUMBER,
     )
     .expect("Could not parse sign doc.");
     let _expected_msg_exec_raw = expected_msg_exec_sign_doc.sign(&sender_private_key);
@@ -252,7 +252,7 @@ fn local_single_node_chain_test() {
         .into_string()
         .unwrap()
         + "/.ocular/keys"
-        + "/test_only_delegate_key_override_safe.pem";
+        + "/test_only_key_number_2_override_safe.pem";
 
     let mut file = DelegatedToml::default();
 
@@ -260,7 +260,7 @@ fn local_single_node_chain_test() {
     file.sender.granter_account = sender_account_id.as_ref();
     file.sender.denom = DENOM;
 
-    file.sender.grantee_account_number = GRANTEE_ACCOUNT_NUMBER;
+    file.sender.grantee_account_number = RECIPIENT_ACCOUNT_NUMBER;
     file.sender.grantee_sequence_number = sequence_number;
     file.sender.gas_fee = 50_000;
     file.sender.gas_limit = 500_000;
@@ -269,7 +269,7 @@ fn local_single_node_chain_test() {
 
     file.transaction.push(DelegateTransaction {
         name: "A",
-        destination_account: recipient_account_id.as_ref(),
+        destination_account: ad_hoc_acct.id.as_ref(),
         amount: 1u8.into(),
     });
 
@@ -287,7 +287,7 @@ fn local_single_node_chain_test() {
 
     let automated_delegated_msg_send = MsgSend {
         from_address: sender_account_id.clone(),
-        to_address: recipient_account_id.clone(),
+        to_address: ad_hoc_acct.id.clone(),
         amount: vec![Coin{amount: 1u8.into(), denom: DENOM.parse().expect("Could not parse")}],
     }
     .to_any()
@@ -297,7 +297,7 @@ fn local_single_node_chain_test() {
     msgs.push(automated_delegated_msg_send);
 
     let msg = MsgExec {
-        grantee: grantee_acct.id.to_string(),
+        grantee: recipient_account_id.to_string(),
         msgs: msgs,
     };
 
@@ -307,27 +307,26 @@ fn local_single_node_chain_test() {
     };
     let expected_automated_delegated_tx_body = tx::Body::new(vec![msg_any], MEMO, timeout_height);
     let expected_automated_delegated_auth_info =
-        SignerInfo::single_direct(Some(grantee_acct.public_key), 0)
+        SignerInfo::single_direct(Some(recipient_public_key), 0)
             .auth_info(Fee {
                 amount: vec![Coin{amount: file.sender.gas_fee.into(), denom: DENOM.parse().expect("Could not parse")}],
                 gas_limit: file.sender.gas_limit.into(),
-                payer: Some(grantee_acct.id.clone()),
-                granter: Some(grantee_acct.id.clone()),
+                payer: None,
+                granter: None,
             });
 
     let expected_automated_delegated_sign_doc = SignDoc::new(
         &expected_automated_delegated_tx_body,
         &expected_automated_delegated_auth_info,
         &chain_id,
-        GRANTEE_ACCOUNT_NUMBER,
+        RECIPIENT_ACCOUNT_NUMBER,
     )
     .expect("Could not parse sign doc.");
 
     let _expected_tx_raw = expected_automated_delegated_sign_doc
-        .sign(&grantee_acct.private_key)
+        .sign(&recipient_private_key)
         .expect("Could not parse tx.");
 
-    
     let docker_args = [
         "-d",
         "-p",
@@ -437,7 +436,7 @@ fn local_single_node_chain_test() {
                         public_key: sender_public_key,
                         private_key: sender_private_key,
                     },
-                    grantee_acct.id.clone(),
+                    recipient_account_id.clone(),
                     Some(prost_types::Timestamp {
                         seconds: 4110314268,
                         nanos: 0,
@@ -467,7 +466,7 @@ fn local_single_node_chain_test() {
             assert_eq!(&expected_msg_grant_auth_info, &actual_msg_grant.auth_info);
 
             // Test MsgExec functionality
-            let grantee_seed = delegate_mnemonic.to_seed("");
+            let grantee_seed = recipient_mnemonic.to_seed("");
             let grantee_private_key: SigningKey = SigningKey::from_bytes(
                 &bip32::XPrv::derive_from_path(grantee_seed, path)
                     .expect("Could not create key.")
@@ -478,7 +477,7 @@ fn local_single_node_chain_test() {
 
             let tx_metadata = TxMetadata {
                 chain_id: chain_id.clone(),
-                account_number: GRANTEE_ACCOUNT_NUMBER,
+                account_number: RECIPIENT_ACCOUNT_NUMBER,
                 sequence_number: sequence_number,
                 gas_fee: amount.clone(),
                 gas_limit: gas,
@@ -490,7 +489,7 @@ fn local_single_node_chain_test() {
             msgs_to_send.push(
                 MsgSend {
                     from_address: sender_account_id.clone(),
-                    to_address: recipient_account_id.clone(),
+                    to_address: ad_hoc_acct.id.clone(),
                     amount: vec![amount.clone()],
                 }
                 .to_any()
@@ -500,7 +499,7 @@ fn local_single_node_chain_test() {
             let actual_msg_exec_commit_response = chain_client
                 .execute_authorized_tx(
                     Account {
-                        id: grantee_acct.id.clone(),
+                        id: recipient_account_id.clone(),
                         public_key: grantee_private_key.public_key(),
                         private_key: grantee_private_key,
                     },
@@ -600,7 +599,7 @@ fn local_single_node_chain_test() {
                         public_key: sender_public_key,
                         private_key: sender_private_key,
                     },
-                    grantee_acct.id.clone(),
+                    recipient_account_id.clone(),
                     tx_metadata,
                 )
                 .await
@@ -626,7 +625,7 @@ fn local_single_node_chain_test() {
             assert_eq!(&expected_msg_revoke_auth_info, &actual_msg_revoke.auth_info);
 
             // Test MsgExec does not work after permissions revoked
-            let grantee_seed = delegate_mnemonic.to_seed("");
+            let grantee_seed = recipient_mnemonic.to_seed("");
             let grantee_private_key: SigningKey = SigningKey::from_bytes(
                 &bip32::XPrv::derive_from_path(grantee_seed, path)
                     .expect("Could not create key.")
@@ -637,7 +636,7 @@ fn local_single_node_chain_test() {
 
             let tx_metadata = TxMetadata {
                 chain_id: chain_id.clone(),
-                account_number: GRANTEE_ACCOUNT_NUMBER,
+                account_number: RECIPIENT_ACCOUNT_NUMBER,
                 sequence_number: sequence_number + 1,
                 gas_fee: amount.clone(),
                 gas_limit: gas,
@@ -659,7 +658,7 @@ fn local_single_node_chain_test() {
             let actual_msg_exec_commit_response = chain_client
                 .execute_authorized_tx(
                     Account {
-                        id: grantee_acct.id.clone(),
+                        id: recipient_account_id.clone(),
                         public_key: grantee_private_key.public_key(),
                         private_key: grantee_private_key,
                     },
