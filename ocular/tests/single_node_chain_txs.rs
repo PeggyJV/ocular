@@ -109,8 +109,12 @@ fn local_single_node_chain_test() {
         .create_cosmos_key("test_only_delegate_key_override_safe", "", true)
         .expect("Could not create key");
 
-    let ad_hoc_private_key = temp_ring.get_key("test_only_delegate_key_override_safe").expect("Could not get private key");
-    let ad_hoc_pub_info = temp_ring.get_public_key_and_address("test_only_delegate_key_override_safe", ACCOUNT_PREFIX).expect("Could not get public key info.");
+    let ad_hoc_private_key = temp_ring
+        .get_key("test_only_delegate_key_override_safe")
+        .expect("Could not get private key");
+    let ad_hoc_pub_info = temp_ring
+        .get_public_key_and_address("test_only_delegate_key_override_safe", ACCOUNT_PREFIX)
+        .expect("Could not get public key info.");
     dbg!(ad_hoc_pub_info.account.as_ref());
     let ad_hoc_acct = Account {
         id: ad_hoc_pub_info.account,
@@ -261,8 +265,8 @@ fn local_single_node_chain_test() {
     file.sender.denom = DENOM;
 
     file.sender.grantee_account_number = RECIPIENT_ACCOUNT_NUMBER;
-    file.sender.grantee_sequence_number = sequence_number;
-    file.sender.gas_fee = 50_000;
+    file.sender.grantee_sequence_number = sequence_number + 1;
+    file.sender.gas_fee = 0;
     file.sender.gas_limit = 500_000;
     file.sender.timeout_height = timeout_height.into();
     file.sender.memo = MEMO;
@@ -288,7 +292,10 @@ fn local_single_node_chain_test() {
     let automated_delegated_msg_send = MsgSend {
         from_address: sender_account_id.clone(),
         to_address: ad_hoc_acct.id.clone(),
-        amount: vec![Coin{amount: 1u8.into(), denom: DENOM.parse().expect("Could not parse")}],
+        amount: vec![Coin {
+            amount: 1u8.into(),
+            denom: DENOM.parse().expect("Could not parse"),
+        }],
     }
     .to_any()
     .expect("Could not serlialize msg.");
@@ -307,13 +314,15 @@ fn local_single_node_chain_test() {
     };
     let expected_automated_delegated_tx_body = tx::Body::new(vec![msg_any], MEMO, timeout_height);
     let expected_automated_delegated_auth_info =
-        SignerInfo::single_direct(Some(recipient_public_key), 0)
-            .auth_info(Fee {
-                amount: vec![Coin{amount: file.sender.gas_fee.into(), denom: DENOM.parse().expect("Could not parse")}],
-                gas_limit: file.sender.gas_limit.into(),
-                payer: None,
-                granter: None,
-            });
+        SignerInfo::single_direct(Some(recipient_public_key), sequence_number + 1).auth_info(Fee {
+            amount: vec![Coin {
+                amount: file.sender.gas_fee.into(),
+                denom: DENOM.parse().expect("Could not parse"),
+            }],
+            gas_limit: file.sender.gas_limit.into(),
+            payer: None,
+            granter: None,
+        });
 
     let expected_automated_delegated_sign_doc = SignDoc::new(
         &expected_automated_delegated_tx_body,
@@ -341,8 +350,7 @@ fn local_single_node_chain_test() {
             let rpc_address = format!("http://localhost:{}", RPC_PORT);
             let rpc_client =
                 rpc::HttpClient::new(rpc_address.as_str()).expect("Could not create RPC");
-            
-            let mut chain_client = ChainClient {
+                let mut chain_client = ChainClient {
                 config: ChainClientConfig {
                     chain_id: chain_id.to_string(),
                     rpc_address: rpc_address.clone(),
@@ -638,8 +646,11 @@ fn local_single_node_chain_test() {
             let tx_metadata = TxMetadata {
                 chain_id: chain_id.clone(),
                 account_number: RECIPIENT_ACCOUNT_NUMBER,
-                sequence_number: sequence_number + 1,
-                gas_fee: amount.clone(),
+                sequence_number: sequence_number + 2,
+                gas_fee: Coin {
+                    amount: 0u8.into(),
+                    denom: DENOM.parse().expect("Could not parse denom."),
+                },
                 gas_limit: gas,
                 timeout_height: timeout_height.into(),
                 memo: String::from("Exec tx #2"),

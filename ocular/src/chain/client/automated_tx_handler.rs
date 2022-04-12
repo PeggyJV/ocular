@@ -62,7 +62,7 @@ impl ChainClient {
     pub async fn execute_delegated_transacton_toml(
         &mut self,
         toml_path: String,
-        verify_msg_grant: bool
+        verify_msg_grant: bool,
     ) -> Result<Response, AutomatedTxHandlerError> {
         let content = match fs::read_to_string(toml_path) {
             Ok(result) => result,
