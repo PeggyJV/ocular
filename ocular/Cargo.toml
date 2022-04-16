@@ -14,7 +14,7 @@ readme = "README.md"
 assay = "0.1"
 bech32 = "0.6"
 bip32 = "0.3"
-cosmos-sdk-proto = { version = "0.10", features = ["grpc"] }
+cosmos-sdk-proto = { git = "https://github.com/cosmos/cosmos-rust", branch = "main", features = ["grpc"]}
 cosmrs = {version = "0.5.1", features = ["dev"] }
 dirs = "1.0.4"
 futures = { version = "0.3.19", features = ["executor"] }
@@ -38,3 +38,8 @@ tonic = { version = "0.6", features = ["transport"] }
 url = "2.2.2"
 tendermint-proto = "0.23.5"
 tokio = "1.17.0"
+prost-types = "0.9.0"
+prost = "0.9.0"
+toml = "0.5.8"
+chrono = "0.4.0"
+uuid = { version = "0.8.2", features = ["serde", "v4"] }

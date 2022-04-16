@@ -176,7 +176,7 @@ impl Keyring {
     }
 
     /// Delete key with a given name. If no key exists under name specified an error will be thrown.
-    fn delete_key(&mut self, name: &str) -> Result<(), KeyStoreError> {
+    pub fn delete_key(&mut self, name: &str) -> Result<(), KeyStoreError> {
         if self.key_exists(name)? {
             let key_name = &KeyName::new(name)
                 .unwrap_or_else(|_| panic!("Could not create KeyName for '{}'.", name));
@@ -192,7 +192,7 @@ impl Keyring {
     }
 
     /// Retrieve signing key by key name. Returns error if no key found under name.
-    fn get_key(&self, name: &str) -> Result<SigningKey, KeyStoreError> {
+    pub fn get_key(&self, name: &str) -> Result<SigningKey, KeyStoreError> {
         // Check if key exists
         if !self.key_exists(name)? {
             eprintln!("Key '{}', does not exist.", name);
@@ -290,7 +290,7 @@ impl Keyring {
     }
 
     /// Recover key via mnemonic, password, and derivation_path (defaults to cosmos). If override_if_exists is set to true, it will override any existing key with the same name.
-    fn import_key(
+    pub fn import_key(
         &mut self,
         name: &str,
         mnemonic: &str,
@@ -336,7 +336,7 @@ impl Keyring {
     }
 
     /// Equivalent of import_key, albeit with no ability to add a derivation path: imports a cosmos key - Recover a cosmos key via mnemonic and password. If override_if_exists is set to true, it will override any existing key with the same name.
-    fn import_cosmos_key(
+    pub fn import_cosmos_key(
         &mut self,
         name: &str,
         mnemonic: &str,
@@ -350,6 +350,35 @@ impl Keyring {
             Some(COSMOS_BASE_DERIVATION_PATH),
             override_if_exists,
         )
+    }
+
+    /// Load private key from filepath into keyring. If override_if_exists is set to true, it will override any existing key with the same name.
+    pub fn add_key_from_path(
+        &mut self,
+        name: &str,
+        file_path: &str,
+        override_if_exists: bool,
+    ) -> Result<(), KeyStoreError> {
+        // Check if key already exists
+        if self.key_exists(name)? && !override_if_exists {
+            eprintln!("Key '{}', already exists.", name);
+            return Err(KeyStoreError::Exists(name.to_string()));
+        }
+
+        let pem = match pkcs8::PrivateKeyDocument::read_pem_file(file_path) {
+            Ok(res) => res,
+            Err(err) => return Err(KeyStoreError::FileIO(err.to_string())),
+        };
+
+        let key_name = &KeyName::new(name)
+            .unwrap_or_else(|_| panic!("Could not create KeyName for '{}'.", name));
+
+        // Store the key
+        self.key_store.add_key(key_name, pem)?;
+
+        self.records.insert(String::from(name));
+
+        Ok(())
     }
 }
 

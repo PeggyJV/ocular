@@ -517,6 +517,16 @@ dependencies = [
  "prost",
  "prost-types",
  "tendermint-proto 0.23.5",
+]
+
+[[package]]
+name = "cosmos-sdk-proto"
+version = "0.10.0"
+source = "git+https://github.com/cosmos/cosmos-rust?branch=main#861de6d4f31a9ad8e99ef48ad902f84f85ef9394"
+dependencies = [
+ "prost",
+ "prost-types",
+ "tendermint-proto 0.23.5",
  "tonic",
 ]
 
@@ -527,7 +537,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7389d72937808cb14c4a93873b070c31e418e7d23313150e9f3bcf34f1461d12"
 dependencies = [
  "bip32",
- "cosmos-sdk-proto",
+ "cosmos-sdk-proto 0.10.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "ecdsa",
  "eyre",
  "getrandom 0.2.5",
@@ -1749,7 +1759,8 @@ dependencies = [
  "assay",
  "bech32",
  "bip32",
- "cosmos-sdk-proto",
+ "chrono",
+ "cosmos-sdk-proto 0.10.0 (git+https://github.com/cosmos/cosmos-rust?branch=main)",
  "cosmrs",
  "dirs 1.0.5",
  "futures",
@@ -1759,6 +1770,8 @@ dependencies = [
  "keyring",
  "octocrab",
  "pkcs8",
+ "prost",
+ "prost-types",
  "rand 0.8.5",
  "rand_core 0.6.3",
  "reqwest",
@@ -1771,8 +1784,10 @@ dependencies = [
  "thiserror",
  "tiny-bip39",
  "tokio",
+ "toml",
  "tonic",
  "url",
+ "uuid",
 ]
 
 [[package]]
@@ -3361,6 +3376,10 @@ name = "uuid"
 version = "0.8.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "bc5cf98d8186244414c848017f0e2676b3fcb46807f6668a97dfe67359a3c4b7"
+dependencies = [
+ "getrandom 0.2.5",
+ "serde",
+]
 
 [[package]]
 name = "valuable"

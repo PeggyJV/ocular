@@ -17,6 +17,8 @@ pub enum ChainClientError {
     Rpc(#[from] RpcError),
     #[error("{0}")]
     TxError(#[from] TxError),
+    #[error("{0}")]
+    AutomatedTxHandlerError(#[from] AutomatedTxHandlerError),
 }
 
 #[derive(Debug, Error)]
@@ -87,19 +89,39 @@ pub enum KeyStoreError {
 
     #[error("unable to retrieve key: {0}")]
     UnableToRetrieveKey(String),
+
+    #[error("error reading file: {0}")]
+    FileIO(String),
 }
 
 #[derive(Debug, Error)]
 pub enum TxError {
     #[error("serialization error: {0}")]
     SerializationError(String),
-
     #[error("error converting types: {0}")]
     TypeConversionError(String),
-
     #[error("error signing message: {0}")]
     SigningError(String),
-
     #[error("error broadcasting message: {0}")]
     BroadcastError(String),
+    #[error("error logging response: {0}")]
+    Logging(String),
+}
+
+#[derive(Debug, Error)]
+pub enum AutomatedTxHandlerError {
+    #[error("error reading file: {0}")]
+    FileIO(String),
+    #[error("error reading toml: {0}")]
+    Toml(String),
+    #[error("error handling key: {0}")]
+    KeyHandling(String),
+    #[error("error sending tx: {0}")]
+    TxBroadcast(String),
+    #[error("keystore error: {0}")]
+    KeyStore(String),
+    #[error("chain client error: {0}")]
+    ChainClient(String),
+    #[error("no valid unexpired authorization grants found for msg type: {0}")]
+    Authorization(String),
 }

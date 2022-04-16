@@ -1,26 +1,32 @@
-/*
- * Heavily borrows from https://github.com/cosmos/cosmos-rust/blob/main/cosmrs/tests/integration.rs
- */
+// Heavily borrows from https://github.com/cosmos/cosmos-rust/blob/main/cosmrs/tests/integration.rs
 
 // Requies docker
 use ocular::{
     chain::{
-        client::tx::{Account, TxMetadata},
+        client::{
+            automated_tx_handler::{DelegateTransaction, DelegatedToml},
+            tx::{Account, TxMetadata},
+        },
         config::ChainClientConfig,
     },
+    cosmos_modules::*,
     keyring::Keyring,
 };
 
 use ocular::chain::client::ChainClient;
 
+use cosmos_sdk_proto::cosmos::authz::v1beta1::{
+    GenericAuthorization, MsgExec, MsgGrant, MsgRevoke,
+};
 use cosmrs::{
     bank::MsgSend,
     crypto::secp256k1::SigningKey,
     dev, rpc,
-    staking::{MsgDelegate, MsgUndelegate},
     tx::{self, AccountNumber, Fee, Msg, SignDoc, SignerInfo},
     Coin,
 };
+use prost::Message;
+
 use std::{panic, str};
 
 /// Chain ID to use for tests
@@ -29,8 +35,9 @@ const CHAIN_ID: &str = "cosmrs-test";
 /// RPC port
 const RPC_PORT: u16 = 26657;
 
-/// Expected account number
-const ACCOUNT_NUMBER: AccountNumber = 1;
+/// Expected account numbers
+const SENDER_ACCOUNT_NUMBER: AccountNumber = 1;
+const RECIPIENT_ACCOUNT_NUMBER: AccountNumber = 9;
 
 /// Bech32 prefix for an account
 const ACCOUNT_PREFIX: &str = "cosmos";
@@ -41,6 +48,11 @@ const DENOM: &str = "samoleans";
 /// Example memo
 const MEMO: &str = "test memo";
 
+// Gaia node test image built and uploaded from https://github.com/cosmos/relayer/tree/main/docker/gaiad;
+// note some adaptations to file strucutre needed to build successfully (moving scripts and making directories)
+// Disclaimer: Upon cosmos sdk (and other) updates, this image may need to be rebuilt and reuploaded.
+const DOCKER_HUB_GAIA_SINGLE_NODE_TEST_IMAGE: &str = "philipjames11/gaia-test";
+
 #[test]
 fn local_single_node_chain_test() {
     let chain_id = CHAIN_ID.parse().expect("Could not parse chain id");
@@ -49,17 +61,17 @@ fn local_single_node_chain_test() {
     let timeout_height = 9001u16;
 
     let mut temp_ring = Keyring::new_file_store(None).expect("Could not create keyring.");
-    let mnemonic = temp_ring
+    let sender_mnemonic = temp_ring
         .create_cosmos_key("test_only_key_override_safe", "", true)
         .expect("Could not create key");
 
-    let seed = mnemonic.to_seed("");
+    let sender_seed = sender_mnemonic.to_seed("");
     let path = &"m/44'/118'/0'/0/0"
         .parse::<bip32::DerivationPath>()
         .expect("Could not parse derivation path.");
 
     let sender_private_key: SigningKey = SigningKey::from_bytes(
-        &bip32::XPrv::derive_from_path(seed, path)
+        &bip32::XPrv::derive_from_path(sender_seed, path)
             .expect("Could not create key.")
             .private_key()
             .to_bytes(),
@@ -71,11 +83,44 @@ fn local_single_node_chain_test() {
         .account_id(ACCOUNT_PREFIX)
         .expect("Could not create account id.");
 
-    let recipient_private_key = SigningKey::random();
-    let recipient_account_id = recipient_private_key
-        .public_key()
+    let recipient_mnemonic = temp_ring
+        .create_cosmos_key("test_only_key_number_2_override_safe", "", true)
+        .expect("Could not create key");
+
+    let recipient_seed = recipient_mnemonic.to_seed("");
+    let path = &"m/44'/118'/0'/0/0"
+        .parse::<bip32::DerivationPath>()
+        .expect("Could not parse derivation path.");
+
+    let recipient_private_key: SigningKey = SigningKey::from_bytes(
+        &bip32::XPrv::derive_from_path(recipient_seed, path)
+            .expect("Could not create key.")
+            .private_key()
+            .to_bytes(),
+    )
+    .expect("Could not create key.");
+
+    let recipient_public_key = recipient_private_key.public_key();
+    let recipient_account_id = recipient_public_key
         .account_id(ACCOUNT_PREFIX)
         .expect("Could not create account id.");
+
+    let _delegate_mnemonic = temp_ring
+        .create_cosmos_key("test_only_delegate_key_override_safe", "", true)
+        .expect("Could not create key");
+
+    let ad_hoc_private_key = temp_ring
+        .get_key("test_only_delegate_key_override_safe")
+        .expect("Could not get private key");
+    let ad_hoc_pub_info = temp_ring
+        .get_public_key_and_address("test_only_delegate_key_override_safe", ACCOUNT_PREFIX)
+        .expect("Could not get public key info.");
+    dbg!(ad_hoc_pub_info.account.as_ref());
+    let ad_hoc_acct = Account {
+        id: ad_hoc_pub_info.account,
+        public_key: ad_hoc_pub_info.public_key,
+        private_key: ad_hoc_private_key,
+    };
 
     let amount = Coin {
         amount: 1u8.into(),
@@ -100,66 +145,202 @@ fn local_single_node_chain_test() {
         &expected_tx_body,
         &expected_auth_info,
         &chain_id,
-        ACCOUNT_NUMBER,
+        SENDER_ACCOUNT_NUMBER,
     )
     .expect("Could not parse sign doc.");
     let _expected_tx_raw = expected_sign_doc
         .sign(&sender_private_key)
         .expect("Could not parse tx.");
 
-    // Expected MsgDelegate
-    let msg_delegate = MsgDelegate {
-        delegator_address: sender_account_id.clone(),
-        validator_address: recipient_account_id.clone(),
-        amount: amount.clone(),
-    }
-    .to_any()
-    .expect("Could not serlialize msg.");
+    // Expected MsgGrant
+    let msg_grant = MsgGrant {
+        granter: sender_account_id.to_string(),
+        grantee: recipient_account_id.to_string(),
+        grant: Some(authz::Grant {
+            authorization: Some(prost_types::Any {
+                type_url: String::from("/cosmos.authz.v1beta1.GenericAuthorization"),
+                value: GenericAuthorization {
+                    msg: String::from("/cosmos.bank.v1beta1.MsgSend"),
+                }
+                .encode_to_vec(),
+            }),
+            expiration: Some(prost_types::Timestamp {
+                seconds: 4110314268,
+                nanos: 0,
+            }),
+        }),
+    };
 
-    let expected_msg_delegate_body = tx::Body::new(vec![msg_delegate], MEMO, timeout_height);
-    let expected_msg_delegate_auth_info =
+    let msg_grant = prost_types::Any {
+        type_url: String::from("/cosmos.authz.v1beta1.MsgGrant"),
+        value: msg_grant.encode_to_vec(),
+    };
+
+    let expected_msg_grant_body = tx::Body::new(vec![msg_grant], MEMO, timeout_height);
+    let expected_msg_grant_auth_info =
         SignerInfo::single_direct(Some(sender_public_key), sequence_number + 1)
             .auth_info(fee.clone());
-    let expected_msg_delegate_sign_doc = SignDoc::new(
-        &expected_msg_delegate_body,
-        &expected_msg_delegate_auth_info,
+    let expected_msg_grant_sign_doc = SignDoc::new(
+        &expected_msg_grant_body,
+        &expected_msg_grant_auth_info,
         &chain_id,
-        ACCOUNT_NUMBER,
+        SENDER_ACCOUNT_NUMBER,
     )
     .expect("Could not parse sign doc.");
-    let _expected_msg_delegate_raw = expected_msg_delegate_sign_doc
-        .sign(&sender_private_key)
-        .expect("Could not parse tx.");
+    let _expected_msg_grant_raw = expected_msg_grant_sign_doc.sign(&sender_private_key);
 
-    // Expected MsgUndelegate
-    let msg_undelegate = MsgUndelegate {
-        delegator_address: sender_account_id.clone(),
-        validator_address: recipient_account_id.clone(),
-        amount: amount.clone(),
+    // Expected MsgRevoke
+    let msg_revoke = MsgRevoke {
+        granter: sender_account_id.to_string(),
+        grantee: recipient_account_id.to_string(),
+        msg_type_url: String::from("/cosmos.bank.v1beta1.MsgSend"),
+    };
+
+    let msg_revoke = prost_types::Any {
+        type_url: String::from("/cosmos.authz.v1beta1.MsgRevoke"),
+        value: msg_revoke.encode_to_vec(),
+    };
+
+    let expected_msg_revoke_body = tx::Body::new(vec![msg_revoke], MEMO, timeout_height);
+    let expected_msg_revoke_auth_info =
+        SignerInfo::single_direct(Some(sender_public_key), sequence_number + 2)
+            .auth_info(fee.clone());
+    let expected_msg_revoke_sign_doc = SignDoc::new(
+        &expected_msg_revoke_body,
+        &expected_msg_revoke_auth_info,
+        &chain_id,
+        SENDER_ACCOUNT_NUMBER,
+    )
+    .expect("Could not parse sign doc.");
+    let _expected_msg_revoke_raw = expected_msg_revoke_sign_doc.sign(&sender_private_key);
+
+    // Expected MsgExec
+    let mut msgs_to_execute: Vec<::prost_types::Any> = Vec::new();
+    msgs_to_execute.push(
+        MsgSend {
+            from_address: sender_account_id.clone(),
+            to_address: ad_hoc_acct.id.clone(),
+            amount: vec![amount.clone()],
+        }
+        .to_any()
+        .expect("Could not serlialize msg."),
+    );
+
+    let msg_exec = MsgExec {
+        grantee: recipient_account_id.to_string(),
+        msgs: msgs_to_execute,
+    };
+
+    let msg_exec = prost_types::Any {
+        type_url: String::from("/cosmos.authz.v1beta1.MsgExec"),
+        value: msg_exec.encode_to_vec(),
+    };
+
+    let expected_msg_exec_body = tx::Body::new(vec![msg_exec], MEMO, timeout_height);
+    let expected_msg_exec_auth_info =
+        SignerInfo::single_direct(Some(recipient_public_key), sequence_number)
+            .auth_info(fee.clone());
+    let expected_msg_exec_sign_doc = SignDoc::new(
+        &expected_msg_exec_body,
+        &expected_msg_exec_auth_info,
+        &chain_id,
+        RECIPIENT_ACCOUNT_NUMBER,
+    )
+    .expect("Could not parse sign doc.");
+    let _expected_msg_exec_raw = expected_msg_exec_sign_doc.sign(&sender_private_key);
+
+    // Automated tx handler delegated workflow
+    let grantee_pem_path = dirs::home_dir()
+        .unwrap()
+        .into_os_string()
+        .into_string()
+        .unwrap()
+        + "/.ocular/keys"
+        + "/test_only_key_number_2_override_safe.pem";
+
+    let mut file = DelegatedToml::default();
+
+    file.sender.grantee_private_key_path = &grantee_pem_path;
+    file.sender.granter_account = sender_account_id.as_ref();
+    file.sender.denom = DENOM;
+
+    file.sender.grantee_account_number = RECIPIENT_ACCOUNT_NUMBER;
+    file.sender.grantee_sequence_number = sequence_number + 1;
+    file.sender.gas_fee = 0;
+    file.sender.gas_limit = 500_000;
+    file.sender.timeout_height = timeout_height.into();
+    file.sender.memo = MEMO;
+
+    file.transaction.push(DelegateTransaction {
+        name: "A",
+        destination_account: ad_hoc_acct.id.as_ref(),
+        amount: 1u8.into(),
+    });
+
+    // Save toml for later use
+    let toml_path = dirs::home_dir()
+        .unwrap()
+        .into_os_string()
+        .into_string()
+        .unwrap()
+        + "/.ocular/keys"
+        + "/delegated_test.toml";
+
+    let toml_string = toml::to_string(&file).expect("Could not encode toml value.");
+    std::fs::write(&toml_path, toml_string).expect("Could not write to file.");
+
+    let automated_delegated_msg_send = MsgSend {
+        from_address: sender_account_id.clone(),
+        to_address: ad_hoc_acct.id.clone(),
+        amount: vec![Coin {
+            amount: 1u8.into(),
+            denom: DENOM.parse().expect("Could not parse"),
+        }],
     }
     .to_any()
     .expect("Could not serlialize msg.");
 
-    let expected_msg_undelegate_body = tx::Body::new(vec![msg_undelegate], MEMO, timeout_height);
-    let expected_msg_undelegate_auth_info =
-        SignerInfo::single_direct(Some(sender_public_key), sequence_number + 2)
-            .auth_info(fee.clone());
-    let expected_msg_undelegate_sign_doc = SignDoc::new(
-        &expected_msg_undelegate_body,
-        &expected_msg_undelegate_auth_info,
+    let mut msgs: Vec<::prost_types::Any> = Vec::new();
+    msgs.push(automated_delegated_msg_send);
+
+    let msg = MsgExec {
+        grantee: recipient_account_id.to_string(),
+        msgs: msgs,
+    };
+
+    let msg_any = prost_types::Any {
+        type_url: String::from("/cosmos.authz.v1beta1.MsgExec"),
+        value: msg.encode_to_vec(),
+    };
+    let expected_automated_delegated_tx_body = tx::Body::new(vec![msg_any], MEMO, timeout_height);
+    let expected_automated_delegated_auth_info =
+        SignerInfo::single_direct(Some(recipient_public_key), sequence_number + 1).auth_info(Fee {
+            amount: vec![Coin {
+                amount: file.sender.gas_fee.into(),
+                denom: DENOM.parse().expect("Could not parse"),
+            }],
+            gas_limit: file.sender.gas_limit.into(),
+            payer: None,
+            granter: None,
+        });
+
+    let expected_automated_delegated_sign_doc = SignDoc::new(
+        &expected_automated_delegated_tx_body,
+        &expected_automated_delegated_auth_info,
         &chain_id,
-        ACCOUNT_NUMBER,
+        RECIPIENT_ACCOUNT_NUMBER,
     )
     .expect("Could not parse sign doc.");
-    let _expected_msg_undelegate_raw = expected_msg_undelegate_sign_doc
-        .sign(&sender_private_key)
+
+    let _expected_tx_raw = expected_automated_delegated_sign_doc
+        .sign(&recipient_private_key)
         .expect("Could not parse tx.");
 
     let docker_args = [
         "-d",
         "-p",
         &format!("{}:{}", RPC_PORT, RPC_PORT),
-        dev::GAIA_DOCKER_IMAGE,
+        DOCKER_HUB_GAIA_SINGLE_NODE_TEST_IMAGE,
         CHAIN_ID,
         &sender_account_id.to_string(),
     ];
@@ -169,8 +350,7 @@ fn local_single_node_chain_test() {
             let rpc_address = format!("http://localhost:{}", RPC_PORT);
             let rpc_client =
                 rpc::HttpClient::new(rpc_address.as_str()).expect("Could not create RPC");
-
-            let chain_client = ChainClient {
+                let mut chain_client = ChainClient {
                 config: ChainClientConfig {
                     chain_id: chain_id.to_string(),
                     rpc_address: rpc_address.clone(),
@@ -187,16 +367,17 @@ fn local_single_node_chain_test() {
 
             let tx_metadata = TxMetadata {
                 chain_id: chain_id.clone(),
-                account_number: ACCOUNT_NUMBER,
+                account_number: SENDER_ACCOUNT_NUMBER,
                 sequence_number: sequence_number,
+                gas_fee: amount.clone(),
                 gas_limit: gas,
-                timeout_height: timeout_height,
+                timeout_height: timeout_height.into(),
                 memo: MEMO.to_string(),
             };
 
-            let seed = mnemonic.to_seed("");
+            let sender_seed = sender_mnemonic.to_seed("");
             let sender_private_key: SigningKey = SigningKey::from_bytes(
-                &bip32::XPrv::derive_from_path(seed, path)
+                &bip32::XPrv::derive_from_path(sender_seed, path)
                     .expect("Could not create key.")
                     .private_key()
                     .to_bytes(),
@@ -236,10 +417,10 @@ fn local_single_node_chain_test() {
             assert_eq!(&expected_tx_body, &actual_tx.body);
             assert_eq!(&expected_auth_info, &actual_tx.auth_info);
 
-            // Test MsgDelegate functionality
-            let seed = mnemonic.to_seed("");
+            // Test MsgGrant functionality
+            let sender_seed = sender_mnemonic.to_seed("");
             let sender_private_key: SigningKey = SigningKey::from_bytes(
-                &bip32::XPrv::derive_from_path(seed, path)
+                &bip32::XPrv::derive_from_path(sender_seed, path)
                     .expect("Could not create key.")
                     .private_key()
                     .to_bytes(),
@@ -248,56 +429,54 @@ fn local_single_node_chain_test() {
 
             let tx_metadata = TxMetadata {
                 chain_id: chain_id.clone(),
-                account_number: ACCOUNT_NUMBER,
+                account_number: SENDER_ACCOUNT_NUMBER,
                 sequence_number: sequence_number + 1,
+                gas_fee: amount.clone(),
                 gas_limit: gas,
-                timeout_height: timeout_height,
+                timeout_height: timeout_height.into(),
                 memo: MEMO.to_string(),
             };
 
-            let actual_msg_delegate_commit_response = chain_client
-                .delegate(
+            let actual_msg_grant_commit_response = chain_client
+                .grant_send_authorization(
                     Account {
                         id: sender_account_id.clone(),
                         public_key: sender_public_key,
                         private_key: sender_private_key,
                     },
                     recipient_account_id.clone(),
-                    amount.clone(),
+                    Some(prost_types::Timestamp {
+                        seconds: 4110314268,
+                        nanos: 0,
+                    }),
                     tx_metadata,
                 )
                 .await
                 .expect("Could not broadcast msg.");
 
-            if actual_msg_delegate_commit_response.check_tx.code.is_err() {
+            if actual_msg_grant_commit_response.check_tx.code.is_err() {
                 panic!(
-                    "check_tx for msg_delegate failed: {:?}",
-                    actual_msg_delegate_commit_response.check_tx
+                    "check_tx for msg_grant failed: {:?}",
+                    actual_msg_grant_commit_response.check_tx
                 );
             }
 
-            // Expect error code 1 since delegator address is not funded
-            if actual_msg_delegate_commit_response.deliver_tx.code
-                != cosmrs::tendermint::abci::Code::Err(1)
-            {
+            if actual_msg_grant_commit_response.deliver_tx.code.is_err() {
                 panic!(
-                    "deliver_tx for msg_delegate failed: {:?}",
-                    actual_msg_delegate_commit_response.deliver_tx
+                    "deliver_tx for msg_grant failed: {:?}",
+                    actual_msg_grant_commit_response.deliver_tx
                 );
             }
 
-            let actual_msg_delegate =
-                dev::poll_for_tx(&rpc_client, actual_msg_delegate_commit_response.hash).await;
-            assert_eq!(&expected_msg_delegate_body, &actual_msg_delegate.body);
-            assert_eq!(
-                &expected_msg_delegate_auth_info,
-                &actual_msg_delegate.auth_info
-            );
+            let actual_msg_grant =
+                dev::poll_for_tx(&rpc_client, actual_msg_grant_commit_response.hash).await;
+            assert_eq!(&expected_msg_grant_body, &actual_msg_grant.body);
+            assert_eq!(&expected_msg_grant_auth_info, &actual_msg_grant.auth_info);
 
-            // Test MsgUndelegate functionality
-            let seed = mnemonic.to_seed("");
-            let sender_private_key: SigningKey = SigningKey::from_bytes(
-                &bip32::XPrv::derive_from_path(seed, path)
+            // Test MsgExec functionality
+            let grantee_seed = recipient_mnemonic.to_seed("");
+            let grantee_private_key: SigningKey = SigningKey::from_bytes(
+                &bip32::XPrv::derive_from_path(grantee_seed, path)
                     .expect("Could not create key.")
                     .private_key()
                     .to_bytes(),
@@ -305,53 +484,214 @@ fn local_single_node_chain_test() {
             .expect("Could not create key.");
 
             let tx_metadata = TxMetadata {
-                chain_id: chain_id,
-                account_number: ACCOUNT_NUMBER,
-                sequence_number: sequence_number + 2,
+                chain_id: chain_id.clone(),
+                account_number: RECIPIENT_ACCOUNT_NUMBER,
+                sequence_number: sequence_number,
+                gas_fee: amount.clone(),
                 gas_limit: gas,
-                timeout_height: timeout_height,
+                timeout_height: timeout_height.into(),
                 memo: MEMO.to_string(),
             };
 
-            let actual_msg_undelegate_commit_response = chain_client
-                .undelegate(
+            let mut msgs_to_send: Vec<::prost_types::Any> = Vec::new();
+            msgs_to_send.push(
+                MsgSend {
+                    from_address: sender_account_id.clone(),
+                    to_address: ad_hoc_acct.id.clone(),
+                    amount: vec![amount.clone()],
+                }
+                .to_any()
+                .expect("Could not serlialize msg."),
+            );
+
+            let actual_msg_exec_commit_response = chain_client
+                .execute_authorized_tx(
                     Account {
-                        id: sender_account_id,
+                        id: recipient_account_id.clone(),
+                        public_key: grantee_private_key.public_key(),
+                        private_key: grantee_private_key,
+                    },
+                    msgs_to_send,
+                    tx_metadata,
+                    None,
+                    None
+                )
+                .await
+                .expect("Could not broadcast msg.");
+
+            if actual_msg_exec_commit_response.check_tx.code.is_err() {
+                panic!(
+                    "check_tx for msg_exec failed: {:?}",
+                    actual_msg_exec_commit_response.check_tx
+                );
+            }
+
+            if actual_msg_exec_commit_response.deliver_tx.code.is_err() {
+                panic!(
+                    "deliver_tx for msg_exec failed: {:?}",
+                    actual_msg_exec_commit_response.deliver_tx
+                );
+            }
+
+            let actual_msg_exec =
+                dev::poll_for_tx(&rpc_client, actual_msg_exec_commit_response.hash).await;
+
+            assert_eq!(&expected_msg_exec_body, &actual_msg_exec.body);
+            assert_eq!(&expected_msg_exec_auth_info, &actual_msg_exec.auth_info);
+
+            // Test delegated automated tx workflow
+            let actual_automated_delegated_commit_response = &chain_client
+                .execute_delegated_transacton_toml(toml_path, false)
+                .await
+                .expect("Could not broadcast msg.");
+
+            if actual_automated_delegated_commit_response
+                .check_tx
+                .code
+                .is_err()
+            {
+                panic!(
+                    "check_tx for automated_delegated failed: {:?}",
+                    actual_automated_delegated_commit_response.check_tx
+                );
+            }
+
+            if actual_automated_delegated_commit_response
+                .deliver_tx
+                .code
+                .is_err()
+            {
+                panic!(
+                    "deliver_tx for automated_delegated failed: {:?}",
+                    actual_automated_delegated_commit_response.deliver_tx
+                );
+            }
+
+            let actual_automated_delegated = dev::poll_for_tx(
+                &rpc_client,
+                actual_automated_delegated_commit_response.hash,
+            )
+            .await;
+            assert_eq!(
+                &expected_automated_delegated_tx_body,
+                &actual_automated_delegated.body
+            );
+            assert_eq!(
+                &expected_automated_delegated_auth_info,
+                &actual_automated_delegated.auth_info
+            );
+
+            // Test MsgRevoke functionality
+            let sender_seed = sender_mnemonic.to_seed("");
+            let sender_private_key: SigningKey = SigningKey::from_bytes(
+                &bip32::XPrv::derive_from_path(sender_seed, path)
+                    .expect("Could not create key.")
+                    .private_key()
+                    .to_bytes(),
+            )
+            .expect("Could not create key.");
+
+            let tx_metadata = TxMetadata {
+                chain_id: chain_id.clone(),
+                account_number: SENDER_ACCOUNT_NUMBER,
+                sequence_number: sequence_number + 2,
+                gas_fee: amount.clone(),
+                gas_limit: gas,
+                timeout_height: timeout_height.into(),
+                memo: MEMO.to_string(),
+            };
+
+            let actual_msg_revoke_commit_response = chain_client
+                .revoke_send_authorization(
+                    Account {
+                        id: sender_account_id.clone(),
                         public_key: sender_public_key,
                         private_key: sender_private_key,
                     },
-                    recipient_account_id,
-                    amount,
+                    recipient_account_id.clone(),
                     tx_metadata,
                 )
                 .await
                 .expect("Could not broadcast msg.");
 
-            if actual_msg_undelegate_commit_response.check_tx.code.is_err() {
+            if actual_msg_revoke_commit_response.check_tx.code.is_err() {
                 panic!(
-                    "check_tx for msg_undelegate failed: {:?}",
-                    actual_msg_undelegate_commit_response.check_tx
+                    "check_tx for msg_revoke failed: {:?}",
+                    actual_msg_revoke_commit_response.check_tx
                 );
             }
 
-            // Expect error code 1 since delegator address is not funded
-            if actual_msg_undelegate_commit_response.deliver_tx.code
-                != cosmrs::tendermint::abci::Code::Err(1)
-            {
+            if actual_msg_revoke_commit_response.deliver_tx.code.is_err() {
                 panic!(
-                    "deliver_tx for msg_undelegate failed: {:?}",
-                    actual_msg_undelegate_commit_response.deliver_tx
+                    "deliver_tx for msg_revoke failed: {:?}",
+                    actual_msg_revoke_commit_response.deliver_tx
                 );
             }
 
-            let actual_msg_undelegate =
-                dev::poll_for_tx(&rpc_client, actual_msg_undelegate_commit_response.hash).await;
-            assert_eq!(&expected_msg_undelegate_body, &actual_msg_undelegate.body);
-            assert_eq!(
-                &expected_msg_undelegate_auth_info,
-                &actual_msg_undelegate.auth_info
+            let actual_msg_revoke =
+                dev::poll_for_tx(&rpc_client, actual_msg_revoke_commit_response.hash).await;
+            assert_eq!(&expected_msg_revoke_body, &actual_msg_revoke.body);
+            assert_eq!(&expected_msg_revoke_auth_info, &actual_msg_revoke.auth_info);
+
+            // Test MsgExec does not work after permissions revoked
+            let grantee_seed = recipient_mnemonic.to_seed("");
+            let grantee_private_key: SigningKey = SigningKey::from_bytes(
+                &bip32::XPrv::derive_from_path(grantee_seed, path)
+                    .expect("Could not create key.")
+                    .private_key()
+                    .to_bytes(),
+            )
+            .expect("Could not create key.");
+
+            let tx_metadata = TxMetadata {
+                chain_id: chain_id.clone(),
+                account_number: RECIPIENT_ACCOUNT_NUMBER,
+                sequence_number: sequence_number + 2,
+                gas_fee: Coin {
+                    amount: 0u8.into(),
+                    denom: DENOM.parse().expect("Could not parse denom."),
+                },
+                gas_limit: gas,
+                timeout_height: timeout_height.into(),
+                memo: String::from("Exec tx #2"),
+            };
+
+            let mut msgs_to_send: Vec<::prost_types::Any> = Vec::new();
+            msgs_to_send.push(
+                MsgSend {
+                    from_address: sender_account_id.clone(),
+                    to_address: ad_hoc_acct.id.clone(),
+                    amount: vec![amount.clone()],
+                }
+                .to_any()
+                .expect("Could not serlialize msg."),
             );
-        })
+
+            let actual_msg_exec_commit_response = chain_client
+                .execute_authorized_tx(
+                    Account {
+                        id: recipient_account_id.clone(),
+                        public_key: grantee_private_key.public_key(),
+                        private_key: grantee_private_key,
+                    },
+                    msgs_to_send,
+                    tx_metadata.clone(),
+                    None,
+                    None
+                )
+                .await
+                .expect("Could not broadcast msg.");
+
+            if actual_msg_exec_commit_response.check_tx.code.is_err() {
+                panic!(
+                    "check_tx for msg_exec failed: {:?}",
+                    actual_msg_exec_commit_response. check_tx
+                );
+            }
+
+            // Assert permission error since acct delegation permission was revoked
+            assert_eq!(&actual_msg_exec_commit_response.deliver_tx.log.to_string()[..82], "failed to execute message; message index: 0: authorization not found: unauthorized");
+        });
     });
 }
 
