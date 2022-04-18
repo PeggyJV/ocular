@@ -4,7 +4,9 @@
 use ocular::{
     chain::{
         client::{
-            automated_tx_handler::{DelegateTransaction, DelegatedToml},
+            automated_tx_handler::{
+                BatchToml, BatchTransaction, DelegateTransaction, DelegatedToml,
+            },
             tx::{Account, TxMetadata},
         },
         config::ChainClientConfig,
@@ -334,6 +336,66 @@ fn local_single_node_chain_test() {
 
     let _expected_tx_raw = expected_automated_delegated_sign_doc
         .sign(&recipient_private_key)
+        .expect("Could not parse tx.");
+
+    // Batch tx workflow
+    let mut file = BatchToml::default();
+    let pem_path = dirs::home_dir()
+        .unwrap()
+        .into_os_string()
+        .into_string()
+        .unwrap()
+        + "/.ocular/keys"
+        + "/test_only_key_override_safe.pem";
+
+    file.sender.source_private_key_path = &pem_path;
+
+    file.transactions.push(BatchTransaction {
+        name: "A",
+        destination_account: recipient_account_id.as_ref(),
+        amount: 1u8.into(),
+        denom: DENOM,
+        account_number: SENDER_ACCOUNT_NUMBER,
+        sequence_number: sequence_number + 3,
+        gas_fee: 1u8.into(),
+        gas_limit: gas,
+        timeout_height: timeout_height.into(),
+        memo: MEMO,
+    });
+
+    // Save toml for later use
+    let batch_toml_path = dirs::home_dir()
+        .unwrap()
+        .into_os_string()
+        .into_string()
+        .unwrap()
+        + "/.ocular/keys"
+        + "/batch_test.toml";
+
+    let batch_toml_string = toml::to_string(&file).expect("Could not encode toml value.");
+    std::fs::write(&batch_toml_path, batch_toml_string).expect("Could not write to file.");
+
+    let batch_msg_send = MsgSend {
+        from_address: sender_account_id.clone(),
+        to_address: recipient_account_id.clone(),
+        amount: vec![amount.clone()],
+    }
+    .to_any()
+    .expect("Could not serlialize msg.");
+
+    let expected_batch_tx_body = tx::Body::new(vec![batch_msg_send], MEMO, timeout_height);
+    let expected_batch_auth_info =
+        SignerInfo::single_direct(Some(sender_public_key), sequence_number + 3)
+            .auth_info(fee.clone());
+    let expected_batch_sign_doc = SignDoc::new(
+        &expected_batch_tx_body,
+        &expected_batch_auth_info,
+        &chain_id,
+        SENDER_ACCOUNT_NUMBER,
+    )
+    .expect("Could not parse sign doc.");
+    let _expected_tx_raw = expected_batch_sign_doc
+        .sign(&sender_private_key)
         .expect("Could not parse tx.");
 
     let docker_args = [
@@ -691,6 +753,47 @@ fn local_single_node_chain_test() {
 
             // Assert permission error since acct delegation permission was revoked
             assert_eq!(&actual_msg_exec_commit_response.deliver_tx.log.to_string()[..82], "failed to execute message; message index: 0: authorization not found: unauthorized");
+            // Test batch tx workflow
+            let actual_batch_commit_response = &chain_client
+                .execute_batch_transactions(batch_toml_path)
+                .await
+                .expect("Could not broadcast msg.")[0];
+
+            if actual_batch_commit_response
+                .check_tx
+                .code
+                .is_err()
+            {
+                panic!(
+                    "check_tx for batch failed: {:?}",
+                    actual_batch_commit_response.check_tx
+                );
+            }
+
+            if actual_batch_commit_response
+                .deliver_tx
+                .code
+                .is_err()
+            {
+                panic!(
+                    "deliver_tx for batch failed: {:?}",
+                    actual_batch_commit_response.deliver_tx
+                );
+            }
+
+            let actual_batch = dev::poll_for_tx(
+                &rpc_client,
+                actual_batch_commit_response.hash,
+            )
+            .await;
+            assert_eq!(
+                &expected_batch_tx_body,
+                &actual_batch.body
+            );
+            assert_eq!(
+                &expected_batch_auth_info,
+                &actual_batch.auth_info
+            );
         });
     });
 }
