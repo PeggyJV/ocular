@@ -315,8 +315,6 @@ impl ChainClient {
 
         dbg!(&toml);
 
-        // TODO: Key processing
-
         // Add source key to keyring & parse out relevant types
         let source_key_name = &(String::from("batch") + &Uuid::new_v4().to_string());
 
