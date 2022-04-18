@@ -317,7 +317,6 @@ impl ChainClient {
 
         // TODO: Key processing
 
-
         // Add source key to keyring & parse out relevant types
         let source_key_name = &(String::from("batch") + &Uuid::new_v4().to_string());
 
@@ -369,7 +368,10 @@ impl ChainClient {
                             .expect("Could not parse chain id"),
                         account_number: tx.account_number,
                         sequence_number: tx.sequence_number,
-                        gas_fee: Coin {amount: tx.gas_fee.into(), denom: tx.denom.parse().expect("Could not parse denom.")},
+                        gas_fee: Coin {
+                            amount: tx.gas_fee.into(),
+                            denom: tx.denom.parse().expect("Could not parse denom."),
+                        },
                         gas_limit: tx.gas_limit,
                         timeout_height: tx.timeout_height,
                         memo: tx.memo.to_string(),
@@ -513,6 +515,136 @@ mod tests {
         // Execute on toml; expect tx error, but ONLY tx error, everything else should work fine. Tx fails b/c this is unit test so no network connectivity
         let err = chain_client
             .execute_delegated_transacton_toml(toml_save_path, false)
+            .await
+            .err()
+            .unwrap()
+            .to_string();
+
+        // Expect Tx error b/c unit test has no network connectivity; do string matching b/c exact error type matching is messy
+        assert_eq!(&err[..45], "error sending tx: error broadcasting message:");
+
+        // Clean up dir + toml
+        std::fs::remove_dir_all(test_dir)
+            .expect(&format!("Failed to delete test directory {}", test_dir));
+
+        // Assert deleted
+        let result = std::panic::catch_unwind(|| std::fs::metadata(test_dir).unwrap());
+        assert!(result.is_err());
+    }
+
+    #[assay]
+    #[test]
+    async fn execute_batch_transacton_toml() {
+        // Build and save new toml in test_dir
+        let test_dir = &(std::env::current_dir()
+            .unwrap()
+            .into_os_string()
+            .into_string()
+            .unwrap()
+            + "/batch_test_dir");
+
+        // Assert test_dir doesnt exist
+        let result = std::panic::catch_unwind(|| std::fs::metadata(test_dir).unwrap());
+        assert!(result.is_err());
+
+        // Create test_dir
+        let path = Path::new(&test_dir);
+        assert!(std::fs::create_dir(path).is_ok());
+
+        // Assert new dir exists now
+        assert_eq!(std::fs::metadata(test_dir).unwrap().is_dir(), true);
+
+        let keyring = Keyring::new_file_store(Some(test_dir)).expect("Could not create keyring.");
+
+        let mut chain_client = ChainClient {
+            config: ChainClientConfig {
+                chain_id: String::from("sommelier-3"),
+                rpc_address: String::from("http://localhost:8080"),
+                grpc_address: String::from("http://localhost:8080"),
+                account_prefix: String::from("somm"),
+                gas_adjustment: 1.2,
+                gas_prices: String::from("100"),
+            },
+            keyring: keyring,
+            rpc_client: rpc::HttpClient::new("http://localhost:8080")
+                .expect("Could not create RPC"),
+        };
+
+        // Assert error if no toml exists
+        assert!(chain_client
+            .execute_batch_transactions(String::from("toml_path"))
+            .await
+            .is_err());
+
+        // Ready to create toml assets
+        let mut file = BatchToml::default();
+
+        // Create source key
+        chain_client
+            .keyring
+            .create_key("Zeus", "", None, true)
+            .expect("Could not create signing key.");
+
+        let source_key_path = test_dir.clone() + &String::from("/Zeus.pem");
+
+        file.sender.source_private_key_path = source_key_path.as_str();
+
+        // Make some transactions
+        chain_client
+            .keyring
+            .create_key("Dionysus", "", None, true)
+            .expect("Could not create signing key.");
+        let pub_key_output = chain_client
+            .keyring
+            .get_public_key_and_address("Dionysus", "somm")
+            .expect("Could not get public key.");
+
+        file.transactions.push(BatchTransaction {
+            name: "Dionysus",
+            destination_account: pub_key_output.account.as_ref(),
+            amount: 50u64,
+            denom: "usomm",
+            account_number: 1,
+            sequence_number: 0,
+            gas_fee: 100_000,
+            gas_limit: 100_000,
+            timeout_height: 9001u32,
+            memo: "Don't spend it all in one place.",
+        });
+
+        chain_client
+            .keyring
+            .create_key("Silenus", "", None, true)
+            .expect("Could not create signing key.");
+        let pub_key_output = chain_client
+            .keyring
+            .get_public_key_and_address("Silenus", "somm")
+            .expect("Could not get public key.");
+
+        file.transactions.push(BatchTransaction {
+            name: "Silenus",
+            destination_account: pub_key_output.account.as_ref(),
+            amount: 500u64,
+            denom: "usomm",
+            account_number: 1,
+            sequence_number: 0,
+            gas_fee: 100_000,
+            gas_limit: 100_000,
+            timeout_height: 9001u32,
+            memo: "Lorem Ipsum",
+        });
+
+        let toml_string = toml::to_string(&file).expect("Could not encode toml value.");
+        let toml_save_path = test_dir.clone() + &String::from("/batch_test_file.toml");
+
+        dbg!(&toml_string);
+        dbg!(&toml_save_path);
+
+        fs::write(&toml_save_path, toml_string).expect("Could not write to file.");
+
+        // Execute on toml; expect tx error, but ONLY tx error, everything else should work fine. Tx fails b/c this is unit test so no network connectivity
+        let err = chain_client
+            .execute_batch_transactions(toml_save_path)
             .await
             .err()
             .unwrap()
