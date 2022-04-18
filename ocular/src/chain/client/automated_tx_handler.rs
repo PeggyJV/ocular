@@ -58,6 +58,33 @@ pub struct DelegateTransaction<'a> {
     pub amount: u64,
 }
 
+#[derive(Debug, Default, Serialize, Deserialize)]
+pub struct BatchToml<'a> {
+    pub sender: BatchSender<'a>,
+    #[serde(borrow)]
+    pub transactions: Vec<BatchTransaction<'a>>,
+}
+
+#[derive(Debug, Default, Serialize, Deserialize)]
+pub struct BatchSender<'a> {
+    pub source_private_key_path: &'a str,
+}
+
+#[derive(Debug, Default, Serialize, Deserialize)]
+pub struct BatchTransaction<'a> {
+    pub name: &'a str,
+    pub destination_account: &'a str,
+    pub amount: u64,
+    pub denom: &'a str,
+    // TODO: replace account and sequence numbers with pulled numbers from Account type once implemented in https://github.com/PeggyJV/ocular/issues/25
+    pub account_number: u64,
+    pub sequence_number: u64,
+    pub gas_limit: u64,
+    pub gas_fee: u64,
+    pub timeout_height: u32,
+    pub memo: &'a str,
+}
+
 impl ChainClient {
     // Creates a brand new temporary key for delegated tx workflows.
     pub async fn execute_delegated_transacton_toml(
@@ -266,6 +293,98 @@ impl ChainClient {
         dbg!(response.clone());
 
         Ok(response)
+    }
+
+    pub async fn execute_batch_transactions(
+        &mut self,
+        toml_path: String,
+    ) -> Result<Vec<Response>, AutomatedTxHandlerError> {
+        let content = match fs::read_to_string(toml_path) {
+            Ok(result) => result,
+            Err(err) => {
+                return Err(AutomatedTxHandlerError::FileIO(err.to_string()));
+            }
+        };
+
+        let toml: BatchToml = match toml::from_str(&content) {
+            Ok(result) => result,
+            Err(err) => {
+                return Err(AutomatedTxHandlerError::Toml(err.to_string()));
+            }
+        };
+
+        dbg!(&toml);
+
+        // TODO: Key processing
+
+
+        // Add source key to keyring & parse out relevant types
+        let source_key_name = &(String::from("batch") + &Uuid::new_v4().to_string());
+
+        match self.keyring.add_key_from_path(
+            source_key_name,
+            toml.sender.source_private_key_path,
+            false,
+        ) {
+            Ok(_res) => _res,
+            Err(err) => return Err(AutomatedTxHandlerError::KeyStore(err.to_string())),
+        };
+
+        let public_info = match self
+            .keyring
+            .get_public_key_and_address(source_key_name, &self.config.account_prefix)
+        {
+            Ok(res) => res,
+            Err(err) => return Err(AutomatedTxHandlerError::KeyStore(err.to_string())),
+        };
+
+        let mut response_vec: Vec<Response> = Vec::new();
+
+        for tx in toml.transactions.iter() {
+            let recipient_account_id = match AccountId::from_str(tx.destination_account) {
+                Ok(res) => res,
+                Err(err) => return Err(AutomatedTxHandlerError::KeyHandling(err.to_string())),
+            };
+
+            let response = match self
+                .send(
+                    Account {
+                        id: public_info.account.clone(),
+                        public_key: public_info.public_key,
+                        private_key: self
+                            .keyring
+                            .get_key(source_key_name)
+                            .expect("Could not load signing key."),
+                    },
+                    recipient_account_id,
+                    Coin {
+                        denom: tx.denom.parse().expect("Could not parse denom."),
+                        amount: tx.amount.into(),
+                    },
+                    TxMetadata {
+                        chain_id: self
+                            .config
+                            .chain_id
+                            .parse()
+                            .expect("Could not parse chain id"),
+                        account_number: tx.account_number,
+                        sequence_number: tx.sequence_number,
+                        gas_fee: Coin {amount: tx.gas_fee.into(), denom: tx.denom.parse().expect("Could not parse denom.")},
+                        gas_limit: tx.gas_limit,
+                        timeout_height: tx.timeout_height,
+                        memo: tx.memo.to_string(),
+                    },
+                )
+                .await
+            {
+                Ok(res) => res,
+                Err(err) => return Err(AutomatedTxHandlerError::TxBroadcast(err.to_string())),
+            };
+
+            response_vec.push(response);
+        }
+
+        Ok(response_vec)
     }
 }
 
