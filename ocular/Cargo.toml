@@ -35,7 +35,7 @@ serde_json = "1.0.78"
 signatory = "0.24"
 thiserror = "1.0"
 tendermint-pre = { package = "tendermint", git = "https://github.com/informalsystems/tendermint-rs" }
-tendermint-rpc = "0.23.6"
+tendermint-rpc = { version = "0.23.6", features = ["websocket-client"] }
 tiny-bip39 = "0.8"
 tonic = { version = "0.6", features = ["transport"] }
 url = "2.2.2"
