@@ -6,7 +6,7 @@ use crate::{
     keyring::Keyring,
 };
 use futures::executor;
-use tendermint_rpc;
+use tendermint_rpc::{self, WebSocketClient, WebSocketClientDriver};
 
 use super::ChainName;
 
@@ -15,12 +15,12 @@ pub mod automated_tx_handler;
 pub mod query;
 pub mod tx;
 
-type RpcClient = tendermint_rpc::HttpClient;
+type RpcHttpClient = tendermint_rpc::HttpClient;
 
 pub struct ChainClient {
     pub config: ChainClientConfig,
     pub keyring: Keyring,
-    pub rpc_client: RpcClient,
+    pub rpc_client: RpcHttpClient,
     // light_provider: ?
     // input:
     // output:
@@ -38,7 +38,7 @@ fn get_client(chain_name: &str) -> Result<ChainClient, ChainClientError> {
     let chain = executor::block_on(async { get_chain(chain_name).await })?;
     let config = chain.get_chain_config()?;
     let keyring = Keyring::new_file_store(None)?;
-    let rpc_client = new_rpc_client(config.rpc_address.as_str())?;
+    let rpc_client = new_rpc_http_client(config.rpc_address.as_str())?;
 
     Ok(ChainClient {
         config,
@@ -47,6 +47,12 @@ fn get_client(chain_name: &str) -> Result<ChainClient, ChainClientError> {
     })
 }
 
-pub fn new_rpc_client(address: &str) -> Result<RpcClient, RpcError> {
-    tendermint_rpc::HttpClient::new(address).map_err(|e| e.into())
+pub fn new_rpc_http_client(address: &str) -> Result<RpcHttpClient, RpcError> {
+    RpcHttpClient::new(address).map_err(|e| e.into())
+}
+
+pub async fn new_rpc_ws_client(
+    address: &str,
+) -> Result<(WebSocketClient, WebSocketClientDriver), RpcError> {
+    WebSocketClient::new(address).await.map_err(|e| e.into())
 }

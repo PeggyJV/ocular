@@ -248,7 +248,7 @@ pub async fn is_healthy_grpc(endpoint: &str) -> Result<(), ChainInfoError> {
 }
 
 pub async fn is_healthy_rpc(endpoint: &str) -> Result<(), ChainInfoError> {
-    let rpc_client = client::new_rpc_client(endpoint)?;
+    let rpc_client = client::new_rpc_http_client(endpoint)?;
     let status = rpc_client
         .status()
         .await
