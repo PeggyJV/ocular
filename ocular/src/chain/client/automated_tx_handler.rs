@@ -39,9 +39,6 @@ pub struct DelegatedToml<'a> {
 #[derive(Debug, Default, Serialize, Deserialize)]
 pub struct DelegatedSender<'a> {
     pub grantee_private_key_path: &'a str,
-    // TODO: replace account and sequence numbers with pulled numbers from Account type once implemented in https://github.com/PeggyJV/ocular/issues/25
-    pub grantee_account_number: u64,
-    pub grantee_sequence_number: u64,
     pub granter_account: &'a str,
     pub denom: &'a str,
     // MsgExec data
@@ -76,9 +73,6 @@ pub struct BatchTransaction<'a> {
     pub destination_account: &'a str,
     pub amount: u64,
     pub denom: &'a str,
-    // TODO: replace account and sequence numbers with pulled numbers from Account type once implemented in https://github.com/PeggyJV/ocular/issues/25
-    pub account_number: u64,
-    pub sequence_number: u64,
     pub gas_limit: u64,
     pub gas_fee: u64,
     pub timeout_height: u32,
@@ -253,6 +247,14 @@ impl ChainClient {
             );
         }
 
+        let grantee_base_account = match self
+            .query_account(grantee_public_info.account.clone().to_string())
+            .await
+        {
+            Ok(res) => res,
+            Err(err) => return Err(AutomatedTxHandlerError::ChainClient(err.to_string())),
+        };
+
         // Send Msg Exec from grantee
         let response = match self
             .execute_authorized_tx(
@@ -271,8 +273,8 @@ impl ChainClient {
                         .chain_id
                         .parse()
                         .expect("Could not parse chain id"),
-                    account_number: toml.sender.grantee_account_number,
-                    sequence_number: toml.sender.grantee_sequence_number,
+                    account_number: grantee_base_account.account_number,
+                    sequence_number: grantee_base_account.sequence,
                     gas_fee: Coin {
                         denom: toml.sender.denom.parse().expect("Could not parse denom."),
                         amount: toml.sender.gas_fee.into(),
@@ -343,6 +345,14 @@ impl ChainClient {
                 Err(err) => return Err(AutomatedTxHandlerError::KeyHandling(err.to_string())),
             };
 
+            let tx_base_account = match self
+                .query_account(public_info.account.clone().to_string())
+                .await
+            {
+                Ok(res) => res,
+                Err(err) => return Err(AutomatedTxHandlerError::ChainClient(err.to_string())),
+            };
+
             let response = match self
                 .send(
                     Account {
@@ -364,8 +374,8 @@ impl ChainClient {
                             .chain_id
                             .parse()
                             .expect("Could not parse chain id"),
-                        account_number: tx.account_number,
-                        sequence_number: tx.sequence_number,
+                        account_number: tx_base_account.account_number,
+                        sequence_number: tx_base_account.sequence,
                         gas_fee: Coin {
                             amount: tx.gas_fee.into(),
                             denom: tx.denom.parse().expect("Could not parse denom."),
@@ -464,8 +474,6 @@ mod tests {
 
         file.sender.denom = "usomm";
 
-        file.sender.grantee_account_number = 1;
-        file.sender.grantee_sequence_number = 0;
         file.sender.gas_fee = 50_000;
         file.sender.gas_limit = 100_000;
         file.sender.timeout_height = 9001u32;
@@ -519,7 +527,7 @@ mod tests {
             .to_string();
 
         // Expect Tx error b/c unit test has no network connectivity; do string matching b/c exact error type matching is messy
-        assert_eq!(&err[..45], "error sending tx: error broadcasting message:");
+        assert_eq!(&err[..35], "chain client error: transport error");
 
         // Clean up dir + toml
         std::fs::remove_dir_all(test_dir)
@@ -602,8 +610,6 @@ mod tests {
             destination_account: pub_key_output.account.as_ref(),
             amount: 50u64,
             denom: "usomm",
-            account_number: 1,
-            sequence_number: 0,
             gas_fee: 100_000,
             gas_limit: 100_000,
             timeout_height: 9001u32,
@@ -624,8 +630,6 @@ mod tests {
             destination_account: pub_key_output.account.as_ref(),
             amount: 500u64,
             denom: "usomm",
-            account_number: 1,
-            sequence_number: 0,
             gas_fee: 100_000,
             gas_limit: 100_000,
             timeout_height: 9001u32,
@@ -649,7 +653,7 @@ mod tests {
             .to_string();
 
         // Expect Tx error b/c unit test has no network connectivity; do string matching b/c exact error type matching is messy
-        assert_eq!(&err[..45], "error sending tx: error broadcasting message:");
+        assert_eq!(&err[..35], "chain client error: transport error");
 
         // Clean up dir + toml
         std::fs::remove_dir_all(test_dir)
