@@ -1,6 +1,9 @@
 use crate::{
     chain::client::tx::{Account, TxMetadata},
-    cosmos_modules::{authz::{self, *}, feegrant::{BasicAllowance, MsgGrantAllowance}},
+    cosmos_modules::{
+        authz::{self, *},
+        feegrant::{BasicAllowance, MsgGrantAllowance},
+    },
     error::{ChainClientError, GrpcError, TxError},
 };
 use cosmrs::{tx, AccountId};

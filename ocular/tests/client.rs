@@ -20,25 +20,25 @@ async fn query_latest_block_height() {
 }
 
 #[assay]
-    async fn auth_queries() {
-        let client = ChainClient::new(chain::COSMOSHUB).unwrap();
+async fn auth_queries() {
+    let client = ChainClient::new(chain::COSMOSHUB).unwrap();
 
-        client
-            .query_account("cosmos1j5f60735tg604tjd0ts7z22hsmva6nznz8na6q".to_string())
-            .await
-            .expect("failed to query account");
-        let pagination = PageRequest {
-            key: Vec::<u8>::default(),
-            offset: 1,
-            limit: 1,
-            count_total: false,
-            reverse:false
-        };
-        client
-            .query_accounts(Some(pagination))
-            .await
-            .expect("failed to query account");
-    }
+    client
+        .query_account("cosmos1j5f60735tg604tjd0ts7z22hsmva6nznz8na6q".to_string())
+        .await
+        .expect("failed to query account");
+    let pagination = PageRequest {
+        key: Vec::<u8>::default(),
+        offset: 1,
+        limit: 1,
+        count_total: false,
+        reverse: false,
+    };
+    client
+        .query_accounts(Some(pagination))
+        .await
+        .expect("failed to query account");
+}
 
 #[assay]
 async fn bank_queries() {

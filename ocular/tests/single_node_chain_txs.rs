@@ -13,7 +13,6 @@ use ocular::{
     keyring::Keyring,
 };
 
-use ocular::chain::client::ChainClient;
 use bip32;
 use cosmos_sdk_proto::cosmos::authz::v1beta1::{
     GenericAuthorization, MsgExec, MsgGrant, MsgRevoke,
@@ -25,6 +24,7 @@ use cosmrs::{
     tx::{self, AccountNumber, Fee, Msg, SignDoc, SignerInfo},
     Coin,
 };
+use ocular::chain::client::ChainClient;
 use prost::Message;
 
 use std::{panic, str};

@@ -40,30 +40,30 @@ impl ChainClient {
             .map_err(|e| GrpcError::Connection(e).into())
     }
 
-    pub async fn query_account(&self, address: String) -> Result<auth::BaseAccount, ChainClientError> {
+    pub async fn query_account(
+        &self,
+        address: String,
+    ) -> Result<auth::BaseAccount, ChainClientError> {
         self.check_for_grpc_address()?;
         let mut query_client = self.get_auth_query_client().await?;
-        let request = auth::QueryAccountRequest {
-            address
-        };
+        let request = auth::QueryAccountRequest { address };
         let response = query_client
             .account(request)
             .await
             .map_err(GrpcError::Request)?
             .into_inner();
-        let any = response
-            .account
-            .unwrap();
+        let any = response.account.unwrap();
 
         Ok(auth::BaseAccount::decode(&any.value as &[u8]).unwrap())
     }
 
-    pub async fn query_accounts(&self, pagination: Option<PageRequest>) -> Result<Vec<auth::BaseAccount>, ChainClientError> {
+    pub async fn query_accounts(
+        &self,
+        pagination: Option<PageRequest>,
+    ) -> Result<Vec<auth::BaseAccount>, ChainClientError> {
         self.check_for_grpc_address()?;
         let mut query_client = self.get_auth_query_client().await?;
-        let request = auth::QueryAccountsRequest {
-            pagination: pagination
-        };
+        let request = auth::QueryAccountsRequest { pagination };
 
         Ok(query_client
             .accounts(request)
