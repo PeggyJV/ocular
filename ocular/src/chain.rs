@@ -1,9 +1,11 @@
+use tendermint_pre;
+
 pub mod client;
 pub mod config;
 pub mod info;
 pub mod registry;
 
-pub type ChainName = tendermint::chain::Id;
+pub type ChainName = tendermint_pre::chain::Id;
 
 pub const AGORIC: ChainName = ChainName::new("agoric");
 pub const AKASH: ChainName = ChainName::new("akash");

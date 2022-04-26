@@ -1,7 +1,3 @@
-#![warn(unused_qualifications)]
-#![allow(dead_code)]
-// TODO: Remove dead code allowance once these methods are used elsewhere
-
 use bip32::{Mnemonic, PrivateKey};
 use cosmrs::crypto::{secp256k1::SigningKey, PublicKey};
 use k256::SecretKey;

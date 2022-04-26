@@ -18,8 +18,6 @@ use super::client::query::BankQueryClient;
 #[derive(Clone, Debug, Default, Deserialize, Serialize)]
 #[serde(default)]
 pub struct ChainInfo {
-    #[serde(rename = "$schema")]
-    pub schema: String,
     pub chain_name: String,
     pub status: String,
     pub network_type: String,

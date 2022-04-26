@@ -2,6 +2,8 @@ use crate::{
     cosmos_modules::{base::Coin, *},
     error::{ChainClientError, GrpcError, RpcError},
 };
+use cosmos_sdk_proto::cosmos::base::query::v1beta1::PageRequest;
+use prost::Message;
 use tendermint_rpc::Client;
 use tonic::transport::Channel;
 
@@ -36,6 +38,42 @@ impl ChainClient {
         AuthQueryClient::connect(self.config.grpc_address.clone())
             .await
             .map_err(|e| GrpcError::Connection(e).into())
+    }
+
+    pub async fn query_account(
+        &self,
+        address: String,
+    ) -> Result<auth::BaseAccount, ChainClientError> {
+        self.check_for_grpc_address()?;
+        let mut query_client = self.get_auth_query_client().await?;
+        let request = auth::QueryAccountRequest { address };
+        let response = query_client
+            .account(request)
+            .await
+            .map_err(GrpcError::Request)?
+            .into_inner();
+        let any = response.account.unwrap();
+
+        Ok(auth::BaseAccount::decode(&any.value as &[u8]).unwrap())
+    }
+
+    pub async fn query_accounts(
+        &self,
+        pagination: Option<PageRequest>,
+    ) -> Result<Vec<auth::BaseAccount>, ChainClientError> {
+        self.check_for_grpc_address()?;
+        let mut query_client = self.get_auth_query_client().await?;
+        let request = auth::QueryAccountsRequest { pagination };
+
+        Ok(query_client
+            .accounts(request)
+            .await
+            .map_err(GrpcError::Request)?
+            .into_inner()
+            .accounts
+            .iter()
+            .map(|any| auth::BaseAccount::decode(&any.value as &[u8]).unwrap())
+            .collect())
     }
 
     // Bank queries
@@ -147,21 +185,5 @@ impl ChainClient {
             .await
             .map_err(RpcError::TendermintStatus)?;
         Ok(status.sync_info.latest_block_height.value())
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use crate::chain::{self, client::ChainClient};
-    use assay::assay;
-
-    #[assay]
-    async fn gets_bank_client() {
-        let client = ChainClient::new(chain::COSMOSHUB).unwrap();
-
-        client
-            .get_bank_query_client()
-            .await
-            .expect("failed to get bank query client");
     }
 }

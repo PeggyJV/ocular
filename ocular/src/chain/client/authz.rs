@@ -1,11 +1,10 @@
 use crate::{
     chain::client::tx::{Account, TxMetadata},
-    cosmos_modules::*,
+    cosmos_modules::{
+        authz::{self, *},
+        feegrant::{BasicAllowance, MsgGrantAllowance},
+    },
     error::{ChainClientError, GrpcError, TxError},
-};
-use cosmos_sdk_proto::cosmos::{
-    authz::v1beta1::{GenericAuthorization, MsgExec, MsgGrant, MsgRevoke},
-    feegrant::v1beta1::{BasicAllowance, MsgGrantAllowance},
 };
 use cosmrs::{tx, AccountId};
 use prost::Message;
@@ -32,10 +31,10 @@ impl ChainClient {
         granter: &str,
         grantee: &str,
         msg_type_url: &str,
-    ) -> Result<authz::QueryGrantsResponse, ChainClientError> {
+    ) -> Result<QueryGrantsResponse, ChainClientError> {
         let mut query_client = self.get_authz_query_client().await?;
 
-        let request = authz::QueryGrantsRequest {
+        let request = QueryGrantsRequest {
             granter: granter.to_string(),
             grantee: grantee.to_string(),
             msg_type_url: msg_type_url.to_string(),
@@ -64,7 +63,7 @@ impl ChainClient {
         let msg = MsgGrant {
             granter: granter.id.to_string(),
             grantee: grantee.to_string(),
-            grant: Some(authz::Grant {
+            grant: Some(Grant {
                 authorization: Some(prost_types::Any {
                     type_url: String::from("/cosmos.authz.v1beta1.GenericAuthorization"),
                     value: GenericAuthorization {
