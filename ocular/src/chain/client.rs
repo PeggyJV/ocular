@@ -51,6 +51,8 @@ pub fn new_rpc_http_client(address: &str) -> Result<RpcHttpClient, RpcError> {
     RpcHttpClient::new(address).map_err(|e| e.into())
 }
 
-pub async fn new_rpc_ws_client(address: &str) -> Result<(WebSocketClient, WebSocketClientDriver), RpcError> {
+pub async fn new_rpc_ws_client(
+    address: &str,
+) -> Result<(WebSocketClient, WebSocketClientDriver), RpcError> {
     WebSocketClient::new(address).await.map_err(|e| e.into())
 }
