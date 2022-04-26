@@ -14,8 +14,11 @@ readme = "README.md"
 assay = "0.1"
 bech32 = "0.6"
 bip32 = "0.3"
-cosmos-sdk-proto = { git = "https://github.com/cosmos/cosmos-rust", branch = "main", features = ["grpc"]}
-cosmrs = {version = "0.5.1", features = ["dev"] }
+# This explicit cosmos-sdk-proto import shouldn't be needed because cosmrs exposes it,
+# but for some reason the cosmos module query_client rust modules aren't importable through
+# cosmrs without this.
+cosmos-sdk-proto = "0.11.0"
+cosmrs = {version = "0.6.0", features = ["dev"] }
 dirs = "1.0.4"
 futures = { version = "0.3.19", features = ["executor"] }
 hex = "0.3.1"
@@ -30,9 +33,9 @@ reqwest = { version = "0.11.8", features = ["json"] }
 serde = "1.0.133"
 serde_json = "1.0.78"
 signatory = "0.24"
-tendermint = { git = "https://github.com/informalsystems/tendermint-rs", branch = "master" }
-tendermint-rpc = { version = "0.23", features = ["http-client"] }
 thiserror = "1.0"
+tendermint-pre = { package = "tendermint", git = "https://github.com/informalsystems/tendermint-rs" }
+tendermint-rpc = "0.23.6"
 tiny-bip39 = "0.8"
 tonic = { version = "0.6", features = ["transport"] }
 url = "2.2.2"

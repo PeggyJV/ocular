@@ -8,7 +8,7 @@ use crate::{
         config::ChainClientConfig,
     },
     error::AutomatedTxHandlerError,
-    keyring::Keyring,
+    keyring::Keyring, cosmos_modules,
 };
 use bip32::Mnemonic;
 use cosmrs::{bank::MsgSend, rpc, tx::Msg, AccountId, Coin};
@@ -148,7 +148,7 @@ impl ChainClient {
 
                         match grant.authorization.as_ref().unwrap().type_url.as_str() {
                             GENERIC_AUTHORIZATION_URL => {
-                                let generic_authorization = cosmos_sdk_proto::cosmos::authz::v1beta1::GenericAuthorization::decode(&*grant.authorization.unwrap().value).expect("Could not decode GenericAuthorization.");
+                                let generic_authorization = cosmos_modules::authz::GenericAuthorization::decode(&*grant.authorization.unwrap().value).expect("Could not decode GenericAuthorization.");
 
                                 if generic_authorization.msg.as_str() != MSG_SEND_URL {
                                     continue;
@@ -157,7 +157,7 @@ impl ChainClient {
                             SEND_AUTHORIZATION_URL => {
                                 // TODO check limit against tx sum
                                 let send_authorization =
-                                    cosmos_sdk_proto::cosmos::bank::v1beta1::SendAuthorization::decode(
+                                    cosmos_modules::bank::SendAuthorization::decode(
                                         &*grant.authorization.unwrap().value,
                                     )
                                     .expect("Could not decode SendAuthorization.");

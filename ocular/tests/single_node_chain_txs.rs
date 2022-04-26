@@ -14,7 +14,7 @@ use ocular::{
 };
 
 use ocular::chain::client::ChainClient;
-
+use bip32;
 use cosmos_sdk_proto::cosmos::authz::v1beta1::{
     GenericAuthorization, MsgExec, MsgGrant, MsgRevoke,
 };
@@ -74,7 +74,7 @@ fn local_single_node_chain_test() {
         &bip32::XPrv::derive_from_path(sender_seed, path)
             .expect("Could not create key.")
             .private_key()
-            .to_bytes(),
+            .to_bytes() as &[u8],
     )
     .expect("Could not create key.");
 
@@ -96,7 +96,7 @@ fn local_single_node_chain_test() {
         &bip32::XPrv::derive_from_path(recipient_seed, path)
             .expect("Could not create key.")
             .private_key()
-            .to_bytes(),
+            .to_bytes() as &[u8],
     )
     .expect("Could not create key.");
 
@@ -380,7 +380,7 @@ fn local_single_node_chain_test() {
                 &bip32::XPrv::derive_from_path(sender_seed, path)
                     .expect("Could not create key.")
                     .private_key()
-                    .to_bytes(),
+                    .to_bytes() as &[u8],
             )
             .expect("Could not create key.");
 
@@ -423,7 +423,7 @@ fn local_single_node_chain_test() {
                 &bip32::XPrv::derive_from_path(sender_seed, path)
                     .expect("Could not create key.")
                     .private_key()
-                    .to_bytes(),
+                    .to_bytes() as &[u8],
             )
             .expect("Could not create key.");
 
@@ -479,7 +479,7 @@ fn local_single_node_chain_test() {
                 &bip32::XPrv::derive_from_path(grantee_seed, path)
                     .expect("Could not create key.")
                     .private_key()
-                    .to_bytes(),
+                    .to_bytes() as &[u8],
             )
             .expect("Could not create key.");
 
@@ -587,7 +587,7 @@ fn local_single_node_chain_test() {
                 &bip32::XPrv::derive_from_path(sender_seed, path)
                     .expect("Could not create key.")
                     .private_key()
-                    .to_bytes(),
+                    .to_bytes() as &[u8],
             )
             .expect("Could not create key.");
 
@@ -639,7 +639,7 @@ fn local_single_node_chain_test() {
                 &bip32::XPrv::derive_from_path(grantee_seed, path)
                     .expect("Could not create key.")
                     .private_key()
-                    .to_bytes(),
+                    .to_bytes() as &[u8],
             )
             .expect("Could not create key.");
 
