@@ -3,10 +3,7 @@
 // Requies docker
 use ocular::{
     chain::{
-        client::{
-            automated_tx_handler::{DelegateTransaction, DelegatedToml},
-            tx::{Account, TxMetadata},
-        },
+        client::tx::{Account, TxMetadata},
         config::ChainClientConfig,
     },
     cosmos_modules::*,
@@ -249,93 +246,6 @@ fn local_single_node_chain_test() {
     .expect("Could not parse sign doc.");
     let _expected_msg_exec_raw = expected_msg_exec_sign_doc.sign(&sender_private_key);
 
-    // Automated tx handler delegated workflow
-    let grantee_pem_path = dirs::home_dir()
-        .unwrap()
-        .into_os_string()
-        .into_string()
-        .unwrap()
-        + "/.ocular/keys"
-        + "/test_only_key_number_2_override_safe.pem";
-
-    let mut file = DelegatedToml::default();
-
-    file.sender.grantee_private_key_path = &grantee_pem_path;
-    file.sender.granter_account = sender_account_id.as_ref();
-    file.sender.denom = DENOM;
-
-    file.sender.grantee_account_number = RECIPIENT_ACCOUNT_NUMBER;
-    file.sender.grantee_sequence_number = sequence_number + 1;
-    file.sender.gas_fee = 0;
-    file.sender.gas_limit = 500_000;
-    file.sender.timeout_height = timeout_height.into();
-    file.sender.memo = MEMO;
-
-    file.transaction.push(DelegateTransaction {
-        name: "A",
-        destination_account: ad_hoc_acct.id.as_ref(),
-        amount: 1u8.into(),
-    });
-
-    // Save toml for later use
-    let toml_path = dirs::home_dir()
-        .unwrap()
-        .into_os_string()
-        .into_string()
-        .unwrap()
-        + "/.ocular/keys"
-        + "/delegated_test.toml";
-
-    let toml_string = toml::to_string(&file).expect("Could not encode toml value.");
-    std::fs::write(&toml_path, toml_string).expect("Could not write to file.");
-
-    let automated_delegated_msg_send = MsgSend {
-        from_address: sender_account_id.clone(),
-        to_address: ad_hoc_acct.id.clone(),
-        amount: vec![Coin {
-            amount: 1u8.into(),
-            denom: DENOM.parse().expect("Could not parse"),
-        }],
-    }
-    .to_any()
-    .expect("Could not serlialize msg.");
-
-    let mut msgs: Vec<::prost_types::Any> = Vec::new();
-    msgs.push(automated_delegated_msg_send);
-
-    let msg = MsgExec {
-        grantee: recipient_account_id.to_string(),
-        msgs: msgs,
-    };
-
-    let msg_any = prost_types::Any {
-        type_url: String::from("/cosmos.authz.v1beta1.MsgExec"),
-        value: msg.encode_to_vec(),
-    };
-    let expected_automated_delegated_tx_body = tx::Body::new(vec![msg_any], MEMO, timeout_height);
-    let expected_automated_delegated_auth_info =
-        SignerInfo::single_direct(Some(recipient_public_key), sequence_number + 1).auth_info(Fee {
-            amount: vec![Coin {
-                amount: file.sender.gas_fee.into(),
-                denom: DENOM.parse().expect("Could not parse"),
-            }],
-            gas_limit: file.sender.gas_limit.into(),
-            payer: None,
-            granter: None,
-        });
-
-    let expected_automated_delegated_sign_doc = SignDoc::new(
-        &expected_automated_delegated_tx_body,
-        &expected_automated_delegated_auth_info,
-        &chain_id,
-        RECIPIENT_ACCOUNT_NUMBER,
-    )
-    .expect("Could not parse sign doc.");
-
-    let _expected_tx_raw = expected_automated_delegated_sign_doc
-        .sign(&recipient_private_key)
-        .expect("Could not parse tx.");
-
     let docker_args = [
         "-d",
         "-p",
@@ -350,7 +260,7 @@ fn local_single_node_chain_test() {
             let rpc_address = format!("http://localhost:{}", RPC_PORT);
             let rpc_client =
                 rpc::HttpClient::new(rpc_address.as_str()).expect("Could not create RPC");
-                let mut chain_client = ChainClient {
+                let chain_client = ChainClient {
                 config: ChainClientConfig {
                     chain_id: chain_id.to_string(),
                     rpc_address: rpc_address.clone(),
@@ -539,48 +449,6 @@ fn local_single_node_chain_test() {
             assert_eq!(&expected_msg_exec_body, &actual_msg_exec.body);
             assert_eq!(&expected_msg_exec_auth_info, &actual_msg_exec.auth_info);
 
-            // Test delegated automated tx workflow
-            let actual_automated_delegated_commit_response = &chain_client
-                .execute_delegated_transacton_toml(toml_path, false)
-                .await
-                .expect("Could not broadcast msg.");
-
-            if actual_automated_delegated_commit_response
-                .check_tx
-                .code
-                .is_err()
-            {
-                panic!(
-                    "check_tx for automated_delegated failed: {:?}",
-                    actual_automated_delegated_commit_response.check_tx
-                );
-            }
-
-            if actual_automated_delegated_commit_response
-                .deliver_tx
-                .code
-                .is_err()
-            {
-                panic!(
-                    "deliver_tx for automated_delegated failed: {:?}",
-                    actual_automated_delegated_commit_response.deliver_tx
-                );
-            }
-
-            let actual_automated_delegated = dev::poll_for_tx(
-                &rpc_client,
-                actual_automated_delegated_commit_response.hash,
-            )
-            .await;
-            assert_eq!(
-                &expected_automated_delegated_tx_body,
-                &actual_automated_delegated.body
-            );
-            assert_eq!(
-                &expected_automated_delegated_auth_info,
-                &actual_automated_delegated.auth_info
-            );
-
             // Test MsgRevoke functionality
             let sender_seed = sender_mnemonic.to_seed("");
             let sender_private_key: SigningKey = SigningKey::from_bytes(
@@ -646,7 +514,7 @@ fn local_single_node_chain_test() {
             let tx_metadata = TxMetadata {
                 chain_id: chain_id.clone(),
                 account_number: RECIPIENT_ACCOUNT_NUMBER,
-                sequence_number: sequence_number + 2,
+                sequence_number: sequence_number + 1,
                 gas_fee: Coin {
                     amount: 0u8.into(),
                     denom: DENOM.parse().expect("Could not parse denom."),
