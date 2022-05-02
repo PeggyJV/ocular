@@ -440,6 +440,7 @@ mod tests {
             keyring: keyring,
             rpc_client: rpc::HttpClient::new("http://localhost:8080")
                 .expect("Could not create RPC"),
+            cache: None,
         };
 
         // Assert error if no toml exists
@@ -574,6 +575,7 @@ mod tests {
             keyring: keyring,
             rpc_client: rpc::HttpClient::new("http://localhost:8080")
                 .expect("Could not create RPC"),
+            cache: None,
         };
 
         // Assert error if no toml exists

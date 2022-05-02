@@ -4,8 +4,6 @@ use std::collections::HashSet;
 use std::fs::File;
 use std::os::unix::fs::PermissionsExt;
 
-use super::ChainClient;
-
 // Constants
 const DEFAULT_FILE_CACHE_DIR: &str = "/.ocular/cache";
 const DEFAULT_FILE_CACHE_NAME: &str = "grpc_endpoints.toml";
@@ -30,7 +28,7 @@ pub trait GrpcCache {
 }
 
 /// Cache initialization definitions
-impl ChainClient {
+impl Cache {
     /// Constructor for file cache path. Must include filename with ".toml" suffix for file type.
     ///
     /// If override_if_exists is true it will wipe the previous file found if it exists.
@@ -40,11 +38,10 @@ impl ChainClient {
     /// [[endpoint]]
     ///     address = "35.230.37.28:9090"
     pub fn create_file_cache(
-        &mut self,
         file_path: Option<&str>,
         override_if_exists: bool,
     ) -> Result<Cache, CacheError> {
-        // If none, create at default, albeit with chain specific filename (e.g. ~/.ocular/sommelier_grpc_endpoints.toml)
+        // If none, create at default: (e.g. ~/.ocular/grpc_endpoints.toml)
         let path: String = if let Some(file_path) = file_path {
             file_path.to_string()
         } else {
@@ -55,8 +52,6 @@ impl ChainClient {
                 .unwrap()
                 + DEFAULT_FILE_CACHE_DIR
                 + "/"
-                + &self.config.chain_id
-                + "_"
                 + DEFAULT_FILE_CACHE_NAME
         };
 
@@ -112,7 +107,6 @@ impl ChainClient {
 
     /// Constructor for in memory cache.
     pub fn create_memory_cache(
-        &mut self,
         endpoints: Option<HashSet<String>>,
     ) -> Result<Cache, CacheError> {
         let cache = match endpoints {
@@ -179,8 +173,37 @@ mod tests {
     use super::*;
 
     #[test]
-    fn file_cache_init() {}
+    fn file_cache_init() {
+        // Create testing dir
+        let new_dir = &(std::env::current_dir()
+            .unwrap()
+            .into_os_string()
+            .into_string()
+            .unwrap()
+            + "/cache_test");
+
+
+
+        
+
+        // Clean up testing dir
+        std::fs::remove_dir_all(new_dir)
+            .expect(&format!("Failed to delete test directory {}", new_dir));
+
+        // Assert deleted
+        let result = std::panic::catch_unwind(|| std::fs::metadata(new_dir).unwrap());
+        assert!(result.is_err());
+    }
 
     #[test]
-    fn memory_cache_init() {}
+    fn memory_cache_init() {
+        // Attempt creation with no endpoints
+        assert!(Cache::create_memory_cache(None).is_ok());
+        
+        // Attempt creation with some endpoints
+        let mut endpts = HashSet::new();
+        endpts.insert(String::from("localhost"));
+
+        assert!(Cache::create_memory_cache(Some(endpts)).is_ok());
+    }
 }
