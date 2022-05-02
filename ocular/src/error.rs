@@ -125,3 +125,12 @@ pub enum AutomatedTxHandlerError {
     #[error("no valid unexpired authorization grants found for msg type: {0}")]
     Authorization(String),
 }
+
+
+#[derive(Debug, Error)]
+pub enum CacheError {
+    #[error("error processing file: {0}")]
+    FileIO(String),
+    #[error("error intializing cache: {0}")]
+    Initialization(String),
+}
