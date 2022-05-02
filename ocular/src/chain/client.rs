@@ -1,7 +1,7 @@
 #![warn(unused_qualifications)]
 
 use crate::{
-    chain::{config::ChainClientConfig, registry::get_chain, client::cache::Cache},
+    chain::{client::cache::Cache, config::ChainClientConfig, registry::get_chain},
     error::{ChainClientError, RpcError},
     keyring::Keyring,
 };
@@ -12,9 +12,9 @@ use super::ChainName;
 
 pub mod authz;
 pub mod automated_tx_handler;
+pub mod cache;
 pub mod query;
 pub mod tx;
-pub mod cache;
 
 type RpcHttpClient = tendermint_rpc::HttpClient;
 
@@ -42,13 +42,13 @@ fn get_client(chain_name: &str) -> Result<ChainClient, ChainClientError> {
     let keyring = Keyring::new_file_store(None)?;
     let rpc_client = new_rpc_http_client(config.rpc_address.as_str())?;
     // Default to in memory cache
-    let cache = Some(Cache::new());
+    //let cache = Some(Cache::new());
 
     Ok(ChainClient {
         config,
         keyring,
         rpc_client,
-        cache,
+        cache: None,
     })
 }
 

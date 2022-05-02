@@ -192,8 +192,6 @@ impl ChainInfo {
 
         // Update cache here with endpoints that are healthy
 
-
-
         // this is not very efficient but i was getting annoyed trying to figure
         // out how to do filtering with an async method
         for (i, ep) in endpoints.clone().iter().enumerate() {

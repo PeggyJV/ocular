@@ -126,7 +126,6 @@ pub enum AutomatedTxHandlerError {
     Authorization(String),
 }
 
-
 #[derive(Debug, Error)]
 pub enum CacheError {
     #[error("error processing file: {0}")]
