@@ -32,10 +32,10 @@ pub trait GrpcCache {
     /// Check if cache has been initialized
     fn is_initialized(&self) -> bool;
     /// Add item to cache
-    fn add_item(&self, item: String) -> Result<(), CacheError>;
+    fn add_item(&mut self, item: String) -> Result<(), CacheError>;
     /// Remove item from cache
-    fn remove_item(&self, item: String) -> Result<(), CacheError>;
-    /// Retrieves all items from cache
+    fn remove_item(&mut self, item: String) -> Result<(), CacheError>;
+    /// Retrieves a copy of all items from cache
     fn get_all_items(&self) -> Result<HashSet<String>, CacheError>;
 }
 
@@ -171,16 +171,51 @@ impl GrpcCache for FileCache {
         !self.path.is_empty()
     }
 
-    fn add_item(&self, item: String) -> Result<(), CacheError> {
-        todo!()
+    fn add_item(&mut self, item: String) -> Result<(), CacheError> {
+        if !self.endpoints.insert(item.clone()) {
+            return Err(CacheError::AlreadyExists(item));
+        }
+
+        let content = match std::fs::read_to_string(&self.path) {
+            Ok(result) => result,
+            Err(err) => {
+                return Err(CacheError::FileIO(err.to_string()));
+            }
+        };
+
+        let mut toml: GrpcEndpointToml = GrpcEndpointToml::default();
+
+        // Possible contents is empty, check to avoid parsing errors
+        if !content.is_empty() {
+            toml = match toml::from_str(&content) {
+                Ok(result) => result,
+                Err(err) => {
+                    return Err(CacheError::Toml(err.to_string()));
+                }
+            };
+
+            dbg!(&toml);
+        }
+
+        // Add new item
+        toml.endpoint.push(GrpcEndpoint { address: &item });
+
+        let toml_string = toml::to_string(&toml).expect("Could not encode toml value.");
+
+        dbg!(&toml_string);
+
+        // Rewrite file
+        std::fs::write(&self.path, toml_string).expect("Could not write to file.");
+
+        Ok(())
     }
 
-    fn remove_item(&self, item: String) -> Result<(), CacheError> {
+    fn remove_item(&mut self, item: String) -> Result<(), CacheError> {
         todo!()
     }
 
     fn get_all_items(&self) -> Result<HashSet<String>, CacheError> {
-        todo!()
+        Ok(self.endpoints.clone())
     }
 }
 
@@ -195,16 +230,22 @@ impl GrpcCache for MemoryCache {
         true
     }
 
-    fn add_item(&self, item: String) -> Result<(), CacheError> {
-        todo!()
+    fn add_item(&mut self, item: String) -> Result<(), CacheError> {
+        match self.endpoints.insert(item.clone()) {
+            true => Ok(()),
+            false => Err(CacheError::AlreadyExists(item)),
+        }
     }
 
-    fn remove_item(&self, item: String) -> Result<(), CacheError> {
-        todo!()
+    fn remove_item(&mut self, item: String) -> Result<(), CacheError> {
+        match self.endpoints.remove(&item.clone()) {
+            true => Ok(()),
+            false => Err(CacheError::DoesNotExist(item)),
+        }
     }
 
     fn get_all_items(&self) -> Result<HashSet<String>, CacheError> {
-        todo!()
+        Ok(self.endpoints.clone())
     }
 }
 

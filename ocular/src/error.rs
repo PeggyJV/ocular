@@ -134,4 +134,8 @@ pub enum CacheError {
     Initialization(String),
     #[error("error parsing toml: {0}")]
     Toml(String),
+    #[error("item already exists in cache: {0}")]
+    AlreadyExists(String),
+    #[error("item does not exist in cache: {0}")]
+    DoesNotExist(String),
 }
