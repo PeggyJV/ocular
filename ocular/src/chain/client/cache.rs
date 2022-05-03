@@ -1,5 +1,6 @@
 use crate::error::CacheError;
 
+use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
 use std::fs::File;
 use std::os::unix::fs::PermissionsExt;
@@ -9,6 +10,17 @@ const DEFAULT_FILE_CACHE_DIR: &str = "/.ocular/cache";
 const DEFAULT_FILE_CACHE_NAME: &str = "grpc_endpoints.toml";
 /// Unix permissions for dir
 const FILE_CACHE_DIR_PERMISSIONS: u32 = 0o700;
+
+// Toml structs
+#[derive(Debug, Default, Serialize, Deserialize)]
+pub struct GrpcEndpointToml<'a> {
+    #[serde(borrow)]
+    pub endpoint: Vec<GrpcEndpoint<'a>>,
+}
+#[derive(Debug, Default, Serialize, Deserialize)]
+pub struct GrpcEndpoint<'a> {
+    pub address: &'a str,
+}
 
 /// Broad cache object that can mange all ocular cache initialization
 pub struct Cache {
@@ -106,9 +118,7 @@ impl Cache {
     }
 
     /// Constructor for in memory cache.
-    pub fn create_memory_cache(
-        endpoints: Option<HashSet<String>>,
-    ) -> Result<Cache, CacheError> {
+    pub fn create_memory_cache(endpoints: Option<HashSet<String>>) -> Result<Cache, CacheError> {
         let cache = match endpoints {
             Some(endpoints) => MemoryCache { endpoints },
             None => MemoryCache {
@@ -174,17 +184,77 @@ mod tests {
 
     #[test]
     fn file_cache_init() {
-        // Create testing dir
-        let new_dir = &(std::env::current_dir()
+        // Get base testing dir
+        let base_dir = std::env::current_dir()
             .unwrap()
             .into_os_string()
             .into_string()
+            .unwrap();
+
+        let home_dir = dirs::home_dir()
             .unwrap()
-            + "/cache_test");
+            .into_os_string()
+            .into_string()
+            .unwrap();
 
+        // Testing dir
+        let new_dir = &(base_dir + "/cache_test_1");
 
+        // First check default configurations
+        let _cache = Cache::create_file_cache(None, false).expect("Could not create cache.");
 
-        
+        let default_location = &(String::from(home_dir)
+            + &String::from(DEFAULT_FILE_CACHE_DIR)
+            + &String::from("/")
+            + &String::from(DEFAULT_FILE_CACHE_NAME));
+        dbg!(default_location);
+        assert!(std::path::Path::new(default_location).exists());
+
+        // Attempt to create new directory
+        // Make sure new dir DNE.
+        let test_filepath = &(String::from(new_dir) + "/test.toml");
+        assert!(!std::path::Path::new(test_filepath).exists());
+
+        // Create new without override
+        let _cache =
+            Cache::create_file_cache(Some(test_filepath), false).expect("Could not create cache.");
+
+        // Write to file a bit to test overrides
+        let mut file = GrpcEndpointToml::default();
+        file.endpoint.push(GrpcEndpoint {
+            address: "localhost:8080",
+        });
+        let toml_string = toml::to_string(&file).expect("Could not encode toml value.");
+
+        dbg!(&toml_string);
+        dbg!(&test_filepath);
+
+        std::fs::write(&test_filepath, toml_string).expect("Could not write to file.");
+
+        // Store contents of file
+        let file_output = std::fs::read_to_string(test_filepath).expect("Could not read file.");
+
+        // Make sure it's not empty
+        assert!(!file_output.is_empty());
+
+        // Verify with override false, file contents still exists
+        let _cache_2 =
+            Cache::create_file_cache(Some(test_filepath), false).expect("Could not create cache.");
+        let file_output_check =
+            std::fs::read_to_string(test_filepath).expect("Could not read file.");
+
+        // Assert not empty and equals old file
+        assert!(!file_output_check.is_empty());
+        assert_eq!(file_output_check, file_output);
+
+        // Test override
+        let _cache_3 =
+            Cache::create_file_cache(Some(test_filepath), true).expect("Could not create cache.");
+
+        // Verify file contents was overriden
+        let file_override_check =
+            std::fs::read_to_string(test_filepath).expect("Could not read file.");
+        assert!(file_override_check.is_empty());
 
         // Clean up testing dir
         std::fs::remove_dir_all(new_dir)
@@ -199,7 +269,7 @@ mod tests {
     fn memory_cache_init() {
         // Attempt creation with no endpoints
         assert!(Cache::create_memory_cache(None).is_ok());
-        
+
         // Attempt creation with some endpoints
         let mut endpts = HashSet::new();
         endpts.insert(String::from("localhost"));
