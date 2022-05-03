@@ -211,7 +211,46 @@ impl GrpcCache for FileCache {
     }
 
     fn remove_item(&mut self, item: String) -> Result<(), CacheError> {
-        todo!()
+        if !self.endpoints.remove(&item) {
+            return Err(CacheError::DoesNotExist(item));
+        }
+
+        let mut toml: GrpcEndpointToml = GrpcEndpointToml::default();
+
+        let content = match std::fs::read_to_string(&self.path) {
+            Ok(result) => result,
+            Err(err) => {
+                return Err(CacheError::FileIO(err.to_string()));
+            }
+        };
+
+        // If we were able to get to this point, contents should never be empty, so no need to check.
+        let old_toml: GrpcEndpointToml = match toml::from_str(&content) {
+            Ok(result) => result,
+            Err(err) => {
+                return Err(CacheError::Toml(err.to_string()));
+            }
+        };
+
+        dbg!(&old_toml);
+
+        // Remove item by virtue of excludng it from new toml
+        for endpt in &old_toml.endpoint {
+            if endpt.address.trim() != item.as_str() {
+                toml.endpoint.push(GrpcEndpoint {
+                    address: endpt.address,
+                });
+            }
+        }
+
+        let toml_string = toml::to_string(&toml).expect("Could not encode toml value.");
+
+        dbg!(&toml_string);
+
+        // Rewrite file
+        std::fs::write(&self.path, toml_string).expect("Could not write to file.");
+
+        Ok(())
     }
 
     fn get_all_items(&self) -> Result<HashSet<String>, CacheError> {
@@ -342,6 +381,85 @@ mod tests {
     }
 
     #[test]
+    fn file_cache_accessor_test() {
+        // Use ad hoc testing dir + file.
+        let testing_dir = std::env::current_dir()
+            .unwrap()
+            .into_os_string()
+            .into_string()
+            .unwrap()
+            + "/cache_test_2";
+        let test_file = &(String::from(&testing_dir) + "/test.toml");
+
+        let mut cache =
+            Cache::create_file_cache(Some(test_file), true).expect("Could not create cache");
+
+        // Assert cache is empty to start in both memory and file
+        assert!(cache
+            .grpc_endpoint_cache
+            .get_all_items()
+            .expect("Could not get cache contents.")
+            .is_empty());
+        assert!(std::fs::read_to_string(&test_file)
+            .expect("Could not open file.")
+            .is_empty());
+
+        // Insert item
+        cache
+            .grpc_endpoint_cache
+            .add_item(String::from("localhost:9090"))
+            .expect("Could not add item to cache.");
+
+        // Verify item exists in both memory and file
+        assert!(cache
+            .grpc_endpoint_cache
+            .get_all_items()
+            .expect("Could not get cache contents.")
+            .contains(&String::from("localhost:9090")));
+        let contents = std::fs::read_to_string(&test_file).expect("Could not open file.");
+        let toml: GrpcEndpointToml = toml::from_str(&contents).expect("Could not parse toml.");
+        assert!(
+            toml.endpoint.len() == 1 && toml.endpoint[0].address == String::from("localhost:9090")
+        );
+
+        // Verify attempting to add existing item results in duplicate item failure
+        assert!(cache
+            .grpc_endpoint_cache
+            .add_item(String::from("localhost:9090"))
+            .is_err());
+
+        // Remove item
+        cache
+            .grpc_endpoint_cache
+            .remove_item(String::from("localhost:9090"))
+            .expect("Could not remove item from cache.");
+
+        // Verify removed in both memory and file
+        assert!(cache
+            .grpc_endpoint_cache
+            .get_all_items()
+            .expect("Could not get cache contents.")
+            .is_empty());
+        let contents = std::fs::read_to_string(&test_file).expect("Could not open file.");
+        let toml: GrpcEndpointToml = toml::from_str(&contents).expect("Could not parse toml.");
+        assert!(toml.endpoint.len() == 0);
+
+        // Verify removing item that DNE results in err
+        assert!(cache
+            .grpc_endpoint_cache
+            .remove_item(String::from("localhost:9090"))
+            .is_err());
+
+        // Clean up testing dir
+        std::fs::remove_dir_all(&testing_dir)
+            .expect(&format!("Failed to delete test directory {}", &testing_dir));
+
+        // Assert deleted
+        let result = std::panic::catch_unwind(|| std::fs::metadata(testing_dir).unwrap());
+        assert!(result.is_err());
+    }
+
+    #[test]
     fn memory_cache_init() {
         // Attempt creation with no endpoints
         assert!(Cache::create_memory_cache(None).is_ok());
@@ -356,5 +474,55 @@ mod tests {
 
         // Check initialization
         assert!(cache.unwrap().grpc_endpoint_cache.is_initialized())
+    }
+
+    #[test]
+    fn memory_cache_accessor_test() {
+        let mut cache = Cache::create_memory_cache(None).expect("Could not create cache");
+
+        // Assert cache is empty to start
+        assert!(cache
+            .grpc_endpoint_cache
+            .get_all_items()
+            .expect("Could not get cache contents.")
+            .is_empty());
+
+        // Insert item
+        cache
+            .grpc_endpoint_cache
+            .add_item(String::from("localhost:9090"))
+            .expect("Could not add item to cache.");
+
+        // Verify item exists
+        assert!(cache
+            .grpc_endpoint_cache
+            .get_all_items()
+            .expect("Could not get cache contents.")
+            .contains(&String::from("localhost:9090")));
+
+        // Verify attempting to add existing item results in duplicate item failure
+        assert!(cache
+            .grpc_endpoint_cache
+            .add_item(String::from("localhost:9090"))
+            .is_err());
+
+        // Remove item
+        cache
+            .grpc_endpoint_cache
+            .remove_item(String::from("localhost:9090"))
+            .expect("Could not remove item from cache.");
+
+        // Verify removed
+        assert!(cache
+            .grpc_endpoint_cache
+            .get_all_items()
+            .expect("Could not get cache contents.")
+            .is_empty());
+
+        // Verify removing item that DNE results in err
+        assert!(cache
+            .grpc_endpoint_cache
+            .remove_item(String::from("localhost:9090"))
+            .is_err());
     }
 }
