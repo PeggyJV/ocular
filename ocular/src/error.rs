@@ -132,4 +132,6 @@ pub enum CacheError {
     FileIO(String),
     #[error("error intializing cache: {0}")]
     Initialization(String),
+    #[error("error parsing toml: {0}")]
+    Toml(String),
 }

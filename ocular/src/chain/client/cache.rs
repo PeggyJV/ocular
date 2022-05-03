@@ -102,6 +102,34 @@ impl Cache {
             Err(err) => return Err(CacheError::FileIO(err.to_string())),
         };
 
+        let mut endpoints = HashSet::new();
+
+        // Load endpoints if they exist
+        if std::path::Path::new(&path).exists() {
+            let content = match std::fs::read_to_string(&path) {
+                Ok(result) => result,
+                Err(err) => {
+                    return Err(CacheError::FileIO(err.to_string()));
+                }
+            };
+
+            // Possible contents is empty, check to avoid parsing errors
+            if !content.is_empty() {
+                let toml: GrpcEndpointToml = match toml::from_str(&content) {
+                    Ok(result) => result,
+                    Err(err) => {
+                        return Err(CacheError::Toml(err.to_string()));
+                    }
+                };
+
+                dbg!(&toml);
+
+                for endpt in &toml.endpoint {
+                    endpoints.insert(endpt.address.to_string());
+                }
+            }
+        }
+
         // Finally we can manipulate the actual file after checking the override settings
         if override_if_exists || !std::path::Path::new(&path).exists() {
             // Note this creates a new file or truncates the existing one
@@ -113,7 +141,7 @@ impl Cache {
 
         // If patch specified create
         Ok(Cache {
-            grpc_endpoint_cache: Box::new(FileCache { path }),
+            grpc_endpoint_cache: Box::new(FileCache { path, endpoints }),
         })
     }
 
@@ -135,6 +163,7 @@ impl Cache {
 /// File based cache
 pub struct FileCache {
     path: String,
+    endpoints: HashSet<String>,
 }
 
 impl GrpcCache for FileCache {
