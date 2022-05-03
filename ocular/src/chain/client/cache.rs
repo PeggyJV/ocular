@@ -168,7 +168,7 @@ pub struct FileCache {
 
 impl GrpcCache for FileCache {
     fn is_initialized(&self) -> bool {
-        todo!()
+        !self.path.is_empty()
     }
 
     fn add_item(&self, item: String) -> Result<(), CacheError> {
@@ -191,7 +191,8 @@ pub struct MemoryCache {
 
 impl GrpcCache for MemoryCache {
     fn is_initialized(&self) -> bool {
-        todo!()
+        // No special intialization process so it can always be considered initialized for now.
+        true
     }
 
     fn add_item(&self, item: String) -> Result<(), CacheError> {
@@ -245,7 +246,7 @@ mod tests {
         assert!(!std::path::Path::new(test_filepath).exists());
 
         // Create new without override
-        let _cache =
+        let cache =
             Cache::create_file_cache(Some(test_filepath), false).expect("Could not create cache.");
 
         // Write to file a bit to test overrides
@@ -267,7 +268,7 @@ mod tests {
         assert!(!file_output.is_empty());
 
         // Verify with override false, file contents still exists
-        let _cache_2 =
+        let cache_2 =
             Cache::create_file_cache(Some(test_filepath), false).expect("Could not create cache.");
         let file_output_check =
             std::fs::read_to_string(test_filepath).expect("Could not read file.");
@@ -277,13 +278,18 @@ mod tests {
         assert_eq!(file_output_check, file_output);
 
         // Test override
-        let _cache_3 =
+        let cache_3 =
             Cache::create_file_cache(Some(test_filepath), true).expect("Could not create cache.");
 
         // Verify file contents was overriden
         let file_override_check =
             std::fs::read_to_string(test_filepath).expect("Could not read file.");
         assert!(file_override_check.is_empty());
+
+        // Finally check initialization methods
+        assert!(cache.grpc_endpoint_cache.is_initialized());
+        assert!(cache_2.grpc_endpoint_cache.is_initialized());
+        assert!(cache_3.grpc_endpoint_cache.is_initialized());
 
         // Clean up testing dir
         std::fs::remove_dir_all(new_dir)
@@ -303,6 +309,11 @@ mod tests {
         let mut endpts = HashSet::new();
         endpts.insert(String::from("localhost"));
 
-        assert!(Cache::create_memory_cache(Some(endpts)).is_ok());
+        let cache = Cache::create_memory_cache(Some(endpts));
+
+        assert!(cache.is_ok());
+
+        // Check initialization
+        assert!(cache.unwrap().grpc_endpoint_cache.is_initialized())
     }
 }
