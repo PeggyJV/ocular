@@ -19,6 +19,8 @@ pub enum ChainClientError {
     TxError(#[from] TxError),
     #[error("{0}")]
     AutomatedTxHandlerError(#[from] AutomatedTxHandlerError),
+    #[error("{0}")]
+    CacheError(#[from] CacheError),
 }
 
 #[derive(Debug, Error)]

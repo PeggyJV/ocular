@@ -42,13 +42,13 @@ fn get_client(chain_name: &str) -> Result<ChainClient, ChainClientError> {
     let keyring = Keyring::new_file_store(None)?;
     let rpc_client = new_rpc_http_client(config.rpc_address.as_str())?;
     // Default to in memory cache
-    //let cache = Some(Cache::new());
+    let cache = Cache::create_memory_cache(None)?;
 
     Ok(ChainClient {
         config,
         keyring,
         rpc_client,
-        cache: None,
+        cache: Some(cache),
     })
 }
 

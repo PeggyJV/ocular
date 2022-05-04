@@ -178,10 +178,6 @@ impl ChainInfo {
     }
 
     pub async fn get_grpc_endpoints(&self) -> Result<Vec<String>, ChainInfoError> {
-        // Cache work to happen here
-
-        // 1. Check if endpoints exist in cache, if so return them, otherwise retireve all
-
         let mut endpoints = self.get_all_grpc_endpoints();
         if endpoints.is_empty() {
             return Err(GrpcError::MissingEndpoint(
@@ -189,8 +185,6 @@ impl ChainInfo {
             )
             .into());
         }
-
-        // Update cache here with endpoints that are healthy
 
         // this is not very efficient but i was getting annoyed trying to figure
         // out how to do filtering with an async method
