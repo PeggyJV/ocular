@@ -15,6 +15,10 @@ impl Runnable for ShowCmd {
             match ocular::chain::registry::get_chain(self.name.as_str()).await {
                 Ok(info) => {
                     let info = serde_json::to_string_pretty(&info).unwrap();
+                    let info = serde_json::to_string_pretty(&info).unwrap_or_else(|err| {
+                        status_err!("Can't convert string to JSON: {}", err);
+                        std::process::exit(1);
+                    });
                     print!("{}", info)
                 }
                 Err(err) => error!("{}", err),
