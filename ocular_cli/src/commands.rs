@@ -1,17 +1,17 @@
-//! LensrsCli Subcommands
+//! OcularCli Subcommands
 
 mod chains;
 
 use self::chains::ChainsCmd;
-use crate::config::LensrsCliConfig;
+use crate::config::OcularCliConfig;
 use abscissa_core::{config::Override, Command, Configurable, FrameworkError, Runnable};
 use clap::Parser;
 use std::path::PathBuf;
 
-/// LensrsCli Subcommands
+/// OcularCli Subcommands
 /// Subcommands need to be listed in an enum.
 #[derive(Command, Debug, Parser, Runnable)]
-pub enum LensrsCliCmd {
+pub enum OcularCliCmd {
     /// command for managing chains
     #[clap(subcommand)]
     Chains(ChainsCmd),
@@ -22,7 +22,7 @@ pub enum LensrsCliCmd {
 #[clap(author, about, version)]
 pub struct EntryPoint {
     #[clap(subcommand)]
-    cmd: LensrsCliCmd,
+    cmd: OcularCliCmd,
 
     /// Enable verbose logging
     #[clap(short, long)]
@@ -40,7 +40,7 @@ impl Runnable for EntryPoint {
 }
 
 /// This trait allows you to define how application configuration is loaded.
-impl Configurable<LensrsCliConfig> for EntryPoint {
+impl Configurable<OcularCliConfig> for EntryPoint {
     /// Location of the configuration file
     fn config_path(&self) -> Option<PathBuf> {
         // Generate ~/.ocular/config.toml if it doesn't exist. Since abscissa does
@@ -57,9 +57,9 @@ impl Configurable<LensrsCliConfig> for EntryPoint {
     ///
     /// This can be safely deleted if you don't want to override config
     /// settings from command-line options.
-    fn process_config(&self, config: LensrsCliConfig) -> Result<LensrsCliConfig, FrameworkError> {
+    fn process_config(&self, config: OcularCliConfig) -> Result<OcularCliConfig, FrameworkError> {
         match &self.cmd {
-            LensrsCliCmd::Chains(cmd) => cmd.override_config(config),
+            OcularCliCmd::Chains(cmd) => cmd.override_config(config),
             //
             // If you don't need special overrides for some
             // subcommands, you can just use a catch all

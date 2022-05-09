@@ -8,7 +8,7 @@ mod set_default;
 mod show;
 mod show_default;
 
-use crate::config::LensrsCliConfig;
+use crate::config::OcularCliConfig;
 use abscissa_core::{config, Command, FrameworkError, Runnable};
 use clap::Parser;
 
@@ -26,11 +26,11 @@ pub enum ChainsCmd {
     Show(ShowCmd),
 }
 
-impl config::Override<LensrsCliConfig> for ChainsCmd {
+impl config::Override<OcularCliConfig> for ChainsCmd {
     // Process the given command line options, overriding settings from
     // a configuration file using explicit flags taken from command-line
     // arguments.
-    fn override_config(&self, config: LensrsCliConfig) -> Result<LensrsCliConfig, FrameworkError> {
+    fn override_config(&self, config: OcularCliConfig) -> Result<OcularCliConfig, FrameworkError> {
         Ok(config)
     }
 }
