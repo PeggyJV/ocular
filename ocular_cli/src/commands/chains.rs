@@ -12,6 +12,7 @@ use crate::config::LensrsCliConfig;
 use abscissa_core::{config, Command, FrameworkError, Runnable};
 use clap::Parser;
 
+use self::list::ListCmd;
 use self::show::ShowCmd;
 
 /// `start` subcommand
@@ -24,6 +25,7 @@ use self::show::ShowCmd;
 #[derive(Command, Debug, Parser, Runnable)]
 pub enum ChainsCmd {
     Show(ShowCmd),
+    List(ListCmd),
 }
 
 impl config::Override<LensrsCliConfig> for ChainsCmd {
