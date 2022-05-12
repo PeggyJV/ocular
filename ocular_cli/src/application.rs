@@ -1,6 +1,6 @@
-//! LensrsCli Abscissa Application
+//! OcularCli Abscissa Application
 
-use crate::{commands::EntryPoint, config::LensrsCliConfig};
+use crate::{commands::EntryPoint, config::OcularCliConfig};
 use abscissa_core::{
     application::{self, AppCell},
     config::{self, CfgCell},
@@ -9,13 +9,13 @@ use abscissa_core::{
 use abscissa_tokio::TokioComponent;
 
 /// Application state
-pub static APP: AppCell<LensrsCliApp> = AppCell::new();
+pub static APP: AppCell<OcularCliApp> = AppCell::new();
 
-/// LensrsCli Application
+/// OcularCli Application
 #[derive(Debug)]
-pub struct LensrsCliApp {
+pub struct OcularCliApp {
     /// Application configuration.
-    config: CfgCell<LensrsCliConfig>,
+    config: CfgCell<OcularCliConfig>,
 
     /// Application state.
     state: application::State<Self>,
@@ -25,7 +25,7 @@ pub struct LensrsCliApp {
 ///
 /// By default no configuration is loaded, and the framework state is
 /// initialized to a default, empty state (no components, threads, etc).
-impl Default for LensrsCliApp {
+impl Default for OcularCliApp {
     fn default() -> Self {
         Self {
             config: CfgCell::default(),
@@ -34,18 +34,18 @@ impl Default for LensrsCliApp {
     }
 }
 
-impl Application for LensrsCliApp {
+impl Application for OcularCliApp {
     /// Entrypoint command for this application.
     type Cmd = EntryPoint;
 
     /// Application configuration.
-    type Cfg = LensrsCliConfig;
+    type Cfg = OcularCliConfig;
 
     /// Paths to resources within the application.
     type Paths = StandardPaths;
 
     /// Accessor for application configuration.
-    fn config(&self) -> config::Reader<LensrsCliConfig> {
+    fn config(&self) -> config::Reader<OcularCliConfig> {
         self.config.read()
     }
 

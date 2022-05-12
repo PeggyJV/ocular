@@ -29,7 +29,7 @@ use once_cell::sync::Lazy;
 /// invocations as `cargo test` executes tests in parallel by default.
 pub static RUNNER: Lazy<CmdRunner> = Lazy::new(|| CmdRunner::default());
 
-/// Use `LensrsCliConfig::default()` value if no config or args
+/// Use `OcularCliConfig::default()` value if no config or args
 #[test]
 #[ignore]
 fn start_no_args() {

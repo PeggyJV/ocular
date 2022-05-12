@@ -1,4 +1,4 @@
-//! LensrsCli Config
+//! OcularCli Config
 //!
 //! See instructions in `commands.rs` to specify the path to your
 //! application's configuration file and/or command-line options
@@ -13,10 +13,10 @@ use std::{
     path::{Path, PathBuf},
 };
 
-/// LensrsCli Configuration
+/// OcularCli Configuration
 #[derive(Clone, Debug, Default, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
-pub struct LensrsCliConfig {
+pub struct OcularCliConfig {
     /// Chain related config, not read in from file
     pub default_chain: String,
     /// Locally cached chains
@@ -37,7 +37,7 @@ pub async fn init() -> Result<PathBuf, Error> {
     if !config_file.exists() {
         debug!("creating config file with default chains");
         let default_chains = get_default_chains().await?;
-        let config_content = LensrsCliConfig {
+        let config_content = OcularCliConfig {
             default_chain: "cosmoshub".to_string(),
             chains: default_chains,
         };

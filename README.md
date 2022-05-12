@@ -1,6 +1,6 @@
 # Ocular
 
-Ocular seeks to be the preferred cosmos client library UX for Rust projects. It is strongly based on [lens](https://github.com/strangelove-ventures/lens), a go client library for blockchains built with the [Cosmos SDK](https://github.com/cosmos/cosmos-sdk).
+Ocular seeks to be the preferred cosmos client library UX for Rust projects. It is strongly based on [Lens](https://github.com/strangelove-ventures/Lens), a go client library for blockchains built with the [Cosmos SDK](https://github.com/cosmos/cosmos-sdk).
 
 # Features
 
