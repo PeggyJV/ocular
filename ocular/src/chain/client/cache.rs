@@ -69,13 +69,13 @@ impl Cache {
         dbg!(format!("Attempting to use path {:#?}", path));
 
         // Verify path formatting
-        if path.extension().unwrap().to_str().unwrap() != "toml" {
-            return Err(CacheError::Initialization(String::from(
-                "Only toml files supported.",
-            )));
-        } else if path.is_dir() {
+        if path.is_dir() {
             return Err(CacheError::Initialization(String::from(
                 "Path is a dir; must be a file.",
+            )));
+        } else if path.extension().unwrap().to_str().unwrap() != "toml" {
+            return Err(CacheError::Initialization(String::from(
+                "Only files with extension .toml are supported.",
             )));
         }
 
@@ -83,10 +83,8 @@ impl Cache {
         // First just create dirs safely regardless of override settings
         let save_path = path.parent().unwrap();
 
-        let dir_res = save_path.metadata();
-
         // Create dir if doesn't exist
-        if dir_res.is_err() {
+        if !save_path.exists() {
             match std::fs::create_dir_all(save_path) {
                 Ok(_res) => _res,
                 Err(err) => return Err(CacheError::FileIO(err.to_string())),
@@ -105,7 +103,7 @@ impl Cache {
         let mut endpoints = HashSet::new();
 
         // Load endpoints if they exist
-        if std::path::Path::new(&path).exists() {
+        if path.exists() {
             let content = match std::fs::read_to_string(&path) {
                 Ok(result) => result,
                 Err(err) => {
@@ -131,14 +129,13 @@ impl Cache {
         }
 
         // Finally we can manipulate the actual file after checking the override settings
-        if override_if_exists || !std::path::Path::new(&path).exists() {
+        if override_if_exists || !path.exists() {
             // Note this creates a new file or truncates the existing one
             if let Err(err) = File::create(&path) {
                 return Err(CacheError::FileIO(err.to_string()));
             }
         }
 
-        // If patch specified create
         Ok(Cache {
             grpc_endpoint_cache: Box::new(FileCache { path, endpoints }),
         })
