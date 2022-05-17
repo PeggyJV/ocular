@@ -4,22 +4,22 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
 use std::fs::File;
 use std::os::unix::fs::PermissionsExt;
+use std::path::PathBuf;
 
 // Constants
-const DEFAULT_FILE_CACHE_DIR: &str = "/.ocular/cache";
+const DEFAULT_FILE_CACHE_DIR: &str = ".ocular/cache";
 const DEFAULT_FILE_CACHE_NAME: &str = "grpc_endpoints.toml";
 /// Unix permissions for dir
 const FILE_CACHE_DIR_PERMISSIONS: u32 = 0o700;
 
 // Toml structs
 #[derive(Debug, Default, Serialize, Deserialize)]
-pub struct GrpcEndpointToml<'a> {
-    #[serde(borrow)]
-    pub endpoint: Vec<GrpcEndpoint<'a>>,
+pub struct GrpcEndpointToml {
+    pub endpoints: Vec<GrpcEndpoint>,
 }
 #[derive(Debug, Default, Serialize, Deserialize)]
-pub struct GrpcEndpoint<'a> {
-    pub address: &'a str,
+pub struct GrpcEndpoint {
+    pub address: String,
 }
 
 /// Broad cache object that can mange all ocular cache initialization
@@ -47,47 +47,47 @@ impl Cache {
     /// Otherwise if set to false, it will use what is found at the file or create a new one if not found.
     ///
     /// Toml will be required to be structured as so:
-    /// [[endpoint]]
+    /// [[endpoints]]
     ///     address = "35.230.37.28:9090"
     pub fn create_file_cache(
         file_path: Option<&str>,
         override_if_exists: bool,
     ) -> Result<Cache, CacheError> {
         // If none, create at default: (e.g. ~/.ocular/grpc_endpoints.toml)
-        let path: String = if let Some(file_path) = file_path {
-            file_path.to_string()
-        } else {
-            dirs::home_dir()
-                .unwrap()
-                .into_os_string()
-                .into_string()
-                .unwrap()
-                + DEFAULT_FILE_CACHE_DIR
-                + "/"
-                + DEFAULT_FILE_CACHE_NAME
+        let path: PathBuf = match file_path {
+            Some(path) => PathBuf::from(path),
+            None => {
+                let mut p = dirs::home_dir().unwrap();
+
+                p.push(DEFAULT_FILE_CACHE_DIR);
+                p.push(DEFAULT_FILE_CACHE_NAME);
+
+                p
+            }
         };
 
-        dbg!(format!("Attempting to use path {}", path));
+        dbg!(format!("Attempting to use path {:#?}", path));
 
         // Verify path formatting
-        if !path.ends_with(".toml") {
+        if path.extension().unwrap().to_str().unwrap() != "toml" {
             return Err(CacheError::Initialization(String::from(
                 "Only toml files supported.",
+            )));
+        } else if path.is_dir() {
+            return Err(CacheError::Initialization(String::from(
+                "Path is a dir; must be a file.",
             )));
         }
 
         // Create files/dirs based on override settings
         // First just create dirs safely regardless of override settings
-        let save_path = &path[..path
-            .to_string()
-            .rfind('/')
-            .expect("Could not process string.")];
+        let save_path = path.parent().unwrap();
 
-        let dir_res = std::path::Path::new(&save_path).metadata();
+        let dir_res = save_path.metadata();
 
         // Create dir if doesn't exist
         if dir_res.is_err() {
-            match std::fs::create_dir_all(&save_path) {
+            match std::fs::create_dir_all(save_path) {
                 Ok(_res) => _res,
                 Err(err) => return Err(CacheError::FileIO(err.to_string())),
             };
@@ -95,7 +95,7 @@ impl Cache {
 
         #[cfg(unix)]
         match std::fs::set_permissions(
-            &save_path,
+            save_path,
             std::fs::Permissions::from_mode(FILE_CACHE_DIR_PERMISSIONS),
         ) {
             Ok(_res) => _res,
@@ -124,7 +124,7 @@ impl Cache {
 
                 dbg!(&toml);
 
-                for endpt in &toml.endpoint {
+                for endpt in &toml.endpoints {
                     endpoints.insert(endpt.address.to_string());
                 }
             }
@@ -133,10 +133,9 @@ impl Cache {
         // Finally we can manipulate the actual file after checking the override settings
         if override_if_exists || !std::path::Path::new(&path).exists() {
             // Note this creates a new file or truncates the existing one
-            let _res = match File::create(&path) {
-                Ok(res) => res,
-                Err(err) => return Err(CacheError::FileIO(err.to_string())),
-            };
+            if let Err(err) = File::create(&path) {
+                return Err(CacheError::FileIO(err.to_string()));
+            }
         }
 
         // If patch specified create
@@ -162,19 +161,17 @@ impl Cache {
 
 /// File based cache
 pub struct FileCache {
-    path: String,
+    path: PathBuf,
     endpoints: HashSet<String>,
 }
 
 impl GrpcCache for FileCache {
     fn is_initialized(&self) -> bool {
-        !self.path.is_empty()
+        self.path.capacity() != 0
     }
 
     fn add_item(&mut self, item: String) -> Result<(), CacheError> {
-        if !self.endpoints.insert(item.clone()) {
-            return Err(CacheError::AlreadyExists(item));
-        }
+        self.endpoints.insert(item.clone());
 
         let content = match std::fs::read_to_string(&self.path) {
             Ok(result) => result,
@@ -198,22 +195,21 @@ impl GrpcCache for FileCache {
         }
 
         // Add new item
-        toml.endpoint.push(GrpcEndpoint { address: &item });
+        toml.endpoints.push(GrpcEndpoint { address: item });
 
         let toml_string = toml::to_string(&toml).expect("Could not encode toml value.");
 
         dbg!(&toml_string);
 
         // Rewrite file
-        std::fs::write(&self.path, toml_string).expect("Could not write to file.");
-
-        Ok(())
+        match std::fs::write(&self.path, toml_string) {
+            Ok(_) => Ok(()),
+            Err(err) => Err(CacheError::FileIO(err.to_string())),
+        }
     }
 
     fn remove_item(&mut self, item: String) -> Result<(), CacheError> {
-        if !self.endpoints.remove(&item) {
-            return Err(CacheError::DoesNotExist(item));
-        }
+        self.endpoints.remove(&item);
 
         let mut toml: GrpcEndpointToml = GrpcEndpointToml::default();
 
@@ -235,13 +231,11 @@ impl GrpcCache for FileCache {
         dbg!(&old_toml);
 
         // Remove item by virtue of excludng it from new toml
-        for endpt in &old_toml.endpoint {
-            if endpt.address.trim() != item.as_str() {
-                toml.endpoint.push(GrpcEndpoint {
-                    address: endpt.address,
-                });
-            }
-        }
+        toml.endpoints = old_toml
+            .endpoints
+            .into_iter()
+            .filter(|ep| ep.address.trim() != item.as_str())
+            .collect();
 
         let toml_string = toml::to_string(&toml).expect("Could not encode toml value.");
 
@@ -270,17 +264,15 @@ impl GrpcCache for MemoryCache {
     }
 
     fn add_item(&mut self, item: String) -> Result<(), CacheError> {
-        match self.endpoints.insert(item.clone()) {
-            true => Ok(()),
-            false => Err(CacheError::AlreadyExists(item)),
-        }
+        self.endpoints.insert(item);
+
+        Ok(())
     }
 
     fn remove_item(&mut self, item: String) -> Result<(), CacheError> {
-        match self.endpoints.remove(&item.clone()) {
-            true => Ok(()),
-            false => Err(CacheError::DoesNotExist(item)),
-        }
+        self.endpoints.remove(&item);
+
+        Ok(())
     }
 
     fn get_all_items(&self) -> Result<HashSet<String>, CacheError> {
@@ -314,6 +306,7 @@ mod tests {
         let _cache = Cache::create_file_cache(None, false).expect("Could not create cache.");
 
         let default_location = &(String::from(home_dir)
+            + &String::from("/")
             + &String::from(DEFAULT_FILE_CACHE_DIR)
             + &String::from("/")
             + &String::from(DEFAULT_FILE_CACHE_NAME));
@@ -331,8 +324,8 @@ mod tests {
 
         // Write to file a bit to test overrides
         let mut file = GrpcEndpointToml::default();
-        file.endpoint.push(GrpcEndpoint {
-            address: "localhost:8080",
+        file.endpoints.push(GrpcEndpoint {
+            address: String::from("localhost:8080"),
         });
         let toml_string = toml::to_string(&file).expect("Could not encode toml value.");
 
@@ -419,14 +412,14 @@ mod tests {
         let contents = std::fs::read_to_string(&test_file).expect("Could not open file.");
         let toml: GrpcEndpointToml = toml::from_str(&contents).expect("Could not parse toml.");
         assert!(
-            toml.endpoint.len() == 1 && toml.endpoint[0].address == String::from("localhost:9090")
+            toml.endpoints.len() == 1
+                && toml.endpoints[0].address == String::from("localhost:9090")
         );
 
-        // Verify attempting to add existing item results in duplicate item failure
         assert!(cache
             .grpc_endpoint_cache
             .add_item(String::from("localhost:9090"))
-            .is_err());
+            .is_ok());
 
         // Remove item
         cache
@@ -442,13 +435,12 @@ mod tests {
             .is_empty());
         let contents = std::fs::read_to_string(&test_file).expect("Could not open file.");
         let toml: GrpcEndpointToml = toml::from_str(&contents).expect("Could not parse toml.");
-        assert!(toml.endpoint.len() == 0);
+        assert!(toml.endpoints.len() == 0);
 
-        // Verify removing item that DNE results in err
         assert!(cache
             .grpc_endpoint_cache
             .remove_item(String::from("localhost:9090"))
-            .is_err());
+            .is_ok());
 
         // Clean up testing dir
         std::fs::remove_dir_all(&testing_dir)
@@ -500,11 +492,10 @@ mod tests {
             .expect("Could not get cache contents.")
             .contains(&String::from("localhost:9090")));
 
-        // Verify attempting to add existing item results in duplicate item failure
         assert!(cache
             .grpc_endpoint_cache
             .add_item(String::from("localhost:9090"))
-            .is_err());
+            .is_ok());
 
         // Remove item
         cache
@@ -519,10 +510,9 @@ mod tests {
             .expect("Could not get cache contents.")
             .is_empty());
 
-        // Verify removing item that DNE results in err
         assert!(cache
             .grpc_endpoint_cache
             .remove_item(String::from("localhost:9090"))
-            .is_err());
+            .is_ok());
     }
 }
