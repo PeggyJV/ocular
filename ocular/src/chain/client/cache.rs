@@ -242,9 +242,10 @@ impl GrpcCache for FileCache {
         dbg!(&toml_string);
 
         // Rewrite file
-        std::fs::write(&self.path, toml_string).expect("Could not write to file.");
-
-        Ok(())
+        match std::fs::write(&self.path, toml_string) {
+            Ok(_) => Ok(()),
+            Err(err) => Err(CacheError::FileIO(err.to_string())),
+        }
     }
 
     fn get_all_items(&self) -> Result<HashSet<String>, CacheError> {
