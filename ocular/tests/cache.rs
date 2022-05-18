@@ -14,10 +14,11 @@ const DOCKER_HUB_GAIA_SINGLE_NODE_TEST_IMAGE: &str = "philipjames11/gaia-test";
 
 #[test]
 fn file_cache_init() {
+    let rpc_port = RPC_PORT;
     let docker_args = [
         "-d",
         "-p",
-        &format!("{}:{}", RPC_PORT, RPC_PORT),
+        &format!("{}:{}", rpc_port, rpc_port),
         DOCKER_HUB_GAIA_SINGLE_NODE_TEST_IMAGE,
         CHAIN_ID,
         "test",
@@ -116,10 +117,11 @@ fn file_cache_init() {
 
 #[test]
 fn file_cache_accessor_test() {
+    let rpc_port = RPC_PORT + 1;
     let docker_args = [
         "-d",
         "-p",
-        &format!("{}:{}", RPC_PORT, RPC_PORT),
+        &format!("{}:{}", rpc_port, rpc_port),
         DOCKER_HUB_GAIA_SINGLE_NODE_TEST_IMAGE,
         CHAIN_ID,
         "test",
@@ -207,10 +209,11 @@ fn file_cache_accessor_test() {
 
 #[test]
 fn memory_cache_init() {
+    let rpc_port = RPC_PORT + 2;
     let docker_args = [
         "-d",
         "-p",
-        &format!("{}:{}", RPC_PORT, RPC_PORT),
+        &format!("{}:{}", rpc_port, rpc_port),
         DOCKER_HUB_GAIA_SINGLE_NODE_TEST_IMAGE,
         CHAIN_ID,
         "test",
@@ -237,10 +240,11 @@ fn memory_cache_init() {
 
 #[test]
 fn memory_cache_accessor_test() {
+    let rpc_port = RPC_PORT + 3;
     let docker_args = [
         "-d",
         "-p",
-        &format!("{}:{}", RPC_PORT, RPC_PORT),
+        &format!("{}:{}", rpc_port, rpc_port),
         DOCKER_HUB_GAIA_SINGLE_NODE_TEST_IMAGE,
         CHAIN_ID,
         "test",
