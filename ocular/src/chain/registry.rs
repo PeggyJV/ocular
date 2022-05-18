@@ -3,9 +3,7 @@ use serde::{de::DeserializeOwned, Deserialize, Serialize};
 
 #[derive(Debug, Default, Deserialize, Serialize)]
 pub struct AssetList {
-    #[serde(rename = "$schema")]
-    pub schema: String,
-    pub chain_id: String,
+    pub chain_name: String,
     pub assets: Vec<Asset>,
 }
 
