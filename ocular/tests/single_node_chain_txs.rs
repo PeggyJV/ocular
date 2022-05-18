@@ -271,6 +271,7 @@ fn local_single_node_chain_test() {
                 },
                 keyring: Keyring::new_file_store(None).expect("Could not create keyring."),
                 rpc_client: rpc_client.clone(),
+                cache: None,
             };
 
             dev::poll_for_first_block(&rpc_client).await;

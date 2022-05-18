@@ -19,6 +19,8 @@ pub enum ChainClientError {
     TxError(#[from] TxError),
     #[error("{0}")]
     AutomatedTxHandlerError(#[from] AutomatedTxHandlerError),
+    #[error("{0}")]
+    CacheError(#[from] CacheError),
 }
 
 #[derive(Debug, Error)]
@@ -124,4 +126,14 @@ pub enum AutomatedTxHandlerError {
     ChainClient(String),
     #[error("no valid unexpired authorization grants found for msg type: {0}")]
     Authorization(String),
+}
+
+#[derive(Debug, Error)]
+pub enum CacheError {
+    #[error("error processing file: {0}")]
+    FileIO(String),
+    #[error("error intializing cache: {0}")]
+    Initialization(String),
+    #[error("error parsing toml: {0}")]
+    Toml(String),
 }
