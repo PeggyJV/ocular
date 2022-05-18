@@ -27,31 +27,12 @@ jobs:
             target/
           key: ${{ runner.os }}-cargo-${{ hashFiles('Cargo.lock') }}
       - name: Run Ocular acceptance tests
-        run: cargo test ocular --verbose
-  
-  rust-build:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout branch
-        uses: actions/checkout@v2
-      - name: Set up Rust caches
-        uses: actions/cache@v2
-        id: rust-cache
-        with:
-          path: |
-            ~/.cargo/bin/
-            ~/.cargo/registry/index/
-            ~/.cargo/registry/cache/
-            ~/.cargo/git/db/
-            target/
-          key: ${{ runner.os }}-cargo-${{ hashFiles('Cargo.lock') }}
-      - name: Run Cargo build
-        run: cargo build
-  
+        run: cargo test --verbose
+
   fmt:
     name: Rustfmt
     runs-on: ubuntu-latest
-    steps:       
+    steps:
       - name: Checkout branch
         uses: actions/checkout@v2
         with:
@@ -63,10 +44,11 @@ jobs:
         with:
           command: fmt
           args: --all -- --check
+
   clippy:
     name: Clippy
     runs-on: ubuntu-latest
-    steps:  
+    steps:
       - name: Checkout branch
         uses: actions/checkout@v2
         with:
