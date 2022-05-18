@@ -1,7 +1,7 @@
 //! OcularCli Subcommands
 
 mod chains;
-use crate::{prelude::*, application::APP};
+
 use self::chains::ChainsCmd;
 use crate::config::OcularCliConfig;
 use abscissa_core::{config::Override, Command, Configurable, FrameworkError, Runnable};
@@ -49,8 +49,7 @@ impl Configurable<OcularCliConfig> for EntryPoint {
         // the only method that runs before config gets loaded, so I'm putting
         // it here for now.
         let rt = tokio::runtime::Runtime::new().unwrap();
-        let config = APP.config();
-        rt.block_on(async { config.init().await }).ok()
+        rt.block_on(async { crate::config::init().await }).ok()
     }
 
     /// Apply changes to the config after it's been loaded, e.g. overriding
