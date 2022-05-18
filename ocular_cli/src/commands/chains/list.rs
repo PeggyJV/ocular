@@ -1,5 +1,5 @@
-use crate::{config::OcularCliConfig, application::APP};
-use abscissa_core::{config, Command, FrameworkError, Runnable, status_err, tracing::error};
+use crate::{application::APP, config::OcularCliConfig};
+use abscissa_core::{config, status_err, tracing::error, Command, FrameworkError, Runnable};
 use clap::Parser;
 
 #[derive(Command, Debug, Parser)]
