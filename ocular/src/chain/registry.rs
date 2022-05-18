@@ -66,7 +66,7 @@ pub async fn get_chain(name: &str) -> Result<ChainInfo, ChainRegistryError> {
 async fn get_content(path: String) -> Result<reqwest::Response, ChainRegistryError> {
     octocrab::instance()
         .repos("cosmos", "chain-registry")
-        .raw_file("HEAD".to_string(), path)
+        .raw_file("88bde7fb534ed6f7c26c2073f57ec5135b470f56".to_string(), path)
         .await
         .map_err(|e| e.into())
 }
