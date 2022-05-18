@@ -1,6 +1,5 @@
-use crate::config::LensrsCliConfig;
-use crate::prelude::*;
-use abscissa_core::{config, Command, FrameworkError, Runnable};
+use crate::{config::OcularCliConfig, application::APP};
+use abscissa_core::{config, Command, FrameworkError, Runnable, status_err, tracing::error};
 use clap::Parser;
 
 #[derive(Command, Debug, Parser)]
@@ -28,11 +27,11 @@ impl Runnable for ListCmd {
     }
 }
 
-impl config::Override<LensrsCliConfig> for ListCmd {
+impl config::Override<OcularCliConfig> for ListCmd {
     // Process the given command line options, overriding settings from
     // a configuration file using explicit flags taken from command-line
     // arguments.
-    fn override_config(&self, config: LensrsCliConfig) -> Result<LensrsCliConfig, FrameworkError> {
+    fn override_config(&self, config: OcularCliConfig) -> Result<OcularCliConfig, FrameworkError> {
         Ok(config)
     }
 }
