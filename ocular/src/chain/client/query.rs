@@ -20,21 +20,8 @@ pub type SlashingQueryClient = slashing::query_client::QueryClient<Channel>;
 pub type StakingQueryClient = staking::query_client::QueryClient<Channel>;
 
 impl ChainClient {
-    pub fn check_for_grpc_address(&self) -> Result<(), GrpcError> {
-        if self.config.grpc_address.is_empty() {
-            return Err(GrpcError::MissingEndpoint(format!(
-                "no grpc address available for chain {}",
-                self.config.chain_id
-            )));
-        }
-
-        Ok(())
-    }
-
     // Auth queries
     pub async fn get_auth_query_client(&self) -> Result<AuthQueryClient, ChainClientError> {
-        self.check_for_grpc_address()?;
-
         AuthQueryClient::connect(self.config.grpc_address.clone())
             .await
             .map_err(|e| GrpcError::Connection(e).into())
@@ -44,7 +31,6 @@ impl ChainClient {
         &self,
         address: String,
     ) -> Result<auth::BaseAccount, ChainClientError> {
-        self.check_for_grpc_address()?;
         let mut query_client = self.get_auth_query_client().await?;
         let request = auth::QueryAccountRequest { address };
         let response = query_client
@@ -61,7 +47,6 @@ impl ChainClient {
         &self,
         pagination: Option<PageRequest>,
     ) -> Result<Vec<auth::BaseAccount>, ChainClientError> {
-        self.check_for_grpc_address()?;
         let mut query_client = self.get_auth_query_client().await?;
         let request = auth::QueryAccountsRequest { pagination };
 
@@ -78,8 +63,6 @@ impl ChainClient {
 
     // Bank queries
     pub async fn get_bank_query_client(&self) -> Result<BankQueryClient, ChainClientError> {
-        self.check_for_grpc_address()?;
-
         BankQueryClient::connect(self.config.grpc_address.clone())
             .await
             .map_err(|e| GrpcError::Connection(e).into())

@@ -17,21 +17,35 @@ pub type AuthzQueryClient = authz::query_client::QueryClient<Channel>;
 
 impl ChainClient {
     // Authz queries
-    pub async fn get_authz_query_client(&self) -> Result<AuthzQueryClient, ChainClientError> {
-        self.check_for_grpc_address()?;
+    pub async fn get_authz_query_client(&mut self) -> Result<AuthzQueryClient, ChainClientError> {
+        // Get an endpoint 
+        let endpoint = match self.get_random_grpc_endpoint().await {
+            Ok(endpt) => endpt,
+            Err(err) => return Err(GrpcError::MissingEndpoint(err.to_string()).into()),
+        };
 
-        // TODO: replace with getRandomGrpcEndpoint
-        // TODO: Add retry & incrmentFailure mechanism
 
-        // Get grpc address randomly each time; shuffle on failures
-        AuthzQueryClient::connect(self.config.grpc_address.clone())
+
+        
+
+        // ------------------->>>>>>>>>>>> TODO: Add retry & incrmentFailure mechanism
+
+
+
+
+
+
+
+
+        // Get grpc address randomly each time; shuffles on failures
+        AuthzQueryClient::connect(endpoint)
             .await
             .map_err(|e| GrpcError::Connection(e).into())
     }
 
     // Query for a specific msg grant
     pub async fn query_authz_grant(
-        &self,
+        &mut self,
         granter: &str,
         grantee: &str,
         msg_type_url: &str,
@@ -217,7 +231,7 @@ mod tests {
 
     #[assay]
     async fn gets_authz_client() {
-        let client = ChainClient::new(chain::COSMOSHUB).unwrap();
+        let mut client = ChainClient::new(chain::COSMOSHUB).unwrap();
 
         client
             .get_authz_query_client()
