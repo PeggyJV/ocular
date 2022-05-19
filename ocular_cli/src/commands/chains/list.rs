@@ -1,5 +1,4 @@
-use crate::config;
-use crate::prelude::*;
+use crate::{config, prelude::*};
 use abscissa_core::{Command, Runnable};
 use clap::Parser;
 use ocular::chain::info::ChainInfo;

@@ -1,41 +1,50 @@
-use crate::config::OcularCliConfig;
-use crate::prelude::*;
-use abscissa_core::{config, Command, FrameworkError, Runnable};
+use crate::{config, prelude::*};
+use abscissa_core::{Command, Runnable};
 use clap::Parser;
+use ocular::chain::info::ChainInfo;
+use serde::{Deserialize, Serialize};
+use std::{collections::HashMap, fs, path::Path, str};
 
 #[derive(Command, Debug, Parser)]
 pub struct ShowCmd {
     name: String,
 }
 
+#[derive(Deserialize)]
+struct Chains {
+    chains: Vec<ChainInfo>,
+}
+
 impl Runnable for ShowCmd {
     /// Start the application.
     fn run(&self) {
-        abscissa_tokio::run(&APP, async {
-            match ocular::chain::registry::get_chain(self.name.as_str()).await {
-                Ok(info) => {
-                    let info = serde_json::to_string_pretty(&info).unwrap();
-                    let info = serde_json::to_string_pretty(&info).unwrap_or_else(|err| {
-                        status_err!("Can't convert string to JSON: {}", err);
-                        std::process::exit(1);
-                    });
-                    print!("{}", info)
-                }
-                Err(err) => error!("{}", err),
-            }
-        })
-        .unwrap_or_else(|e| {
-            status_err!("executor exited with error: {}", e);
+        let path = config::get_config_path();
+        let config_file = Path::new(path.to_str().unwrap());
+
+        let chain_list = fs::read_to_string(config_file).unwrap_or_else(|err| {
+            status_err!("Can't fetch config file: {}", err);
             std::process::exit(1);
         });
-    }
-}
 
-impl config::Override<OcularCliConfig> for ShowCmd {
-    // Process the given command line options, overriding settings from
-    // a configuration file using explicit flags taken from command-line
-    // arguments.
-    fn override_config(&self, config: OcularCliConfig) -> Result<OcularCliConfig, FrameworkError> {
-        Ok(config)
+        let data: Chains = toml::from_str(&chain_list).unwrap_or_else(|err| {
+            status_err!("Can't fetch list of local chains:{}", err);
+            std::process::exit(1);
+        });
+
+        for chain_info in data.chains.iter() {
+            let info = HashMap::from([(chain_info.chain_name.clone(), &chain_info)]);
+
+            let chain_name = self.name.clone();
+
+            if let Some(chain_details) = info.get(chain_name.as_str()) {
+                // customize indentation for chain_info
+                let buf = Vec::new();
+                let formatter = serde_json::ser::PrettyFormatter::with_indent(b"    ");
+                let mut serialize = serde_json::Serializer::with_formatter(buf, formatter);
+                chain_details.serialize(&mut serialize).unwrap();
+
+                println!("{}", String::from_utf8(serialize.into_inner()).unwrap());
+            }
+        }
     }
 }
