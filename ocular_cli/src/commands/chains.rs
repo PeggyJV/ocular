@@ -14,6 +14,7 @@ use clap::Parser;
 
 use self::list::ListCmd;
 use self::show::ShowCmd;
+use self::registry_list::RegistryListCmd;
 
 /// `start` subcommand
 ///
@@ -26,6 +27,7 @@ use self::show::ShowCmd;
 pub enum ChainsCmd {
     Show(ShowCmd),
     List(ListCmd),
+    RegistryList(RegistryListCmd),
 }
 
 impl config::Override<OcularCliConfig> for ChainsCmd {
