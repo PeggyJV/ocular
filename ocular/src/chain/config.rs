@@ -1,7 +1,9 @@
 use serde::{Deserialize, Serialize};
+use crate::chain::ChainName;
 
-#[derive(Clone, Debug, Default, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct ChainClientConfig {
+    pub chain_name: ChainName,
     pub chain_id: String,
     #[serde(rename = "rpc-addr")]
     pub rpc_address: String,

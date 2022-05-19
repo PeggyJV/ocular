@@ -33,13 +33,15 @@ pub trait GrpcCache {
     /// Check if cache has been initialized
     fn is_initialized(&self) -> bool;
     /// Add item to cache, overrides connsecutiveFailedConnections if item already exists
-    fn add_item(&mut self, item: String, connsecutiveFailedConnections: u8) -> Result<(), CacheError>;
+    fn add_item(&self, item: String, connsecutiveFailedConnections: u8) -> Result<(), CacheError>;
     /// Remove item from cache
-    fn remove_item(&mut self, item: String) -> Result<(), CacheError>;
+    fn remove_item(&self, item: String) -> Result<(), CacheError>;
     /// Increments connsecutiveFailedConnections if item already exists, or creates item with 1 failed connection if it DNE
-    fn increment_failed_connections(&mut self, item: String) -> Result<(), CacheError>;
+    fn increment_failed_connections(&self, item: String) -> Result<(), CacheError>;
     /// Retrieves a copy of all items from cache
     fn get_all_items(&self) -> Result<HashMap<String, u8>, CacheError>;
+    /// Retrieves connections failure threshold
+    fn get_connsecutive_failed_connections_threshold(&self) -> u8;
 }
 
 /// Cache initialization definitions
@@ -55,6 +57,7 @@ impl Cache {
     ///     connsecutiveFailedConnections = 0
     pub fn create_file_cache(
         file_path: Option<&str>,
+        connsecutiveFailedConnectionsThreshold: u8,
         override_if_exists: bool,
     ) -> Result<Cache, CacheError> {
         // If none, create at default: (e.g. ~/.ocular/grpc_endpoints.toml)
@@ -141,16 +144,17 @@ impl Cache {
         }
 
         Ok(Cache {
-            grpc_endpoint_cache: Box::new(FileCache { path, endpoints }),
+            grpc_endpoint_cache: Box::new(FileCache { path, endpoints, connsecutiveFailedConnectionsThreshold}),
         })
     }
 
     /// Constructor for in memory cache.
-    pub fn create_memory_cache(endpoints: Option<HashMap<String, u8>>) -> Result<Cache, CacheError> {
+    pub fn create_memory_cache(endpoints: Option<HashMap<String, u8>>, connsecutiveFailedConnectionsThreshold: u8) -> Result<Cache, CacheError> {
         let cache = match endpoints {
-            Some(endpoints) => MemoryCache { endpoints },
+            Some(endpoints) => MemoryCache { endpoints, connsecutiveFailedConnectionsThreshold },
             None => MemoryCache {
                 endpoints: HashMap::new(),
+                connsecutiveFailedConnectionsThreshold,
             },
         };
 
@@ -164,6 +168,7 @@ impl Cache {
 pub struct FileCache {
     path: PathBuf,
     endpoints: HashMap<String, u8>,
+    connsecutiveFailedConnectionsThreshold: u8,
 }
 
 impl GrpcCache for FileCache {
@@ -171,7 +176,7 @@ impl GrpcCache for FileCache {
         self.path.capacity() != 0
     }
 
-    fn add_item(&mut self, item: String, connsecutiveFailedConnections: u8) -> Result<(), CacheError> {
+    fn add_item(&self, item: String, connsecutiveFailedConnections: u8) -> Result<(), CacheError> {
         self.endpoints.insert(item.clone(), connsecutiveFailedConnections);
 
         let content = match std::fs::read_to_string(&self.path) {
@@ -209,7 +214,7 @@ impl GrpcCache for FileCache {
         }
     }
 
-    fn remove_item(&mut self, item: String) -> Result<(), CacheError> {
+    fn remove_item(&self, item: String) -> Result<(), CacheError> {
         self.endpoints.remove(&item);
 
         let mut toml: GrpcEndpointToml = GrpcEndpointToml::default();
@@ -253,11 +258,16 @@ impl GrpcCache for FileCache {
         Ok(self.endpoints.clone())
     }
 
-    fn increment_failed_connections(&mut self, item: String) -> Result<(), CacheError> {
+    fn increment_failed_connections(&self, item: String) -> Result<(), CacheError> {
         if self.endpoints.contains_key(&item) {
             self.endpoints.insert(item, self.endpoints.get(&item).unwrap() + 1);
         } else {
             self.endpoints.insert(item, 1);
+        }
+
+        // Check if element now at removal threshold
+        if self.endpoints.get(&item).unwrap() >= &self.connsecutiveFailedConnectionsThreshold {
+            self.remove_item(item).expect("Error removing item from cache.");
         }
 
         // Update file
@@ -275,11 +285,16 @@ impl GrpcCache for FileCache {
             Err(err) => Err(CacheError::FileIO(err.to_string())),
         }
     }
+
+    fn get_connsecutive_failed_connections_threshold(&self) -> u8 {
+        self.connsecutiveFailedConnectionsThreshold
+    }
 }
 
 /// Memory based cache
 pub struct MemoryCache {
     endpoints: HashMap<String, u8>,
+    connsecutiveFailedConnectionsThreshold: u8,
 }
 
 impl GrpcCache for MemoryCache {
@@ -288,13 +303,13 @@ impl GrpcCache for MemoryCache {
         true
     }
 
-    fn add_item(&mut self, item: String, connsecutiveFailedConnections: u8) -> Result<(), CacheError> {
+    fn add_item(&self, item: String, connsecutiveFailedConnections: u8) -> Result<(), CacheError> {
         self.endpoints.insert(item, connsecutiveFailedConnections);
 
         Ok(())
     }
 
-    fn remove_item(&mut self, item: String) -> Result<(), CacheError> {
+    fn remove_item(&self, item: String) -> Result<(), CacheError> {
         self.endpoints.remove(&item);
 
         Ok(())
@@ -304,13 +319,22 @@ impl GrpcCache for MemoryCache {
         Ok(self.endpoints.clone())
     }
 
-    fn increment_failed_connections(&mut self, item: String) -> Result<(), CacheError> {
+    fn increment_failed_connections(&self, item: String) -> Result<(), CacheError> {
         if self.endpoints.contains_key(&item) {
             self.endpoints.insert(item, self.endpoints.get(&item).unwrap() + 1);
         } else {
             self.endpoints.insert(item, 1);
         }
+        
+        // Check if element now at removal threshold
+        if self.endpoints.get(&item).unwrap() >= &self.connsecutiveFailedConnectionsThreshold {
+            self.remove_item(item).expect("Error removing item from cache.");
+        }
 
         Ok(())
+    }
+
+    fn get_connsecutive_failed_connections_threshold(&self) -> u8 {
+        self.connsecutiveFailedConnectionsThreshold
     }
 }

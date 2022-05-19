@@ -20,6 +20,9 @@ impl ChainClient {
     pub async fn get_authz_query_client(&self) -> Result<AuthzQueryClient, ChainClientError> {
         self.check_for_grpc_address()?;
 
+        // TODO: replace with getRandomGrpcEndpoint
+        // TODO: Add retry & incrmentFailure mechanism
+
         // Get grpc address randomly each time; shuffle on failures
         AuthzQueryClient::connect(self.config.grpc_address.clone())
             .await

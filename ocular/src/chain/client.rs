@@ -15,6 +15,7 @@ pub mod automated_tx_handler;
 pub mod cache;
 pub mod query;
 pub mod tx;
+pub mod grpc;
 
 type RpcHttpClient = tendermint_rpc::HttpClient;
 
@@ -39,7 +40,7 @@ impl ChainClient {
 fn get_client(chain_name: &str) -> Result<ChainClient, ChainClientError> {
     let chain = executor::block_on(async { get_chain(chain_name).await })?;
     // Default to in memory cache
-    let cache = Cache::create_memory_cache(None)?;
+    let cache = Cache::create_memory_cache(None, 5)?;
     let config = chain.get_chain_config(Some(&cache))?;
     let keyring = Keyring::new_file_store(None)?;
     let rpc_client = new_rpc_http_client(config.rpc_address.as_str())?;
