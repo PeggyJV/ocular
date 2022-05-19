@@ -1,5 +1,4 @@
 use assay::assay;
-use cosmos_sdk_proto::cosmos::base::query::v1beta1::PageRequest;
 use ocular::chain::{self, client::ChainClient};
 
 #[assay]
@@ -19,6 +18,7 @@ async fn query_latest_block_height() {
         .expect("failed to query latest height");
 }
 
+#[cfg(skip)]
 #[assay]
 async fn auth_queries() {
     let client = ChainClient::new(chain::COSMOSHUB).unwrap();
@@ -40,6 +40,7 @@ async fn auth_queries() {
         .expect("failed to query account");
 }
 
+#[cfg(skip)]
 #[assay]
 async fn bank_queries() {
     let client = ChainClient::new(chain::COSMOSHUB).expect("failed to get test client");
