@@ -12,8 +12,7 @@ use crate::config::OcularCliConfig;
 use abscissa_core::{config, Command, FrameworkError, Runnable};
 use clap::Parser;
 
-use self::list::ListCmd;
-use self::show::ShowCmd;
+use self::{list::ListCmd, show::ShowCmd, add::AddCmd};
 
 /// `start` subcommand
 ///
@@ -26,6 +25,7 @@ use self::show::ShowCmd;
 pub enum ChainsCmd {
     Show(ShowCmd),
     List(ListCmd),
+    Add(AddCmd),
 }
 
 impl config::Override<OcularCliConfig> for ChainsCmd {
