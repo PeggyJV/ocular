@@ -2,13 +2,11 @@ use crate::{config, prelude::*};
 use abscissa_core::{Command, Runnable};
 use clap::Parser;
 use ocular::chain::info::ChainInfo;
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 use std::{collections::HashMap, fs, path::Path, str};
 
 #[derive(Command, Debug, Parser)]
-pub struct ShowDefaultCmd {
-
-}
+pub struct ShowDefaultCmd {}
 
 #[derive(Deserialize)]
 struct Chains {
