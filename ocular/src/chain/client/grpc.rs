@@ -10,7 +10,7 @@ use rand::prelude::SliceRandom;
 use rand::{thread_rng};
 
 impl ChainClient {
-    pub async fn get_random_grpc_endpoint(&self) -> Result<String, ChainInfoError> {
+    pub async fn get_random_grpc_endpoint(&mut self) -> Result<String, ChainInfoError> {
         let endpoints = self.get_grpc_endpoints().await?;
         if let Some(endpoint) = endpoints.choose(&mut thread_rng()) {
             Ok(endpoint.to_string())
@@ -19,7 +19,7 @@ impl ChainClient {
         }
     }
 
-    pub async fn get_grpc_endpoints(&self) -> Result<Vec<String>, ChainInfoError> {
+    pub async fn get_grpc_endpoints(&mut self) -> Result<Vec<String>, ChainInfoError> {
         let mut endpoints: Vec<String> = Vec::new();
         let mut refresh_cache = false;
 
@@ -58,8 +58,10 @@ impl ChainClient {
 
         // If cache being used and we had to refresh it, load new endpoints into it
         if self.cache.is_some() && refresh_cache {
+            let thresh = self.cache.as_mut().unwrap().grpc_endpoint_cache.get_connsecutive_failed_connections_threshold();
+
             for endpt in &endpoints {
-                self.cache.as_ref().expect("Error accessing cache.").grpc_endpoint_cache.add_item(endpt.to_string(), self.cache.as_ref().unwrap().grpc_endpoint_cache.get_connsecutive_failed_connections_threshold());
+                self.cache.as_mut().expect("Error accessing cache.").grpc_endpoint_cache.add_item(endpt.to_string(), thresh);
             }
         }
 

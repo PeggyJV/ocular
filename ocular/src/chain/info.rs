@@ -1,6 +1,6 @@
 use crate::{
     chain::{
-        client::{self, cache::Cache},
+        client,
         config::ChainClientConfig,
         registry::{self, AssetList},
         ChainName,
@@ -121,7 +121,7 @@ impl ChainInfo {
             .map_err(|r| r.into())
     }
 
-    pub fn get_chain_config(&self, cache: Option<&Cache>) -> Result<ChainClientConfig, ChainInfoError> {
+    pub fn get_chain_config(&self) -> Result<ChainClientConfig, ChainInfoError> {
         let mut gas_prices = String::default();
         let asset_list = executor::block_on(async { self.get_asset_list().await })?;
         if !asset_list.assets.is_empty() {
@@ -224,7 +224,7 @@ mod tests {
         let info = get_cosmoshub_info()
             .await
             .expect("failed to get cosmoshub ChainInfo");
-        let config = info.get_chain_config(None);
+        let config = info.get_chain_config();
 
         config.unwrap();
     }
