@@ -66,6 +66,7 @@ fn file_cache_init() {
             let mut file = GrpcEndpointToml::default();
             file.endpoints.push(GrpcEndpoint {
                 address: String::from("localhost:8080"),
+                connsecutiveFailedConnections: 0,
             });
             let toml_string = toml::to_string(&file).expect("Could not encode toml value.");
 
@@ -154,7 +155,7 @@ fn file_cache_accessor_test() {
             // Insert item
             cache
                 .grpc_endpoint_cache
-                .add_item(String::from("localhost:9090"))
+                .add_item(String::from("localhost:9090"), 0)
                 .expect("Could not add item to cache.");
 
             // Verify item exists in both memory and file
@@ -172,7 +173,7 @@ fn file_cache_accessor_test() {
 
             assert!(cache
                 .grpc_endpoint_cache
-                .add_item(String::from("localhost:9090"))
+                .add_item(String::from("localhost:9090"), 0)
                 .is_ok());
 
             // Remove item
@@ -264,7 +265,7 @@ fn memory_cache_accessor_test() {
             // Insert item
             cache
                 .grpc_endpoint_cache
-                .add_item(String::from("localhost:9090"))
+                .add_item(String::from("localhost:9090"), 0)
                 .expect("Could not add item to cache.");
 
             // Verify item exists
@@ -276,7 +277,7 @@ fn memory_cache_accessor_test() {
 
             assert!(cache
                 .grpc_endpoint_cache
-                .add_item(String::from("localhost:9090"))
+                .add_item(String::from("localhost:9090"), 0)
                 .is_ok());
 
             // Remove item

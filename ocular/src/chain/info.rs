@@ -1,6 +1,6 @@
 use crate::{
     chain::{
-        client,
+        client::{self, cache::Cache},
         config::ChainClientConfig,
         registry::{self, AssetList},
     },
@@ -132,7 +132,7 @@ impl ChainInfo {
             .map_err(|r| r.into())
     }
 
-    pub fn get_chain_config(&self) -> Result<ChainClientConfig, ChainInfoError> {
+    pub fn get_chain_config(&self, cache: Option<&Cache>) -> Result<ChainClientConfig, ChainInfoError> {
         let mut gas_prices = String::default();
         let asset_list = executor::block_on(async { self.get_asset_list().await })?;
         if !asset_list.assets.is_empty() {
@@ -141,7 +141,7 @@ impl ChainInfo {
 
         let (rpc_address, grpc_address) = executor::block_on(async {
             let rpc = self.get_random_rpc_endpoint().await;
-            let grpc = self.get_random_grpc_endpoint().await;
+            let grpc = self.get_random_grpc_endpoint(cache).await;
 
             (rpc, grpc)
         });
@@ -154,7 +154,6 @@ impl ChainInfo {
             chain_id: self.chain_id.clone(),
             gas_adjustment: 1.2,
             gas_prices,
-            grpc_address,
             rpc_address,
         })
     }
@@ -168,8 +167,8 @@ impl ChainInfo {
         }
     }
 
-    pub async fn get_random_grpc_endpoint(&self) -> Result<String, ChainInfoError> {
-        let endpoints = self.get_grpc_endpoints().await?;
+    pub async fn get_random_grpc_endpoint(&self, cache: Option<&Cache>) -> Result<String, ChainInfoError> {
+        let endpoints = self.get_grpc_endpoints(cache).await?;
         if let Some(endpoint) = endpoints.choose(&mut thread_rng()) {
             Ok(endpoint.to_string())
         } else {
@@ -177,7 +176,7 @@ impl ChainInfo {
         }
     }
 
-    pub async fn get_grpc_endpoints(&self) -> Result<Vec<String>, ChainInfoError> {
+    pub async fn get_grpc_endpoints(&self, cache: Option<&Cache>) -> Result<Vec<String>, ChainInfoError> {
         let mut endpoints = self.get_all_grpc_endpoints();
         if endpoints.is_empty() {
             return Err(GrpcError::MissingEndpoint(
@@ -287,7 +286,7 @@ mod tests {
         let info = get_cosmoshub_info()
             .await
             .expect("failed to get cosmoshub ChainInfo");
-        let config = info.get_chain_config();
+        let config = info.get_chain_config(None);
 
         config.unwrap();
     }

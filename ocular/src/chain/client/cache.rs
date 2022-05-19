@@ -1,7 +1,7 @@
 use crate::error::CacheError;
 
 use serde::{Deserialize, Serialize};
-use std::collections::HashSet;
+use std::collections::HashMap;
 use std::fs::File;
 use std::os::unix::fs::PermissionsExt;
 use std::path::PathBuf;
@@ -20,6 +20,7 @@ pub struct GrpcEndpointToml {
 #[derive(Debug, Default, Serialize, Deserialize)]
 pub struct GrpcEndpoint {
     pub address: String,
+    pub connsecutiveFailedConnections: u8,
 }
 
 /// Broad cache object that can mange all ocular cache initialization
@@ -31,12 +32,14 @@ pub struct Cache {
 pub trait GrpcCache {
     /// Check if cache has been initialized
     fn is_initialized(&self) -> bool;
-    /// Add item to cache
-    fn add_item(&mut self, item: String) -> Result<(), CacheError>;
+    /// Add item to cache, overrides connsecutiveFailedConnections if item already exists
+    fn add_item(&mut self, item: String, connsecutiveFailedConnections: u8) -> Result<(), CacheError>;
     /// Remove item from cache
     fn remove_item(&mut self, item: String) -> Result<(), CacheError>;
+    /// Increments connsecutiveFailedConnections if item already exists, or creates item with 1 failed connection if it DNE
+    fn increment_failed_connections(&mut self, item: String) -> Result<(), CacheError>;
     /// Retrieves a copy of all items from cache
-    fn get_all_items(&self) -> Result<HashSet<String>, CacheError>;
+    fn get_all_items(&self) -> Result<HashMap<String, u8>, CacheError>;
 }
 
 /// Cache initialization definitions
@@ -49,6 +52,7 @@ impl Cache {
     /// Toml will be required to be structured as so:
     /// [[endpoints]]
     ///     address = "35.230.37.28:9090"
+    ///     connsecutiveFailedConnections = 0
     pub fn create_file_cache(
         file_path: Option<&str>,
         override_if_exists: bool,
@@ -100,7 +104,7 @@ impl Cache {
             Err(err) => return Err(CacheError::FileIO(err.to_string())),
         };
 
-        let mut endpoints = HashSet::new();
+        let mut endpoints = HashMap::new();
 
         // Load endpoints if they exist
         if path.exists() {
@@ -123,7 +127,7 @@ impl Cache {
                 dbg!(&toml);
 
                 for endpt in &toml.endpoints {
-                    endpoints.insert(endpt.address.to_string());
+                    endpoints.insert(endpt.address.to_string(), endpt.connsecutiveFailedConnections.into());
                 }
             }
         }
@@ -142,11 +146,11 @@ impl Cache {
     }
 
     /// Constructor for in memory cache.
-    pub fn create_memory_cache(endpoints: Option<HashSet<String>>) -> Result<Cache, CacheError> {
+    pub fn create_memory_cache(endpoints: Option<HashMap<String, u8>>) -> Result<Cache, CacheError> {
         let cache = match endpoints {
             Some(endpoints) => MemoryCache { endpoints },
             None => MemoryCache {
-                endpoints: HashSet::new(),
+                endpoints: HashMap::new(),
             },
         };
 
@@ -159,7 +163,7 @@ impl Cache {
 /// File based cache
 pub struct FileCache {
     path: PathBuf,
-    endpoints: HashSet<String>,
+    endpoints: HashMap<String, u8>,
 }
 
 impl GrpcCache for FileCache {
@@ -167,8 +171,8 @@ impl GrpcCache for FileCache {
         self.path.capacity() != 0
     }
 
-    fn add_item(&mut self, item: String) -> Result<(), CacheError> {
-        self.endpoints.insert(item.clone());
+    fn add_item(&mut self, item: String, connsecutiveFailedConnections: u8) -> Result<(), CacheError> {
+        self.endpoints.insert(item.clone(), connsecutiveFailedConnections);
 
         let content = match std::fs::read_to_string(&self.path) {
             Ok(result) => result,
@@ -192,7 +196,7 @@ impl GrpcCache for FileCache {
         }
 
         // Add new item
-        toml.endpoints.push(GrpcEndpoint { address: item });
+        toml.endpoints.push(GrpcEndpoint { address: item, connsecutiveFailedConnections: connsecutiveFailedConnections });
 
         let toml_string = toml::to_string(&toml).expect("Could not encode toml value.");
 
@@ -245,14 +249,37 @@ impl GrpcCache for FileCache {
         }
     }
 
-    fn get_all_items(&self) -> Result<HashSet<String>, CacheError> {
+    fn get_all_items(&self) -> Result<HashMap<String, u8>, CacheError> {
         Ok(self.endpoints.clone())
+    }
+
+    fn increment_failed_connections(&mut self, item: String) -> Result<(), CacheError> {
+        if self.endpoints.contains_key(&item) {
+            self.endpoints.insert(item, self.endpoints.get(&item).unwrap() + 1);
+        } else {
+            self.endpoints.insert(item, 1);
+        }
+
+        // Update file
+        let mut toml: GrpcEndpointToml = GrpcEndpointToml::default();
+
+        for endpt in self.endpoints {
+            toml.endpoints.push(GrpcEndpoint { address: endpt.0, connsecutiveFailedConnections: endpt.1 });
+        }
+
+        let toml_string = toml::to_string(&toml).expect("Could not encode toml value.");
+
+        // Rewrite file
+        match std::fs::write(&self.path, toml_string) {
+            Ok(_) => Ok(()),
+            Err(err) => Err(CacheError::FileIO(err.to_string())),
+        }
     }
 }
 
 /// Memory based cache
 pub struct MemoryCache {
-    endpoints: HashSet<String>,
+    endpoints: HashMap<String, u8>,
 }
 
 impl GrpcCache for MemoryCache {
@@ -261,8 +288,8 @@ impl GrpcCache for MemoryCache {
         true
     }
 
-    fn add_item(&mut self, item: String) -> Result<(), CacheError> {
-        self.endpoints.insert(item);
+    fn add_item(&mut self, item: String, connsecutiveFailedConnections: u8) -> Result<(), CacheError> {
+        self.endpoints.insert(item, connsecutiveFailedConnections);
 
         Ok(())
     }
@@ -273,7 +300,17 @@ impl GrpcCache for MemoryCache {
         Ok(())
     }
 
-    fn get_all_items(&self) -> Result<HashSet<String>, CacheError> {
+    fn get_all_items(&self) -> Result<HashMap<String, u8>, CacheError> {
         Ok(self.endpoints.clone())
+    }
+
+    fn increment_failed_connections(&mut self, item: String) -> Result<(), CacheError> {
+        if self.endpoints.contains_key(&item) {
+            self.endpoints.insert(item, self.endpoints.get(&item).unwrap() + 1);
+        } else {
+            self.endpoints.insert(item, 1);
+        }
+
+        Ok(())
     }
 }

@@ -432,7 +432,6 @@ mod tests {
             config: ChainClientConfig {
                 chain_id: String::from("sommelier-3"),
                 rpc_address: String::from("http://localhost:8080"),
-                grpc_address: String::from("http://localhost:8080"),
                 account_prefix: String::from("somm"),
                 gas_adjustment: 1.2,
                 gas_prices: String::from("100"),
@@ -564,7 +563,6 @@ mod tests {
             config: ChainClientConfig {
                 chain_id: String::from("sommelier-3"),
                 rpc_address: String::from("http://localhost:8080"),
-                grpc_address: String::from("http://localhost:8080"),
                 account_prefix: String::from("somm"),
                 gas_adjustment: 1.2,
                 gas_prices: String::from("100"),
