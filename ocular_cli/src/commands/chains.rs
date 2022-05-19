@@ -13,8 +13,8 @@ use abscissa_core::{config, Command, FrameworkError, Runnable};
 use clap::Parser;
 
 use self::list::ListCmd;
-use self::show::ShowCmd;
 use self::registry_list::RegistryListCmd;
+use self::show::ShowCmd;
 
 /// `start` subcommand
 ///

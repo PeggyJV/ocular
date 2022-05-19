@@ -5,7 +5,6 @@ use clap::Parser;
 #[derive(Command, Debug, Parser)]
 pub struct RegistryListCmd {}
 
-
 impl Runnable for RegistryListCmd {
     /// List all chains in local config file
     fn run(&self) {
@@ -27,4 +26,3 @@ impl Runnable for RegistryListCmd {
         });
     }
 }
-
