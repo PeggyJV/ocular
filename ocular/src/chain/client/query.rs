@@ -1,6 +1,6 @@
 use crate::{
     cosmos_modules::{base::Coin, *},
-    error::{ChainClientError, GrpcError, RpcError},
+    error::{ChainClientError, GrpcError, RpcError, TxError},
 };
 use cosmos_sdk_proto::cosmos::base::query::v1beta1::PageRequest;
 use prost::Message;
@@ -21,14 +21,40 @@ pub type StakingQueryClient = staking::query_client::QueryClient<Channel>;
 
 impl ChainClient {
     // Auth queries
-    pub async fn get_auth_query_client(&self) -> Result<AuthQueryClient, ChainClientError> {
-        AuthQueryClient::connect(self.config.grpc_address.clone())
-            .await
-            .map_err(|e| GrpcError::Connection(e).into())
+    pub async fn get_auth_query_client(&mut self) -> Result<AuthQueryClient, ChainClientError> {
+        let mut result: Result<AuthQueryClient, ChainClientError> =
+            Err(TxError::BroadcastError(String::from("Client connection never attempted.")).into());
+
+        // Get grpc address randomly each time; shuffles on failures
+        for _i in 0u8..self.connection_retry_attempts + 1 {
+            // Get an endpoint
+            let endpoint = match self.get_random_grpc_endpoint().await {
+                Ok(endpt) => endpt,
+                Err(err) => return Err(GrpcError::MissingEndpoint(err.to_string()).into()),
+            };
+
+            result = AuthQueryClient::connect(endpoint.clone())
+                .await
+                .map_err(|e| GrpcError::Connection(e).into());
+
+            // Return if result is valid client, or increment failure in cache if being used
+            if result.is_ok() {
+                break;
+            } else if result.is_err() && self.cache.is_some() {
+                let _res = self
+                    .cache
+                    .as_mut()
+                    .unwrap()
+                    .grpc_endpoint_cache
+                    .increment_failed_connections(endpoint)?;
+            }
+        }
+
+        result
     }
 
     pub async fn query_account(
-        &self,
+        &mut self,
         address: String,
     ) -> Result<auth::BaseAccount, ChainClientError> {
         let mut query_client = self.get_auth_query_client().await?;
@@ -44,7 +70,7 @@ impl ChainClient {
     }
 
     pub async fn query_accounts(
-        &self,
+        &mut self,
         pagination: Option<PageRequest>,
     ) -> Result<Vec<auth::BaseAccount>, ChainClientError> {
         let mut query_client = self.get_auth_query_client().await?;
@@ -62,13 +88,42 @@ impl ChainClient {
     }
 
     // Bank queries
-    pub async fn get_bank_query_client(&self) -> Result<BankQueryClient, ChainClientError> {
-        BankQueryClient::connect(self.config.grpc_address.clone())
-            .await
-            .map_err(|e| GrpcError::Connection(e).into())
+    pub async fn get_bank_query_client(&mut self) -> Result<BankQueryClient, ChainClientError> {
+        let mut result: Result<BankQueryClient, ChainClientError> =
+            Err(TxError::BroadcastError(String::from("Client connection never attempted.")).into());
+
+        // Get grpc address randomly each time; shuffles on failures
+        for _i in 0u8..self.connection_retry_attempts + 1 {
+            // Get an endpoint
+            let endpoint = match self.get_random_grpc_endpoint().await {
+                Ok(endpt) => endpt,
+                Err(err) => return Err(GrpcError::MissingEndpoint(err.to_string()).into()),
+            };
+
+            result = BankQueryClient::connect(endpoint.clone())
+                .await
+                .map_err(|e| GrpcError::Connection(e).into());
+
+            // Return if result is valid client, or increment failure in cache if being used
+            if result.is_ok() {
+                break;
+            } else if result.is_err() && self.cache.is_some() {
+                let _res = self
+                    .cache
+                    .as_mut()
+                    .unwrap()
+                    .grpc_endpoint_cache
+                    .increment_failed_connections(endpoint)?;
+            }
+        }
+
+        result
     }
 
-    pub async fn query_all_balances(&self, address: String) -> Result<Vec<Coin>, ChainClientError> {
+    pub async fn query_all_balances(
+        &mut self,
+        address: String,
+    ) -> Result<Vec<Coin>, ChainClientError> {
         let mut query_client = self.get_bank_query_client().await?;
         let request = bank::QueryAllBalancesRequest {
             address,
@@ -83,7 +138,7 @@ impl ChainClient {
         Ok(response.balances)
     }
 
-    pub async fn query_bank_params(&self) -> Result<Option<bank::Params>, ChainClientError> {
+    pub async fn query_bank_params(&mut self) -> Result<Option<bank::Params>, ChainClientError> {
         let mut query_client = self.get_bank_query_client().await?;
         let request = bank::QueryParamsRequest {};
         let response = query_client
@@ -96,7 +151,7 @@ impl ChainClient {
     }
 
     pub async fn query_denom_metadata(
-        &self,
+        &mut self,
         denom: &str,
     ) -> Result<bank::Metadata, ChainClientError> {
         let mut query_client = self.get_bank_query_client().await?;
@@ -117,7 +172,7 @@ impl ChainClient {
         };
     }
 
-    pub async fn query_denoms_metadata(&self) -> Result<Vec<bank::Metadata>, ChainClientError> {
+    pub async fn query_denoms_metadata(&mut self) -> Result<Vec<bank::Metadata>, ChainClientError> {
         let mut query_client = self.get_bank_query_client().await?;
         let request = bank::QueryDenomsMetadataRequest { pagination: None };
         let response = query_client
@@ -129,7 +184,7 @@ impl ChainClient {
         Ok(response.metadatas)
     }
 
-    pub async fn query_supply(&self, denom: &str) -> Result<Coin, ChainClientError> {
+    pub async fn query_supply(&mut self, denom: &str) -> Result<Coin, ChainClientError> {
         let mut query_client = self.get_bank_query_client().await?;
         let request = bank::QuerySupplyOfRequest {
             denom: denom.to_string(),
@@ -148,7 +203,7 @@ impl ChainClient {
         };
     }
 
-    pub async fn query_total_supply(&self) -> Result<Vec<Coin>, ChainClientError> {
+    pub async fn query_total_supply(&mut self) -> Result<Vec<Coin>, ChainClientError> {
         let mut query_client = self.get_bank_query_client().await?;
         let request = bank::QueryTotalSupplyRequest { pagination: None };
         let response = query_client

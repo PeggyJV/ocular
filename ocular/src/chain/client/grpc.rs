@@ -1,13 +1,13 @@
 use crate::{
     chain::{
-        client::{ChainClient, query::BankQueryClient},
+        client::{query::BankQueryClient, ChainClient},
         registry::{self},
     },
     error::{ChainInfoError, GrpcError, RpcError},
     utils,
 };
 use rand::prelude::SliceRandom;
-use rand::{thread_rng};
+use rand::thread_rng;
 
 impl ChainClient {
     pub async fn get_random_grpc_endpoint(&mut self) -> Result<String, ChainInfoError> {
@@ -24,12 +24,21 @@ impl ChainClient {
         let mut refresh_cache = false;
 
         // Check if cache exists, if it doesn't, pull new cache every time
-        if self.cache.is_some() { 
-            endpoints = self.cache.as_ref().unwrap().grpc_endpoint_cache.get_all_items().expect("Could not access cache.").keys().cloned().collect();
+        if self.cache.is_some() {
+            endpoints = self
+                .cache
+                .as_ref()
+                .unwrap()
+                .grpc_endpoint_cache
+                .get_all_items()
+                .expect("Could not access cache.")
+                .keys()
+                .cloned()
+                .collect();
         }
 
         // Get api endpoints if cache was entirely empty or if caching is disabled
-        if endpoints.len() == 0 {
+        if endpoints.is_empty() {
             endpoints = self.get_all_grpc_endpoints().await;
             if endpoints.is_empty() {
                 return Err(GrpcError::MissingEndpoint(
@@ -58,10 +67,20 @@ impl ChainClient {
 
         // If cache being used and we had to refresh it, load new endpoints into it
         if self.cache.is_some() && refresh_cache {
-            let thresh = self.cache.as_mut().unwrap().grpc_endpoint_cache.get_connsecutive_failed_connections_threshold();
+            let thresh = self
+                .cache
+                .as_mut()
+                .unwrap()
+                .grpc_endpoint_cache
+                .get_connsecutive_failed_connections_threshold();
 
             for endpt in &endpoints {
-                self.cache.as_mut().expect("Error accessing cache.").grpc_endpoint_cache.add_item(endpt.to_string(), thresh);
+                let _res = self
+                    .cache
+                    .as_mut()
+                    .expect("Error accessing cache.")
+                    .grpc_endpoint_cache
+                    .add_item(endpt.to_string(), thresh)?;
             }
         }
 
@@ -69,7 +88,9 @@ impl ChainClient {
     }
 
     async fn get_all_grpc_endpoints(&self) -> Vec<String> {
-        let info = registry::get_chain(self.config.chain_name.as_str()).await.expect("Could not get chain info.");
+        let info = registry::get_chain(&self.config.chain_name)
+            .await
+            .expect("Could not get chain info.");
 
         info.apis
             .grpc
@@ -88,7 +109,7 @@ impl ChainClient {
                 GrpcError::UnhealthyEndpoint(format!("{} failed health check", endpoint)).into(),
             );
         }
-    
+
         Ok(())
     }
 }

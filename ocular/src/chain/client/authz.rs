@@ -18,29 +18,35 @@ pub type AuthzQueryClient = authz::query_client::QueryClient<Channel>;
 impl ChainClient {
     // Authz queries
     pub async fn get_authz_query_client(&mut self) -> Result<AuthzQueryClient, ChainClientError> {
-        // Get an endpoint 
-        let endpoint = match self.get_random_grpc_endpoint().await {
-            Ok(endpt) => endpt,
-            Err(err) => return Err(GrpcError::MissingEndpoint(err.to_string()).into()),
-        };
-
-
-
-        
-
-        // ------------------->>>>>>>>>>>> TODO: Add retry & incrmentFailure mechanism
-
-
-
-
-
-
-
+        let mut result: Result<AuthzQueryClient, ChainClientError> =
+            Err(TxError::BroadcastError(String::from("Client connection never attempted.")).into());
 
         // Get grpc address randomly each time; shuffles on failures
-        AuthzQueryClient::connect(endpoint)
-            .await
-            .map_err(|e| GrpcError::Connection(e).into())
+        for _i in 0u8..self.connection_retry_attempts + 1 {
+            // Get an endpoint
+            let endpoint = match self.get_random_grpc_endpoint().await {
+                Ok(endpt) => endpt,
+                Err(err) => return Err(GrpcError::MissingEndpoint(err.to_string()).into()),
+            };
+
+            result = AuthzQueryClient::connect(endpoint.clone())
+                .await
+                .map_err(|e| GrpcError::Connection(e).into());
+
+            // Return if result is valid client, or increment failure in cache if being used
+            if result.is_ok() {
+                break;
+            } else if result.is_err() && self.cache.is_some() {
+                let _res = self
+                    .cache
+                    .as_mut()
+                    .unwrap()
+                    .grpc_endpoint_cache
+                    .increment_failed_connections(endpoint)?;
+            }
+        }
+
+        result
     }
 
     // Query for a specific msg grant

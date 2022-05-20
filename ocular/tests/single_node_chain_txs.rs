@@ -3,6 +3,7 @@
 // Requies docker
 use ocular::{
     chain::{
+        client::cache::Cache,
         client::tx::{Account, TxMetadata},
         config::ChainClientConfig,
     },
@@ -260,8 +261,12 @@ fn local_single_node_chain_test() {
             let rpc_address = format!("http://localhost:{}", RPC_PORT);
             let rpc_client =
                 rpc::HttpClient::new(rpc_address.as_str()).expect("Could not create RPC");
+                let mut cache = Cache::create_memory_cache(None, 10).unwrap();
+                let _res = cache.grpc_endpoint_cache.add_item(rpc_address.clone(), 0).unwrap();
+
                 let chain_client = ChainClient {
                 config: ChainClientConfig {
+                    chain_name: String::from("cosmrs"),
                     chain_id: chain_id.to_string(),
                     rpc_address: rpc_address.clone(),
                     account_prefix: ACCOUNT_PREFIX.to_string(),
@@ -270,7 +275,8 @@ fn local_single_node_chain_test() {
                 },
                 keyring: Keyring::new_file_store(None).expect("Could not create keyring."),
                 rpc_client: rpc_client.clone(),
-                cache: None,
+                cache: Some(cache),
+                connection_retry_attempts: 0,
             };
 
             dev::poll_for_first_block(&rpc_client).await;

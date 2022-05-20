@@ -1,6 +1,6 @@
 use cosmrs::dev;
 use ocular::chain::client::cache::*;
-use std::collections::HashSet;
+use std::collections::HashMap;
 
 /// Chain ID to use for tests
 const CHAIN_ID: &str = "cosmrs-test";
@@ -66,7 +66,7 @@ fn file_cache_init() {
             let mut file = GrpcEndpointToml::default();
             file.endpoints.push(GrpcEndpoint {
                 address: String::from("localhost:8080"),
-                connsecutiveFailedConnections: 0,
+                connsecutive_failed_connections: 0,
             });
             let toml_string = toml::to_string(&file).expect("Could not encode toml value.");
 
@@ -163,7 +163,7 @@ fn file_cache_accessor_test() {
                 .grpc_endpoint_cache
                 .get_all_items()
                 .expect("Could not get cache contents.")
-                .contains(&String::from("localhost:9090")));
+                .contains_key(&String::from("localhost:9090")));
             let contents = std::fs::read_to_string(&test_file).expect("Could not open file.");
             let toml: GrpcEndpointToml = toml::from_str(&contents).expect("Could not parse toml.");
             assert!(
@@ -226,8 +226,8 @@ fn memory_cache_init() {
             assert!(Cache::create_memory_cache(None, 5).is_ok());
 
             // Attempt creation with some endpoints
-            let mut endpts = HashSet::new();
-            endpts.insert(String::from("localhost"));
+            let mut endpts = HashMap::new();
+            endpts.insert(String::from("localhost"), 0);
 
             let cache = Cache::create_memory_cache(Some(endpts), 5);
 
@@ -273,7 +273,7 @@ fn memory_cache_accessor_test() {
                 .grpc_endpoint_cache
                 .get_all_items()
                 .expect("Could not get cache contents.")
-                .contains(&String::from("localhost:9090")));
+                .contains_key(&String::from("localhost:9090")));
 
             assert!(cache
                 .grpc_endpoint_cache

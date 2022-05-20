@@ -3,7 +3,6 @@ use crate::{
         client,
         config::ChainClientConfig,
         registry::{self, AssetList},
-        ChainName,
     },
     error::{ChainInfoError, RpcError},
 };
@@ -128,14 +127,12 @@ impl ChainInfo {
             gas_prices = format!("{:.2}{}", 0.01, asset_list.assets[0].base);
         }
 
-        let rpc_address = executor::block_on(async {
-            self.get_random_rpc_endpoint().await
-        });
+        let rpc_address = executor::block_on(async { self.get_random_rpc_endpoint().await });
 
         let rpc_address = rpc_address?;
 
         Ok(ChainClientConfig {
-            chain_name: ChainName::new(&self.chain_name.to_owned()),
+            chain_name: self.chain_name.clone(),
             account_prefix: self.bech32_prefix.clone(),
             chain_id: self.chain_id.clone(),
             gas_adjustment: 1.2,

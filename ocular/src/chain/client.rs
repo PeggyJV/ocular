@@ -13,9 +13,9 @@ use super::ChainName;
 pub mod authz;
 pub mod automated_tx_handler;
 pub mod cache;
+pub mod grpc;
 pub mod query;
 pub mod tx;
-pub mod grpc;
 
 type RpcHttpClient = tendermint_rpc::HttpClient;
 
@@ -24,6 +24,7 @@ pub struct ChainClient {
     pub keyring: Keyring,
     pub rpc_client: RpcHttpClient,
     pub cache: Option<Cache>,
+    pub connection_retry_attempts: u8,
     // light_provider: ?
     // input:
     // output:
@@ -40,7 +41,7 @@ impl ChainClient {
 fn get_client(chain_name: &str) -> Result<ChainClient, ChainClientError> {
     let chain = executor::block_on(async { get_chain(chain_name).await })?;
     // Default to in memory cache
-    let cache = Cache::create_memory_cache(None, 5)?;
+    let cache = Cache::create_memory_cache(None, 3)?;
     let config = chain.get_chain_config()?;
     let keyring = Keyring::new_file_store(None)?;
     let rpc_client = new_rpc_http_client(config.rpc_address.as_str())?;
@@ -50,6 +51,7 @@ fn get_client(chain_name: &str) -> Result<ChainClient, ChainClientError> {
         keyring,
         rpc_client,
         cache: Some(cache),
+        connection_retry_attempts: 5,
     })
 }
 
