@@ -12,9 +12,9 @@ use crate::config::OcularCliConfig;
 use abscissa_core::{config, Command, FrameworkError, Runnable};
 use clap::Parser;
 
+use self::editor::EditorCmd;
 use self::list::ListCmd;
 use self::show::ShowCmd;
-use self::editor::EditorCmd;
 /// `start` subcommand
 ///
 /// The `Parser` proc macro generates an option parser based on the struct
