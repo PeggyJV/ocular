@@ -29,7 +29,7 @@ impl Runnable for ListCmd {
             std::process::exit(1);
         });
 
-        for chain_names in data.chains.iter() {
+        for chain_names in data.chains {
             println!("{:?}", chain_names.chain_name);
         }
     }

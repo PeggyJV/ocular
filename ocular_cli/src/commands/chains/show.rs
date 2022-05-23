@@ -31,20 +31,24 @@ impl Runnable for ShowCmd {
             std::process::exit(1);
         });
 
-        for chain_info in data.chains.iter() {
-            let info = HashMap::from([(chain_info.chain_name.clone(), &chain_info)]);
+        let mut info = HashMap::new();
 
-            let chain_name = self.name.clone();
+        for chain_info in data.chains {
+            info.insert(chain_info.chain_name.clone(), chain_info);
+        }
 
-            if let Some(chain_details) = info.get(chain_name.as_str()) {
-                // customize indentation for chain_info
-                let buf = Vec::new();
-                let formatter = serde_json::ser::PrettyFormatter::with_indent(b"    ");
-                let mut serialize = serde_json::Serializer::with_formatter(buf, formatter);
-                chain_details.serialize(&mut serialize).unwrap();
+        let chain_name = self.name.clone();
 
-                println!("{}", String::from_utf8(serialize.into_inner()).unwrap());
-            }
+        if let Some(chain_details) = info.get(chain_name.as_str()) {
+            // customize indentation for chain_info
+            let buf = Vec::new();
+            let formatter = serde_json::ser::PrettyFormatter::with_indent(b"    ");
+            let mut serialize = serde_json::Serializer::with_formatter(buf, formatter);
+            chain_details.serialize(&mut serialize).unwrap();
+
+            println!("{}", String::from_utf8(serialize.into_inner()).unwrap());
+        } else {
+            println!("can't find chain in local registry, run the add command to add chain")
         }
     }
 }
