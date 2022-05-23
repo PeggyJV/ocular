@@ -30,7 +30,7 @@ impl Runnable for ListCmd {
         });
 
         for chain_names in data.chains {
-            println!("{:?}", chain_names.chain_name);
+            println!("{}", chain_names.chain_name);
         }
     }
 }
