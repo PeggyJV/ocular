@@ -1,7 +1,6 @@
 mod add;
 mod delete;
 mod edit;
-mod editor;
 mod list;
 mod registry_list;
 mod set_default;
