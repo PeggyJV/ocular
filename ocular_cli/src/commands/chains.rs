@@ -1,7 +1,6 @@
 mod add;
 mod delete;
 mod edit;
-mod editor;
 mod list;
 mod registry_list;
 mod set_default;
@@ -15,7 +14,6 @@ use clap::Parser;
 use self::list::ListCmd;
 use self::registry_list::RegistryListCmd;
 use self::show::ShowCmd;
-
 /// `start` subcommand
 ///
 /// The `Parser` proc macro generates an option parser based on the struct
