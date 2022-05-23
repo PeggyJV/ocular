@@ -1,6 +1,7 @@
 mod add;
 mod delete;
 mod edit;
+mod editor;
 mod list;
 mod registry_list;
 mod set_default;
@@ -13,6 +14,7 @@ use clap::Parser;
 
 use self::list::ListCmd;
 use self::show::ShowCmd;
+use self::editor::EditorCmd;
 /// `start` subcommand
 ///
 /// The `Parser` proc macro generates an option parser based on the struct
@@ -24,6 +26,7 @@ use self::show::ShowCmd;
 pub enum ChainsCmd {
     Show(ShowCmd),
     List(ListCmd),
+    Editor(EditorCmd),
 }
 
 impl config::Override<OcularCliConfig> for ChainsCmd {
