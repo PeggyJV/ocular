@@ -30,9 +30,9 @@ impl Runnable for ShowDefaultCmd {
             std::process::exit(1);
         });
 
-        for chain_info in data.chains.iter() {
+        for chain_info in data.chains {
             if chain_info.chain_name == data.default_chain {
-                let info = HashMap::from([(chain_info.chain_name.clone(), &chain_info)]);
+                let info = HashMap::from([(chain_info.chain_name.clone(), chain_info.clone())]);
 
                 if let Some(chain_details) = info.get(chain_info.chain_name.as_str()) {
                     // customize indentation for chain_info
