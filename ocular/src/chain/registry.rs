@@ -1,13 +1,13 @@
 use crate::{chain::info::ChainInfo, error::ChainRegistryError};
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 
-#[derive(Debug, Default, Deserialize, Serialize)]
+#[derive(Clone, Debug, Default, Deserialize, Serialize)]
 pub struct AssetList {
     pub chain_name: String,
     pub assets: Vec<Asset>,
 }
 
-#[derive(Debug, Default, Deserialize, Serialize)]
+#[derive(Clone, Debug, Default, Deserialize, Serialize)]
 pub struct Asset {
     pub description: String,
     pub denom_units: Vec<DenomUnit>,
@@ -20,13 +20,14 @@ pub struct Asset {
     pub coingecko_id: String,
 }
 
-#[derive(Debug, Default, Deserialize, Serialize)]
+#[derive(Clone, Debug, Default, Deserialize, Serialize)]
 pub struct DenomUnit {
     pub denom: String,
     pub exponent: u16,
 }
 
-#[derive(Debug, Default, Deserialize, Serialize)]
+#[derive(Clone, Debug, Default, Deserialize, Serialize)]
+#[serde(default)]
 pub struct LogoURIs {
     pub png: String,
     pub svg: String,

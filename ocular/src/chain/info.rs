@@ -178,7 +178,7 @@ impl ChainInfo {
     }
 
     pub async fn get_grpc_endpoints(&self) -> Result<Vec<String>, ChainInfoError> {
-        let mut endpoints = self.get_all_grpc_endpoints();
+        let endpoints = self.get_all_grpc_endpoints();
         if endpoints.is_empty() {
             return Err(GrpcError::MissingEndpoint(
                 "no valid endpoint found. endpoints must use http or https.".to_string(),
@@ -188,23 +188,23 @@ impl ChainInfo {
 
         // this is not very efficient but i was getting annoyed trying to figure
         // out how to do filtering with an async method
-        for (i, ep) in endpoints.clone().iter().enumerate() {
-            if is_healthy_grpc(ep.as_str()).await.is_err() {
-                endpoints.remove(i);
-            }
-        }
-        if endpoints.is_empty() {
-            return Err(GrpcError::UnhealthyEndpoint(
-                "no healthy endpoint found (connections could not be established)".to_string(),
-            )
-            .into());
-        }
+        // for (i, ep) in endpoints.clone().iter().enumerate() {
+        //     if is_healthy_grpc(ep.as_str()).await.is_err() {
+        //         endpoints.remove(i);
+        //     }
+        // }
+        // if endpoints.is_empty() {
+        //     return Err(GrpcError::UnhealthyEndpoint(
+        //         "no healthy endpoint found (connections could not be established)".to_string(),
+        //     )
+        //     .into());
+        // }
 
         Ok(endpoints)
     }
 
     pub async fn get_rpc_endpoints(&self) -> Result<Vec<String>, ChainInfoError> {
-        let mut endpoints = self.get_all_rpc_endpoints();
+        let endpoints = self.get_all_rpc_endpoints();
         if endpoints.is_empty() {
             return Err(RpcError::MissingEndpoint(
                 "no valid endpoint found. endpoints must use http or https.".to_string(),
@@ -214,17 +214,17 @@ impl ChainInfo {
 
         // this is not very efficient but i was getting annoyed trying to figure
         // out how to do filtering with an async method
-        for (i, ep) in endpoints.clone().iter().enumerate() {
-            if is_healthy_rpc(ep.as_str()).await.is_err() {
-                endpoints.remove(i);
-            }
-        }
-        if endpoints.is_empty() {
-            return Err(RpcError::UnhealthyEndpoint(
-                "no healthy endpoint found (connections could not be established)".to_string(),
-            )
-            .into());
-        }
+        // for (i, ep) in endpoints.clone().iter().enumerate() {
+        //     if is_healthy_rpc(ep.as_str()).await.is_err() {
+        //         endpoints.remove(i);
+        //     }
+        // }
+        // if endpoints.is_empty() {
+        //     return Err(RpcError::UnhealthyEndpoint(
+        //         "no healthy endpoint found (connections could not be established)".to_string(),
+        //     )
+        //     .into());
+        // }
 
         Ok(endpoints)
     }
