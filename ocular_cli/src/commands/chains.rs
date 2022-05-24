@@ -12,6 +12,7 @@ use abscissa_core::{config, Command, FrameworkError, Runnable};
 use clap::Parser;
 
 use self::list::ListCmd;
+use self::set_default::SetDefaultCmd;
 use self::show::ShowCmd;
 /// `start` subcommand
 ///
@@ -24,6 +25,7 @@ use self::show::ShowCmd;
 pub enum ChainsCmd {
     Show(ShowCmd),
     List(ListCmd),
+    SetDefault(SetDefaultCmd),
 }
 
 impl config::Override<OcularCliConfig> for ChainsCmd {
