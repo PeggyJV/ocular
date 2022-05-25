@@ -12,8 +12,8 @@ pub struct AddCmd {
 
 #[derive(Deserialize, Serialize)]
 struct Chains {
-    default_chain: String,
-    chain_data: ChainInfo,
+
+    chains: Vec<ChainInfo>,
 }
 
 impl Runnable for AddCmd {
@@ -37,11 +37,15 @@ impl Runnable for AddCmd {
                 std::process::exit(1);
             });
 
+            let mut vec = Vec::new();
+            vec.push(chain_info);
+            
+
             if !chain_content.contains(chain_name) {
                 // write in the file with fs:write
                 let config_content = Chains {
-                    default_chain: "m".to_string(),
-                    chain_data: chain_info,
+
+                    chains: vec,
                 };
                 let config_content = toml::ser::to_string(&config_content).unwrap_or_else(|err| {
                     status_err!("{}", err);
@@ -54,6 +58,8 @@ impl Runnable for AddCmd {
                     .expect("Could not open file");
 
                 write!(file, "{}", config_content).unwrap();
+            } else if chain_content.contains(chain_name) {
+                error!("The chain {} already exists in the local registry", chain_name)
             }
         })
         .unwrap_or_else(|e| {

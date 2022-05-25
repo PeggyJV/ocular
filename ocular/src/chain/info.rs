@@ -77,6 +77,7 @@ pub struct Apis {
     pub rpc: Vec<Rpc>,
     #[serde(skip_serializing_if = "Vec::is_empty", default = "Vec::new")]
     pub rest: Vec<Rest>,
+    #[serde(skip_serializing_if = "Vec::is_empty", default = "Vec::new")]
     pub grpc: Vec<Grpc>,
 }
 
