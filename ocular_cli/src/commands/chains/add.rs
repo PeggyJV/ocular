@@ -3,7 +3,7 @@ use abscissa_core::{Command, Runnable};
 use clap::Parser;
 use ocular::chain::{info::ChainInfo, registry};
 use serde::{Deserialize, Serialize};
-use std::{fs, path::Path};
+use std::{fs, io::Write, path::Path};
 
 #[derive(Command, Debug, Parser)]
 pub struct AddCmd {
@@ -12,6 +12,7 @@ pub struct AddCmd {
 
 #[derive(Deserialize, Serialize)]
 struct Chains {
+    default_chain: String,
     chain_data: ChainInfo,
 }
 
@@ -39,6 +40,7 @@ impl Runnable for AddCmd {
             if !chain_content.contains(chain_name) {
                 // write in the file with fs:write
                 let config_content = Chains {
+                    default_chain: "m".to_string(),
                     chain_data: chain_info,
                 };
                 let config_content = toml::ser::to_string(&config_content).unwrap_or_else(|err| {
@@ -46,7 +48,12 @@ impl Runnable for AddCmd {
                     std::process::exit(1);
                 });
 
-                fs::write(config_file, config_content).unwrap();
+                let mut file = fs::OpenOptions::new()
+                    .append(true)
+                    .open(config_file)
+                    .expect("Could not open file");
+
+                write!(file, "{}", config_content).unwrap();
             }
         })
         .unwrap_or_else(|e| {
