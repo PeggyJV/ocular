@@ -64,11 +64,21 @@ pub async fn get_chain(name: &str) -> Result<ChainInfo, ChainRegistryError> {
 }
 
 async fn get_content(path: String) -> Result<reqwest::Response, ChainRegistryError> {
-    octocrab::instance()
+    let response = octocrab::instance()
         .repos("cosmos", "chain-registry")
         .raw_file("88bde7fb534ed6f7c26c2073f57ec5135b470f56".to_string(), path)
         .await
-        .map_err(|e| e.into())
+        .unwrap_or_else(|err| {
+            panic!("executor exited with error: {}", err);
+        });
+
+    let status = response.status();
+
+    if status == 404 {
+        panic!("Chain not found in registry")
+    }
+
+    Ok(response)
 }
 
 async fn parse_json<T>(data: reqwest::Response) -> Result<T, ChainRegistryError>
