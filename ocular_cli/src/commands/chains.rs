@@ -13,6 +13,7 @@ use clap::Parser;
 
 use self::list::ListCmd;
 use self::show::ShowCmd;
+use self::delete::DeleteCmd;
 /// `start` subcommand
 ///
 /// The `Parser` proc macro generates an option parser based on the struct
@@ -24,6 +25,7 @@ use self::show::ShowCmd;
 pub enum ChainsCmd {
     Show(ShowCmd),
     List(ListCmd),
+    Delete(DeleteCmd),
 }
 
 impl config::Override<OcularCliConfig> for ChainsCmd {
