@@ -4,12 +4,13 @@
 
 use crate::{
     chain::{
-        client::tx::{Account, TxMetadata},
+        client::tx::Account,
         config::ChainClientConfig,
     },
     cosmos_modules,
     error::AutomatedTxHandlerError,
     keyring::Keyring,
+    tx::{TxMetadata, BatchToml},
 };
 use bip32::Mnemonic;
 use cosmrs::{bank::MsgSend, rpc, tx::Msg, AccountId, Coin};
@@ -53,30 +54,6 @@ pub struct DelegateTransaction<'a> {
     pub name: &'a str,
     pub destination_account: &'a str,
     pub amount: u64,
-}
-
-#[derive(Debug, Default, Serialize, Deserialize)]
-pub struct BatchToml<'a> {
-    pub sender: BatchSender<'a>,
-    #[serde(borrow)]
-    pub transactions: Vec<BatchTransaction<'a>>,
-}
-
-#[derive(Debug, Default, Serialize, Deserialize)]
-pub struct BatchSender<'a> {
-    pub source_private_key_path: &'a str,
-}
-
-#[derive(Debug, Default, Serialize, Deserialize)]
-pub struct BatchTransaction<'a> {
-    pub name: &'a str,
-    pub destination_account: &'a str,
-    pub amount: u64,
-    pub denom: &'a str,
-    pub gas_limit: u64,
-    pub gas_fee: u64,
-    pub timeout_height: u32,
-    pub memo: &'a str,
 }
 
 impl ChainClient {
@@ -401,6 +378,8 @@ impl ChainClient {
 // ---------------------------------- Tests ----------------------------------
 #[cfg(test)]
 mod tests {
+    use crate::tx::{BatchTransaction, BatchToml};
+
     use super::*;
     use assay::assay;
 

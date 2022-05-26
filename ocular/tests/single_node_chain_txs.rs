@@ -3,11 +3,12 @@
 // Requies docker
 use ocular::{
     chain::{
-        client::tx::{Account, TxMetadata},
+        client::tx::Account,
         config::ChainClientConfig,
     },
     cosmos_modules::*,
     keyring::Keyring,
+    tx::TxMetadata,
 };
 
 use bip32;

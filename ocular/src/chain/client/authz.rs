@@ -1,10 +1,11 @@
 use crate::{
-    chain::client::tx::{Account, TxMetadata},
+    chain::client::tx::Account,
     cosmos_modules::{
         authz::{self, *},
         feegrant::{BasicAllowance, MsgGrantAllowance},
     },
     error::{ChainClientError, GrpcError, TxError},
+    tx::TxMetadata,
 };
 use cosmrs::{tx, AccountId};
 use prost::Message;

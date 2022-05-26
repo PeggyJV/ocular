@@ -18,4 +18,5 @@ pub mod cosmos_modules {
 }
 pub mod error;
 pub mod keyring;
+pub mod tx;
 pub mod utils;

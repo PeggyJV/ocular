@@ -1,8 +1,7 @@
-use crate::error::TxError;
+use crate::{error::TxError, tx::TxMetadata};
 use cosmrs::{
     bank::MsgSend,
     crypto::{secp256k1::SigningKey, PublicKey},
-    tendermint::chain::Id,
     tx::{self, Fee, Msg, SignDoc, SignerInfo},
     AccountId, Coin,
 };
@@ -17,18 +16,6 @@ use super::ChainClient;
 const TX_LOGGING_DIR: &str = "/.ocular/logs/txs";
 /// Unix permissions for dir
 const TX_LOGGING_DIR_PERMISSIONS: u32 = 0o700;
-
-/// Metadata wrapper for transactions
-#[derive(Clone, Debug)]
-pub struct TxMetadata {
-    pub chain_id: Id,
-    pub account_number: u64,
-    pub sequence_number: u64,
-    pub gas_fee: Coin,
-    pub gas_limit: u64,
-    pub timeout_height: u32,
-    pub memo: String,
-}
 
 ///  Type to hold all information around an account.
 pub struct Account {
