@@ -23,18 +23,16 @@ impl ChainClient {
 
         // Get grpc address randomly each time; shuffles on failures
         for _i in 0u8..self.connection_retry_attempts + 1 {
-            let endpoint: String;
-
             // Attempt to use last healthy (or manually set) endpoint if it exists (in config)
-            if !self.config.grpc_address.is_empty() {
-                endpoint = self.config.grpc_address.clone();
+            let endpoint: String = if !self.config.grpc_address.is_empty() {
+                self.config.grpc_address.clone()
             } else {
                 // Get a random endpoint from the cache
-                endpoint = match self.get_random_grpc_endpoint().await {
+                match self.get_random_grpc_endpoint().await {
                     Ok(endpt) => endpt,
                     Err(err) => return Err(GrpcError::MissingEndpoint(err.to_string()).into()),
-                };
-            }
+                }
+            };
 
             result = AuthzQueryClient::connect(endpoint.clone())
                 .await
