@@ -27,11 +27,18 @@ impl ChainClient {
 
         // Get grpc address randomly each time; shuffles on failures
         for _i in 0u8..self.connection_retry_attempts + 1 {
-            // Get an endpoint
-            let endpoint = match self.get_random_grpc_endpoint().await {
-                Ok(endpt) => endpt,
-                Err(err) => return Err(GrpcError::MissingEndpoint(err.to_string()).into()),
-            };
+            let endpoint: String;
+
+            // Attempt to use last healthy (or manually set) endpoint if it exists (in config)
+            if !self.config.grpc_address.is_empty() {
+                endpoint = self.config.grpc_address.clone();
+            } else {
+                // Get a random endpoint from the cache
+                endpoint = match self.get_random_grpc_endpoint().await {
+                    Ok(endpt) => endpt,
+                    Err(err) => return Err(GrpcError::MissingEndpoint(err.to_string()).into()),
+                };
+            }
 
             result = AuthQueryClient::connect(endpoint.clone())
                 .await
@@ -39,8 +46,19 @@ impl ChainClient {
 
             // Return if result is valid client, or increment failure in cache if being used
             if result.is_ok() {
+                // Reset consecutive failed connections to 0
+                self.cache
+                    .as_mut()
+                    .unwrap()
+                    .grpc_endpoint_cache
+                    .add_item(endpoint.clone(), 0)?;
+
+                // Update config to last healthy grpc connection address
+                self.config.grpc_address = endpoint.clone();
+
                 break;
             } else if result.is_err() && self.cache.is_some() {
+                // Don't bother updating config grpc address if it fails, it'll be overriden upon a successful connection
                 let _res = self
                     .cache
                     .as_mut()
@@ -94,11 +112,18 @@ impl ChainClient {
 
         // Get grpc address randomly each time; shuffles on failures
         for _i in 0u8..self.connection_retry_attempts + 1 {
-            // Get an endpoint
-            let endpoint = match self.get_random_grpc_endpoint().await {
-                Ok(endpt) => endpt,
-                Err(err) => return Err(GrpcError::MissingEndpoint(err.to_string()).into()),
-            };
+            let endpoint: String;
+
+            // Attempt to use last healthy (or manually set) endpoint if it exists (in config)
+            if !self.config.grpc_address.is_empty() {
+                endpoint = self.config.grpc_address.clone();
+            } else {
+                // Get a random endpoint from the cache
+                endpoint = match self.get_random_grpc_endpoint().await {
+                    Ok(endpt) => endpt,
+                    Err(err) => return Err(GrpcError::MissingEndpoint(err.to_string()).into()),
+                };
+            }
 
             result = BankQueryClient::connect(endpoint.clone())
                 .await
@@ -106,8 +131,19 @@ impl ChainClient {
 
             // Return if result is valid client, or increment failure in cache if being used
             if result.is_ok() {
+                // Reset consecutive failed connections to 0
+                self.cache
+                    .as_mut()
+                    .unwrap()
+                    .grpc_endpoint_cache
+                    .add_item(endpoint.clone(), 0)?;
+
+                // Update config to last healthy grpc connection address
+                self.config.grpc_address = endpoint.clone();
+
                 break;
             } else if result.is_err() && self.cache.is_some() {
+                // Don't bother updating config grpc address if it fails, it'll be overriden upon a successful connection
                 let _res = self
                     .cache
                     .as_mut()

@@ -127,9 +127,7 @@ impl ChainInfo {
             gas_prices = format!("{:.2}{}", 0.01, asset_list.assets[0].base);
         }
 
-        let rpc_address = executor::block_on(async { self.get_random_rpc_endpoint().await });
-
-        let rpc_address = rpc_address?;
+        let rpc_address = executor::block_on(async { self.get_random_rpc_endpoint().await })?;
 
         Ok(ChainClientConfig {
             chain_name: self.chain_name.clone(),
@@ -138,6 +136,7 @@ impl ChainInfo {
             gas_adjustment: 1.2,
             gas_prices,
             rpc_address,
+            grpc_address: String::from(""),
         })
     }
 

@@ -269,6 +269,7 @@ fn local_single_node_chain_test() {
                     chain_name: String::from("cosmrs"),
                     chain_id: chain_id.to_string(),
                     rpc_address: rpc_address.clone(),
+                    grpc_address: String::from(""),
                     account_prefix: ACCOUNT_PREFIX.to_string(),
                     gas_adjustment: 1.2,
                     gas_prices: gas.to_string(),
