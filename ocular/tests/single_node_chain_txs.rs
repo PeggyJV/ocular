@@ -26,7 +26,7 @@ use std::{panic, str};
 const CHAIN_ID: &str = "cosmrs-test";
 
 /// RPC port
-const RPC_PORT: u16 = 26657;
+const RPC_PORT: u16 = 26656;
 
 /// Expected account numbers
 const SENDER_ACCOUNT_NUMBER: AccountNumber = 1;
@@ -246,6 +246,8 @@ fn local_single_node_chain_test() {
         "-d",
         "-p",
         &format!("{}:{}", RPC_PORT, RPC_PORT),
+        "-p",
+        &format!("{}:{}", 9090, 9090),
         DOCKER_HUB_GAIA_SINGLE_NODE_TEST_IMAGE,
         CHAIN_ID,
         &sender_account_id.to_string(),
@@ -254,21 +256,22 @@ fn local_single_node_chain_test() {
     dev::docker_run(&docker_args, || {
         init_tokio_runtime().block_on(async {
             let rpc_address = format!("http://localhost:{}", RPC_PORT);
+            let grpc_address = format!("http://localhost:9090");
             let config = ChainClientConfig {
                 chain_id: chain_id.to_string(),
                 rpc_address: rpc_address.clone(),
-                grpc_address: rpc_address.clone(),
+                grpc_address,
                 account_prefix: ACCOUNT_PREFIX.to_string(),
                 gas_adjustment: 1.2,
                 default_fee: ocular::tx::Coin { amount: 10000, denom: DENOM.to_string() }
             };
             let rpc_client = rpc::HttpClient::new(rpc_address.as_str()).expect("Could not create RPC");
                 let chain_client = ChainClient {
-                config: config.clone(),
-                keyring: Keyring::new_file_store(None).expect("Could not create keyring."),
-                rpc_client: rpc_client.clone(),
-                cache: None,
-            };
+                    config: config.clone(),
+                    keyring: Keyring::new_file_store(None).expect("Could not create keyring."),
+                    rpc_client: rpc_client.clone(),
+                    cache: None,
+                };
 
             dev::poll_for_first_block(&rpc_client).await;
 

@@ -8,17 +8,17 @@ const CHAIN_ID: &str = "cosmrs-test";
 /// RPC port
 const RPC_PORT: u16 = 26657;
 
+/// gRPC port
+const GRPC_PORT: u16 = 9090;
+
 // We don't actually need the gaia node, but reusing it here for simplicty since single node chain test already has it configured.
 // Also provides us with a simple way to interact with a single node chain in this test if ever desired.
 const DOCKER_HUB_GAIA_SINGLE_NODE_TEST_IMAGE: &str = "philipjames11/gaia-test";
 
 #[test]
 fn file_cache_init() {
-    let rpc_port = RPC_PORT;
     let docker_args = [
         "-d",
-        "-p",
-        &format!("{}:{}", rpc_port, rpc_port),
         DOCKER_HUB_GAIA_SINGLE_NODE_TEST_IMAGE,
         CHAIN_ID,
         "test",
@@ -117,11 +117,8 @@ fn file_cache_init() {
 
 #[test]
 fn file_cache_accessor_test() {
-    let rpc_port = RPC_PORT + 1;
     let docker_args = [
         "-d",
-        "-p",
-        &format!("{}:{}", rpc_port, rpc_port),
         DOCKER_HUB_GAIA_SINGLE_NODE_TEST_IMAGE,
         CHAIN_ID,
         "test",
@@ -209,11 +206,8 @@ fn file_cache_accessor_test() {
 
 #[test]
 fn memory_cache_init() {
-    let rpc_port = RPC_PORT + 2;
     let docker_args = [
         "-d",
-        "-p",
-        &format!("{}:{}", rpc_port, rpc_port),
         DOCKER_HUB_GAIA_SINGLE_NODE_TEST_IMAGE,
         CHAIN_ID,
         "test",
@@ -240,11 +234,8 @@ fn memory_cache_init() {
 
 #[test]
 fn memory_cache_accessor_test() {
-    let rpc_port = RPC_PORT + 3;
     let docker_args = [
         "-d",
-        "-p",
-        &format!("{}:{}", rpc_port, rpc_port),
         DOCKER_HUB_GAIA_SINGLE_NODE_TEST_IMAGE,
         CHAIN_ID,
         "test",
