@@ -3,14 +3,14 @@
 // Clippy broken; doesn't recognize certain imports are used and sees them as unused
 
 use crate::{
+    account::Account,
     chain::{
-        client::tx::Account,
         config::ChainClientConfig,
     },
     cosmos_modules,
     error::AutomatedTxHandlerError,
     keyring::Keyring,
-    tx::{TxMetadata, BatchToml},
+    tx::{TxMetadata, SendTxToml},
 };
 use bip32::Mnemonic;
 use cosmrs::{bank::MsgSend, rpc, tx::Msg, AccountId, Coin};
@@ -245,17 +245,6 @@ impl ChainClient {
                 },
                 msgs,
                 TxMetadata {
-                    chain_id: self
-                        .config
-                        .chain_id
-                        .parse()
-                        .expect("Could not parse chain id"),
-                    account_number: grantee_base_account.account_number,
-                    sequence_number: grantee_base_account.sequence,
-                    gas_fee: Coin {
-                        denom: toml.sender.denom.parse().expect("Could not parse denom."),
-                        amount: toml.sender.gas_fee.into(),
-                    },
                     gas_limit: toml.sender.gas_limit,
                     timeout_height: toml.sender.timeout_height,
                     memo: toml.sender.memo.to_string(),
@@ -285,7 +274,7 @@ impl ChainClient {
             }
         };
 
-        let toml: BatchToml = match toml::from_str(&content) {
+        let toml: MultiSendToml = match toml::from_str(&content) {
             Ok(result) => result,
             Err(err) => {
                 return Err(AutomatedTxHandlerError::Toml(err.to_string()));
@@ -346,17 +335,6 @@ impl ChainClient {
                         amount: tx.amount.into(),
                     },
                     TxMetadata {
-                        chain_id: self
-                            .config
-                            .chain_id
-                            .parse()
-                            .expect("Could not parse chain id"),
-                        account_number: tx_base_account.account_number,
-                        sequence_number: tx_base_account.sequence,
-                        gas_fee: Coin {
-                            amount: tx.gas_fee.into(),
-                            denom: tx.denom.parse().expect("Could not parse denom."),
-                        },
                         gas_limit: tx.gas_limit,
                         timeout_height: tx.timeout_height,
                         memo: tx.memo.to_string(),
@@ -378,7 +356,7 @@ impl ChainClient {
 // ---------------------------------- Tests ----------------------------------
 #[cfg(test)]
 mod tests {
-    use crate::tx::{BatchTransaction, BatchToml};
+    use crate::tx::{SendTx, MultiSendToml};
 
     use super::*;
     use assay::assay;
@@ -561,7 +539,7 @@ mod tests {
             .is_err());
 
         // Ready to create toml assets
-        let mut file = BatchToml::default();
+        let mut file = MultiSendToml::default();
 
         // Create source key
         chain_client
@@ -583,7 +561,7 @@ mod tests {
             .get_public_key_and_address("Dionysus", "somm")
             .expect("Could not get public key.");
 
-        file.transactions.push(BatchTransaction {
+        file.transactions.push(Tx {
             name: "Dionysus",
             destination_account: pub_key_output.account.as_ref(),
             amount: 50u64,
@@ -603,7 +581,7 @@ mod tests {
             .get_public_key_and_address("Silenus", "somm")
             .expect("Could not get public key.");
 
-        file.transactions.push(BatchTransaction {
+        file.transactions.push(Tx {
             name: "Silenus",
             destination_account: pub_key_output.account.as_ref(),
             amount: 500u64,

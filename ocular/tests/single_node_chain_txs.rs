@@ -2,12 +2,7 @@
 
 // Requies docker
 use ocular::{
-    chain::{
-        client::tx::Account,
-        config::ChainClientConfig,
-    },
-    cosmos_modules::*,
-    keyring::Keyring,
+    account::Account, chain::config::ChainClientConfig, cosmos_modules::*, keyring::Keyring,
     tx::TxMetadata,
 };
 
@@ -259,17 +254,17 @@ fn local_single_node_chain_test() {
     dev::docker_run(&docker_args, || {
         init_tokio_runtime().block_on(async {
             let rpc_address = format!("http://localhost:{}", RPC_PORT);
-            let rpc_client =
-                rpc::HttpClient::new(rpc_address.as_str()).expect("Could not create RPC");
+            let config = ChainClientConfig {
+                chain_id: chain_id.to_string(),
+                rpc_address: rpc_address.clone(),
+                grpc_address: rpc_address.clone(),
+                account_prefix: ACCOUNT_PREFIX.to_string(),
+                gas_adjustment: 1.2,
+                default_fee: ocular::tx::Coin { amount: 10000, denom: DENOM.to_string() }
+            };
+            let rpc_client = rpc::HttpClient::new(rpc_address.as_str()).expect("Could not create RPC");
                 let chain_client = ChainClient {
-                config: ChainClientConfig {
-                    chain_id: chain_id.to_string(),
-                    rpc_address: rpc_address.clone(),
-                    grpc_address: rpc_address,
-                    account_prefix: ACCOUNT_PREFIX.to_string(),
-                    gas_adjustment: 1.2,
-                    gas_prices: gas.to_string(),
-                },
+                config: config.clone(),
                 keyring: Keyring::new_file_store(None).expect("Could not create keyring."),
                 rpc_client: rpc_client.clone(),
                 cache: None,
@@ -278,10 +273,7 @@ fn local_single_node_chain_test() {
             dev::poll_for_first_block(&rpc_client).await;
 
             let tx_metadata = TxMetadata {
-                chain_id: chain_id.clone(),
-                account_number: SENDER_ACCOUNT_NUMBER,
-                sequence_number: sequence_number,
-                gas_fee: amount.clone(),
+                fee: config.default_fee.clone(),
                 gas_limit: gas,
                 timeout_height: timeout_height.into(),
                 memo: MEMO.to_string(),
@@ -304,27 +296,20 @@ fn local_single_node_chain_test() {
                         public_key: sender_public_key,
                         private_key: sender_private_key,
                     },
-                    recipient_account_id.clone(),
+                    recipient_account_id.clone().as_ref(),
                     amount.clone(),
-                    tx_metadata,
+                    Some(tx_metadata),
                 )
-                .await
-                .expect("Could not broadcast msg.");
+                .await;
 
-            if actual_tx_commit_response.check_tx.code.is_err() {
-                panic!(
-                    "check_tx for msgsend failed: {:?}",
-                    actual_tx_commit_response.check_tx
+            if let Err(err) = &actual_tx_commit_response {
+                println!(
+                    "msgsend failed: {:?}",
+                    err
                 );
             }
 
-            if actual_tx_commit_response.deliver_tx.code.is_err() {
-                panic!(
-                    "deliver_tx for msgsend failed: {:?}",
-                    actual_tx_commit_response.deliver_tx
-                );
-            }
-
+            let actual_tx_commit_response = actual_tx_commit_response.unwrap();
             let actual_tx = dev::poll_for_tx(&rpc_client, actual_tx_commit_response.hash).await;
             assert_eq!(&expected_tx_body, &actual_tx.body);
             assert_eq!(&expected_auth_info, &actual_tx.auth_info);
@@ -340,10 +325,7 @@ fn local_single_node_chain_test() {
             .expect("Could not create key.");
 
             let tx_metadata = TxMetadata {
-                chain_id: chain_id.clone(),
-                account_number: SENDER_ACCOUNT_NUMBER,
-                sequence_number: sequence_number + 1,
-                gas_fee: amount.clone(),
+                fee: config.default_fee.clone(),
                 gas_limit: gas,
                 timeout_height: timeout_height.into(),
                 memo: MEMO.to_string(),
@@ -396,10 +378,7 @@ fn local_single_node_chain_test() {
             .expect("Could not create key.");
 
             let tx_metadata = TxMetadata {
-                chain_id: chain_id.clone(),
-                account_number: RECIPIENT_ACCOUNT_NUMBER,
-                sequence_number: sequence_number,
-                gas_fee: amount.clone(),
+                fee: config.default_fee.clone(),
                 gas_limit: gas,
                 timeout_height: timeout_height.into(),
                 memo: MEMO.to_string(),
@@ -462,10 +441,7 @@ fn local_single_node_chain_test() {
             .expect("Could not create key.");
 
             let tx_metadata = TxMetadata {
-                chain_id: chain_id.clone(),
-                account_number: SENDER_ACCOUNT_NUMBER,
-                sequence_number: sequence_number + 2,
-                gas_fee: amount.clone(),
+                fee: config.default_fee.clone(),
                 gas_limit: gas,
                 timeout_height: timeout_height.into(),
                 memo: MEMO.to_string(),
@@ -514,13 +490,7 @@ fn local_single_node_chain_test() {
             .expect("Could not create key.");
 
             let tx_metadata = TxMetadata {
-                chain_id: chain_id.clone(),
-                account_number: RECIPIENT_ACCOUNT_NUMBER,
-                sequence_number: sequence_number + 1,
-                gas_fee: Coin {
-                    amount: 0u8.into(),
-                    denom: DENOM.parse().expect("Could not parse denom."),
-                },
+                fee: config.default_fee.clone(),
                 gas_limit: gas,
                 timeout_height: timeout_height.into(),
                 memo: String::from("Exec tx #2"),

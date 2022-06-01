@@ -12,7 +12,7 @@ readme = "README.md"
 
 [dependencies]
 assay = "0.1"
-bech32 = "0.6"
+bech32 = "0.9"
 bip32 = "0.3"
 # This explicit cosmos-sdk-proto import shouldn't be needed because cosmrs exposes it,
 # but for some reason the cosmos module query_client rust modules aren't importable through
@@ -46,3 +46,4 @@ prost = "0.10.0"
 toml = "0.5.8"
 chrono = "0.4.0"
 uuid = { version = "0.8.2", features = ["serde", "v4"] }
+eyre = "0.6.8"

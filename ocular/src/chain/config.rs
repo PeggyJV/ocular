@@ -1,5 +1,7 @@
 use serde::{Deserialize, Serialize};
 
+use crate::tx::Coin;
+
 #[derive(Clone, Debug, Default, Deserialize, Serialize)]
 pub struct ChainClientConfig {
     pub chain_id: String,
@@ -9,5 +11,5 @@ pub struct ChainClientConfig {
     pub grpc_address: String,
     pub account_prefix: String,
     pub gas_adjustment: f64,
-    pub gas_prices: String,
+    pub default_fee: Coin,
 }

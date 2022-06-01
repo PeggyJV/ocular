@@ -11,7 +11,7 @@ use tendermint_rpc::{self, WebSocketClient, WebSocketClientDriver};
 use super::ChainName;
 
 pub mod authz;
-pub mod automated_tx_handler;
+// pub mod automated_tx_handler;
 pub mod cache;
 pub mod query;
 pub mod tx;

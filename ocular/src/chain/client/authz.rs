@@ -1,10 +1,10 @@
 use crate::{
-    chain::client::tx::Account,
+    account::{Account, BaseAccount},
     cosmos_modules::{
         authz::{self, *},
         feegrant::{BasicAllowance, MsgGrantAllowance},
     },
-    error::{ChainClientError, GrpcError, TxError},
+    error::{ChainClientError, GrpcError},
     tx::TxMetadata,
 };
 use cosmrs::{tx, AccountId};
@@ -60,7 +60,8 @@ impl ChainClient {
         grantee: AccountId,
         expiration_timestamp: Option<prost_types::Timestamp>,
         tx_metadata: TxMetadata,
-    ) -> Result<Response, TxError> {
+    ) -> Result<Response, ChainClientError> {
+        let signer = granter.private_key;
         let msg = MsgGrant {
             granter: granter.id.to_string(),
             grantee: grantee.to_string(),
@@ -75,18 +76,19 @@ impl ChainClient {
                 expiration: expiration_timestamp,
             }),
         };
+        let granter = self.query_account(granter.id.as_ref().to_string()).await?;
+        let granter = BaseAccount::try_from(granter)?;
 
         // Build tx body.
         let msg_any = prost_types::Any {
             type_url: String::from("/cosmos.authz.v1beta1.MsgGrant"),
             value: msg.encode_to_vec(),
         };
-
         let tx_body = tx::Body::new(vec![msg_any], &tx_metadata.memo, tx_metadata.timeout_height);
 
         self.sign_and_send_msg(
-            granter.public_key,
-            granter.private_key,
+            granter,
+            signer,
             tx_body,
             tx_metadata,
             None,
@@ -102,24 +104,26 @@ impl ChainClient {
         granter: Account,
         grantee: AccountId,
         tx_metadata: TxMetadata,
-    ) -> Result<Response, TxError> {
+    ) -> Result<Response, ChainClientError> {
+        let signer = granter.private_key;
         let msg = MsgRevoke {
             granter: granter.id.to_string(),
             grantee: grantee.to_string(),
             msg_type_url: String::from("/cosmos.bank.v1beta1.MsgSend"),
         };
+        let granter = self.query_account(granter.id.as_ref().to_string()).await?;
+        let granter = BaseAccount::try_from(granter)?;
 
         // Build tx body.
         let msg_any = prost_types::Any {
             type_url: String::from("/cosmos.authz.v1beta1.MsgRevoke"),
             value: msg.encode_to_vec(),
         };
-
         let tx_body = tx::Body::new(vec![msg_any], &tx_metadata.memo, tx_metadata.timeout_height);
 
         self.sign_and_send_msg(
-            granter.public_key,
-            granter.private_key,
+            granter,
+            signer,
             tx_body,
             tx_metadata,
             None,
@@ -136,11 +140,14 @@ impl ChainClient {
         tx_metadata: TxMetadata,
         fee_payer: Option<AccountId>,
         fee_granter: Option<AccountId>,
-    ) -> Result<Response, TxError> {
+    ) -> Result<Response, ChainClientError> {
+        let signer = grantee.private_key;
         let msg = MsgExec {
             grantee: grantee.id.to_string(),
             msgs,
         };
+        let grantee = self.query_account(grantee.id.as_ref().to_string()).await?;
+        let grantee = BaseAccount::try_from(grantee)?;
 
         // Build tx body.
         let msg_any = prost_types::Any {
@@ -151,8 +158,8 @@ impl ChainClient {
         let tx_body = tx::Body::new(vec![msg_any], &tx_metadata.memo, tx_metadata.timeout_height);
 
         self.sign_and_send_msg(
-            grantee.public_key,
-            grantee.private_key,
+            grantee,
+            signer,
             tx_body,
             tx_metadata,
             fee_payer,
@@ -170,12 +177,12 @@ impl ChainClient {
         // TODO: Standardize below Coin type to common cosmrs coin type once FeeGrants get looped in.
         spend_limit: cosmos_sdk_proto::cosmos::base::v1beta1::Coin,
         tx_metadata: TxMetadata,
-    ) -> Result<Response, TxError> {
+    ) -> Result<Response, ChainClientError> {
+        let signer = granter.private_key;
         let allowance = BasicAllowance {
             spend_limit: vec![spend_limit],
             expiration,
         };
-
         let msg = MsgGrantAllowance {
             granter: granter.id.to_string(),
             grantee: grantee.to_string(),
@@ -184,18 +191,19 @@ impl ChainClient {
                 value: allowance.encode_to_vec(),
             }),
         };
+        let granter = self.query_account(granter.id.as_ref().to_string()).await?;
+        let granter = BaseAccount::try_from(granter)?;
 
         // Build tx body.
         let msg_any = prost_types::Any {
             type_url: String::from("/cosmos.feegrant.v1beta1.MsgGrantAllowance"),
             value: msg.encode_to_vec(),
         };
-
         let tx_body = tx::Body::new(vec![msg_any], &tx_metadata.memo, tx_metadata.timeout_height);
 
         self.sign_and_send_msg(
-            granter.public_key,
-            granter.private_key,
+            granter,
+            signer,
             tx_body,
             tx_metadata,
             None,

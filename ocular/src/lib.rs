@@ -1,5 +1,6 @@
 pub use error::ChainRegistryError;
 
+pub mod account;
 pub mod chain;
 pub mod cosmos_modules {
     pub use cosmrs::proto::cosmos::auth::v1beta1 as auth;

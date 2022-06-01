@@ -1,8 +1,11 @@
+use cosmrs::ErrorReport;
 use thiserror::Error;
 
 // Higher level errors: ChainClientError, ChainInfoError, ChainRegistryError
 #[derive(Debug, Error)]
 pub enum ChainClientError {
+    #[error("{0}")]
+    Account(#[from] AccountError),
     #[error("{0}")]
     ChainInfo(#[from] ChainInfoError),
     #[error("{0}")]
@@ -16,11 +19,11 @@ pub enum ChainClientError {
     #[error("error during RPC call: {0}")]
     Rpc(#[from] RpcError),
     #[error("{0}")]
-    TxError(#[from] TxError),
+    Tx(#[from] TxError),
     #[error("{0}")]
-    AutomatedTxHandlerError(#[from] AutomatedTxHandlerError),
+    AutomatedTxHandler(#[from] AutomatedTxHandlerError),
     #[error("{0}")]
-    CacheError(#[from] CacheError),
+    Cache(#[from] CacheError),
 }
 
 #[derive(Debug, Error)]
@@ -70,44 +73,47 @@ pub enum RpcError {
 pub enum KeyStoreError {
     #[error("error creating or opening keystore: {0}")]
     CouldNotOpenOrCreateKeyStore(String),
-
     #[error("key name '{0}' already exists.")]
     Exists(String),
-
     #[error("key name '{0}' does not exist.")]
     DoesNotExist(String),
-
     #[error("key store has not been initialized.")]
     NotInitialized,
-
     #[error("invalid mnemonic: {0}")]
     InvalidMnemonic(String),
-
     #[error("unable to store key: {0}")]
     UnableToStoreKey(String),
-
     #[error("unable to delete key: {0}")]
     UnableToDeleteKey(String),
-
     #[error("unable to retrieve key: {0}")]
     UnableToRetrieveKey(String),
-
     #[error("error reading file: {0}")]
     FileIO(String),
 }
 
 #[derive(Debug, Error)]
 pub enum TxError {
+    #[error("address error: {0}")]
+    Address(String),
+    #[error("parsing error: {0}")]
+    FeeParsing(#[from] eyre::Report),
     #[error("serialization error: {0}")]
-    SerializationError(String),
+    Serialization(String),
     #[error("error converting types: {0}")]
-    TypeConversionError(String),
+    TypeConversion(String),
     #[error("error signing message: {0}")]
-    SigningError(String),
+    Signing(String),
     #[error("error broadcasting message: {0}")]
-    BroadcastError(String),
+    Broadcast(String),
     #[error("error logging response: {0}")]
     Logging(String),
+}
+
+impl From<bech32::Error> for TxError {
+    fn from(error: bech32::Error) -> TxError {
+        // I doubt this formatting is going to be great.
+        TxError::TypeConversion(error.to_string())
+    }
 }
 
 #[derive(Debug, Error)]
@@ -136,4 +142,12 @@ pub enum CacheError {
     Initialization(String),
     #[error("error parsing toml: {0}")]
     Toml(String),
+}
+
+#[derive(Debug, Error)]
+pub enum AccountError {
+    #[error("empty account data: {0}")]
+    Empty(String),
+    #[error("error decoding account data: {0}")]
+    Decode(#[from] ErrorReport),
 }

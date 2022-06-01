@@ -330,9 +330,9 @@ checksum = "71acf5509fc522cce1b100ac0121c635129bfd4d91cdf036bcc9b9935f97ccf5"
 
 [[package]]
 name = "bech32"
-version = "0.6.0"
+version = "0.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "58946044516aa9dc922182e0d6e9d124a31aafe6b421614654eb27cf90cec09c"
+checksum = "c5738be7561b0eeb501ef1d5c5db3f24e01ceb55fededd9b00039aada34966ad"
 
 [[package]]
 name = "bip32"
@@ -579,8 +579,6 @@ checksum = "5827cebf4670468b8772dd191856768aedcb1b0278a04f989f7766351917b9dc"
 [[package]]
 name = "cosmos-sdk-proto"
 version = "0.12.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f109fe191e73898d74b8020c50f86018364ad19bc30318aa074616c382b52856"
 dependencies = [
  "prost",
  "prost-types",
@@ -591,8 +589,6 @@ dependencies = [
 [[package]]
 name = "cosmrs"
 version = "0.7.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8413275b23cb5a0734d9d1e3e33f0b5b94547c1e94776dbc3149dbf46588a533"
 dependencies = [
  "bip32",
  "cosmos-sdk-proto",
@@ -1841,6 +1837,7 @@ dependencies = [
  "cosmos-sdk-proto",
  "cosmrs",
  "dirs 1.0.5",
+ "eyre",
  "futures",
  "hex 0.3.2",
  "http",
