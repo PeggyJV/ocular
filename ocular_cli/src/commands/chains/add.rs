@@ -1,3 +1,4 @@
+use super::show::ShowCmd;
 use crate::{config, prelude::*};
 use abscissa_core::{Command, Runnable};
 use clap::Parser;
@@ -53,6 +54,9 @@ impl Runnable for AddCmd {
                     .expect("Could not open file");
 
                 write!(file, "{}", config_content).unwrap();
+                let name = self.name.clone();
+                let show_cmd = ShowCmd { name };
+                show_cmd.run();
             } else if chain_content.contains(chain_name) {
                 error!(
                     "The chain {} already exists in the local registry",
