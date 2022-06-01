@@ -17,6 +17,7 @@ pub type AuthzQueryClient = authz::query_client::QueryClient<Channel>;
 
 impl ChainClient {
     // Authz queries
+    // TODO: Refractor code accross grpc clients by having keystore implement Sync (https://github.com/PeggyJV/ocular/pull/53#discussion_r880698565)
     pub async fn get_authz_query_client(&mut self) -> Result<AuthzQueryClient, ChainClientError> {
         let mut result: Result<AuthzQueryClient, ChainClientError> =
             Err(TxError::BroadcastError(String::from("Client connection never attempted.")).into());
