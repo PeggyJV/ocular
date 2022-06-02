@@ -1,7 +1,6 @@
 mod add;
 mod delete;
 mod edit;
-mod editor;
 mod list;
 mod registry_list;
 mod set_default;
@@ -12,7 +11,7 @@ use crate::config::OcularCliConfig;
 use abscissa_core::{config, Command, FrameworkError, Runnable};
 use clap::Parser;
 
-use self::editor::EditorCmd;
+use self::edit::EditCmd;
 use self::list::ListCmd;
 use self::show::ShowCmd;
 use self::show_default::ShowDefaultCmd;
@@ -28,7 +27,7 @@ use self::show_default::ShowDefaultCmd;
 pub enum ChainsCmd {
     Show(ShowCmd),
     List(ListCmd),
-    Editor(EditorCmd),
+    Edit(EditCmd),
     ShowDefault(ShowDefaultCmd),
 }
 
