@@ -6,6 +6,7 @@ use crate::{
     chain::{
         client::tx::{Account, TxMetadata},
         config::ChainClientConfig,
+        SOMMELIER,
     },
     cosmos_modules,
     error::AutomatedTxHandlerError,
@@ -430,9 +431,10 @@ mod tests {
 
         let mut chain_client = ChainClient {
             config: ChainClientConfig {
+                chain_name: SOMMELIER.to_string(),
                 chain_id: String::from("sommelier-3"),
                 rpc_address: String::from("http://localhost:8080"),
-                grpc_address: String::from("http://localhost:8080"),
+                grpc_address: String::from(""),
                 account_prefix: String::from("somm"),
                 gas_adjustment: 1.2,
                 gas_prices: String::from("100"),
@@ -441,6 +443,7 @@ mod tests {
             rpc_client: rpc::HttpClient::new("http://localhost:8080")
                 .expect("Could not create RPC"),
             cache: None,
+            connection_retry_attempts: 2,
         };
 
         // Assert error if no toml exists
@@ -562,9 +565,10 @@ mod tests {
 
         let mut chain_client = ChainClient {
             config: ChainClientConfig {
+                chain_name: SOMMELIER.to_string(),
                 chain_id: String::from("sommelier-3"),
                 rpc_address: String::from("http://localhost:8080"),
-                grpc_address: String::from("http://localhost:8080"),
+                grpc_address: String::from(""),
                 account_prefix: String::from("somm"),
                 gas_adjustment: 1.2,
                 gas_prices: String::from("100"),
@@ -573,6 +577,7 @@ mod tests {
             rpc_client: rpc::HttpClient::new("http://localhost:8080")
                 .expect("Could not create RPC"),
             cache: None,
+            connection_retry_attempts: 2,
         };
 
         // Assert error if no toml exists
