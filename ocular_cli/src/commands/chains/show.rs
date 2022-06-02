@@ -7,7 +7,7 @@ use std::{collections::HashMap, fs, path::Path, str};
 
 #[derive(Command, Debug, Parser)]
 pub struct ShowCmd {
-    name: String,
+    pub name: String,
 }
 
 #[derive(Deserialize)]
