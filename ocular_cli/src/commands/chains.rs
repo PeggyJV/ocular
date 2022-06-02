@@ -12,6 +12,7 @@ use abscissa_core::{config, Command, FrameworkError, Runnable};
 use clap::Parser;
 
 use self::list::ListCmd;
+use self::registry_list::RegistryListCmd;
 use self::show::ShowCmd;
 use self::show_default::ShowDefaultCmd;
 
@@ -26,6 +27,7 @@ use self::show_default::ShowDefaultCmd;
 pub enum ChainsCmd {
     Show(ShowCmd),
     List(ListCmd),
+    RegistryList(RegistryListCmd),
     ShowDefault(ShowDefaultCmd),
 }
 
