@@ -11,13 +11,7 @@ use crate::config::OcularCliConfig;
 use abscissa_core::{config, Command, FrameworkError, Runnable};
 use clap::Parser;
 
-<<<<<<< HEAD
-use self::{add::AddCmd, list::ListCmd, show::ShowCmd};
-=======
-use self::list::ListCmd;
-use self::show::ShowCmd;
-use self::show_default::ShowDefaultCmd;
->>>>>>> main
+use self::{add::AddCmd, list::ListCmd, show::ShowCmd, show_default::ShowDefaultCmd};
 
 /// `start` subcommand
 ///
