@@ -15,6 +15,8 @@ use clap::Parser;
 use self::editor::EditorCmd;
 use self::list::ListCmd;
 use self::show::ShowCmd;
+use self::show_default::ShowDefaultCmd;
+
 /// `start` subcommand
 ///
 /// The `Parser` proc macro generates an option parser based on the struct
@@ -27,6 +29,7 @@ pub enum ChainsCmd {
     Show(ShowCmd),
     List(ListCmd),
     Editor(EditorCmd),
+    ShowDefault(ShowDefaultCmd),
 }
 
 impl config::Override<OcularCliConfig> for ChainsCmd {
