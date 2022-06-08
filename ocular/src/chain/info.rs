@@ -4,16 +4,13 @@ use crate::{
         config::ChainClientConfig,
         registry::{self, AssetList},
     },
-    error::{ChainInfoError, GrpcError, RpcError},
-    utils,
+    error::{ChainInfoError, RpcError},
 };
 use futures::executor;
 use rand::{prelude::SliceRandom, thread_rng};
 use serde::{Deserialize, Serialize};
 use tendermint_rpc::Client;
 use url::Url;
-
-use super::client::query::BankQueryClient;
 
 #[derive(Clone, Debug, Default, Deserialize, Serialize)]
 #[serde(default)]
@@ -102,15 +99,6 @@ pub struct Grpc {
 }
 
 impl ChainInfo {
-    fn get_all_grpc_endpoints(&self) -> Vec<String> {
-        self.apis
-            .grpc
-            .iter()
-            .filter_map(|grpc| utils::parse_or_build_grpc_endpoint(grpc.address.as_str()).ok())
-            .filter(|uri| !uri.is_empty())
-            .collect()
-    }
-
     fn get_all_rpc_endpoints(&self) -> Vec<String> {
         self.apis
             .rpc
@@ -139,23 +127,16 @@ impl ChainInfo {
             gas_prices = format!("{:.2}{}", 0.01, asset_list.assets[0].base);
         }
 
-        let (rpc_address, grpc_address) = executor::block_on(async {
-            let rpc = self.get_random_rpc_endpoint().await;
-            let grpc = self.get_random_grpc_endpoint().await;
-
-            (rpc, grpc)
-        });
-
-        let rpc_address = rpc_address?;
-        let grpc_address = grpc_address?;
+        let rpc_address = executor::block_on(async { self.get_random_rpc_endpoint().await })?;
 
         Ok(ChainClientConfig {
+            chain_name: self.chain_name.clone(),
             account_prefix: self.bech32_prefix.clone(),
             chain_id: self.chain_id.clone(),
             gas_adjustment: 1.2,
             gas_prices,
-            grpc_address,
             rpc_address,
+            grpc_address: String::from(""),
         })
     }
 
@@ -166,41 +147,6 @@ impl ChainInfo {
         } else {
             Err(RpcError::UnhealthyEndpoint("no available RPC endpoints".to_string()).into())
         }
-    }
-
-    pub async fn get_random_grpc_endpoint(&self) -> Result<String, ChainInfoError> {
-        let endpoints = self.get_grpc_endpoints().await?;
-        if let Some(endpoint) = endpoints.choose(&mut thread_rng()) {
-            Ok(endpoint.to_string())
-        } else {
-            Err(RpcError::UnhealthyEndpoint("no available RPC endpoints".to_string()).into())
-        }
-    }
-
-    pub async fn get_grpc_endpoints(&self) -> Result<Vec<String>, ChainInfoError> {
-        let endpoints = self.get_all_grpc_endpoints();
-        if endpoints.is_empty() {
-            return Err(GrpcError::MissingEndpoint(
-                "no valid endpoint found. endpoints must use http or https.".to_string(),
-            )
-            .into());
-        }
-
-        // this is not very efficient but i was getting annoyed trying to figure
-        // out how to do filtering with an async method
-        // for (i, ep) in endpoints.clone().iter().enumerate() {
-        //     if is_healthy_grpc(ep.as_str()).await.is_err() {
-        //         endpoints.remove(i);
-        //     }
-        // }
-        // if endpoints.is_empty() {
-        //     return Err(GrpcError::UnhealthyEndpoint(
-        //         "no healthy endpoint found (connections could not be established)".to_string(),
-        //     )
-        //     .into());
-        // }
-
-        Ok(endpoints)
     }
 
     pub async fn get_rpc_endpoints(&self) -> Result<Vec<String>, ChainInfoError> {
@@ -232,19 +178,6 @@ impl ChainInfo {
 
 pub async fn get_cosmoshub_info() -> Result<ChainInfo, ChainInfoError> {
     registry::get_chain("cosmoshub").await.map_err(|r| r.into())
-}
-
-pub async fn is_healthy_grpc(endpoint: &str) -> Result<(), ChainInfoError> {
-    if BankQueryClient::connect(endpoint.to_string())
-        .await
-        .is_err()
-    {
-        return Err(
-            GrpcError::UnhealthyEndpoint(format!("{} failed health check", endpoint)).into(),
-        );
-    }
-
-    Ok(())
 }
 
 pub async fn is_healthy_rpc(endpoint: &str) -> Result<(), ChainInfoError> {

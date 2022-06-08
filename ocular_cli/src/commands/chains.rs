@@ -11,8 +11,11 @@ use crate::config::OcularCliConfig;
 use abscissa_core::{config, Command, FrameworkError, Runnable};
 use clap::Parser;
 
+use self::edit::EditCmd;
 use self::list::ListCmd;
 use self::show::ShowCmd;
+use self::show_default::ShowDefaultCmd;
+
 /// `start` subcommand
 ///
 /// The `Parser` proc macro generates an option parser based on the struct
@@ -24,6 +27,8 @@ use self::show::ShowCmd;
 pub enum ChainsCmd {
     Show(ShowCmd),
     List(ListCmd),
+    Edit(EditCmd),
+    ShowDefault(ShowDefaultCmd),
 }
 
 impl config::Override<OcularCliConfig> for ChainsCmd {

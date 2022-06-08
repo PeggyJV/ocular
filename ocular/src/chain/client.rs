@@ -13,6 +13,7 @@ use super::ChainName;
 pub mod authz;
 pub mod automated_tx_handler;
 pub mod cache;
+pub mod grpc;
 pub mod query;
 pub mod tx;
 
@@ -23,6 +24,12 @@ pub struct ChainClient {
     pub keyring: Keyring,
     pub rpc_client: RpcHttpClient,
     pub cache: Option<Cache>,
+    pub connection_retry_attempts: u8,
+    // light_provider: ?
+    // input:
+    // output:
+    // codec: ? // needed?
+    // logger needed? i think rust does logging differently
 }
 
 impl ChainClient {
@@ -34,6 +41,7 @@ impl ChainClient {
         config: ChainClientConfig,
         keyring: Keyring,
         cache: Option<Cache>,
+        connection_retry_attempts: u8,
     ) -> Result<ChainClient, ChainClientError> {
         let rpc_client = new_rpc_http_client(config.rpc_address.as_str())?;
 
@@ -42,6 +50,7 @@ impl ChainClient {
             keyring,
             rpc_client,
             cache,
+            connection_retry_attempts,
         })
     }
 }
@@ -52,6 +61,7 @@ pub struct ChainClientBuilder {
     rpc_endpoint: Option<String>,
     keyring: Option<Keyring>,
     cache: Option<Cache>,
+    connection_retry_attempts: Option<u8>,
 }
 
 impl ChainClientBuilder {
@@ -62,6 +72,7 @@ impl ChainClientBuilder {
             rpc_endpoint: None,
             keyring: None,
             cache: None,
+            connection_retry_attempts: None,
         }
     }
 
@@ -75,14 +86,11 @@ impl ChainClientBuilder {
         if self.rpc_endpoint.is_some() {
             config.rpc_address = self.rpc_endpoint.unwrap();
         }
-        let keyring = match self.keyring {
-            Some(kr) => kr,
-            None => Keyring::new_file_store(None)?,
-        };
-        let cache = match self.cache {
-            Some(c) => c,
-            None => Cache::create_memory_cache(None)?,
-        };
+        let keyring = self.keyring.unwrap_or(Keyring::new_file_store(None)?);
+        let connection_retry_attempts = self.connection_retry_attempts.unwrap_or(5);
+        let cache = self
+            .cache
+            .unwrap_or(Cache::create_memory_cache(None, connection_retry_attempts)?);
         let rpc_client = new_rpc_http_client(config.rpc_address.as_str())?;
 
         Ok(ChainClient {
@@ -90,6 +98,7 @@ impl ChainClientBuilder {
             keyring,
             rpc_client,
             cache: Some(cache),
+            connection_retry_attempts,
         })
     }
 
@@ -116,17 +125,18 @@ impl ChainClientBuilder {
 
 fn get_client(chain_name: &str) -> Result<ChainClient, ChainClientError> {
     let chain = executor::block_on(async { get_chain(chain_name).await })?;
+    // Default to in memory cache
+    let cache = Cache::create_memory_cache(None, 3)?;
     let config = chain.get_chain_config()?;
     let keyring = Keyring::new_file_store(None)?;
     let rpc_client = new_rpc_http_client(config.rpc_address.as_str())?;
-    // Default to in memory cache
-    let cache = Cache::create_memory_cache(None)?;
 
     Ok(ChainClient {
         config,
         keyring,
         rpc_client,
         cache: Some(cache),
+        connection_retry_attempts: 5,
     })
 }
 

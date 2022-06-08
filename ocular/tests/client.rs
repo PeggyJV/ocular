@@ -18,6 +18,7 @@ async fn create_chain_client() {
 async fn manual_chain_client_path() {
     let config = ChainClientConfig {
         account_prefix: "cosmos".to_string(),
+        chain_name: "cosmoshub".to_string(),
         chain_id: "cosmoshub-4".to_string(),
         gas_adjustment: 1.0,
         gas_prices: 100_000u64.to_string(),
@@ -25,9 +26,9 @@ async fn manual_chain_client_path() {
         rpc_address: "https://cosmoshub-4.technofractal.com:443".to_string(),
     };
     let keyring = Keyring::try_default_file_store().unwrap();
-    let cache = Some(Cache::create_memory_cache(None).unwrap());
+    let cache = Some(Cache::create_memory_cache(None, 5).unwrap());
 
-    ChainClient::new(config, keyring, cache).expect("failed to create client");
+    ChainClient::new(config, keyring, cache, 5).expect("failed to create client");
 }
 
 #[assay]
