@@ -254,7 +254,7 @@ mod tests {
 
     #[assay]
     async fn gets_authz_client() {
-        let mut client = ChainClient::new(chain::COSMOSHUB).unwrap();
+        let mut client = ChainClient::create(chain::COSMOSHUB).unwrap();
 
         client
             .get_authz_query_client()

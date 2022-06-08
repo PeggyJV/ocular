@@ -89,6 +89,10 @@ impl Keyring {
         })
     }
 
+    pub fn try_default_file_store() -> Result<Self, KeyStoreError> {
+        Keyring::new_file_store(Some(format!("~/{}", DEFAULT_FS_KEYSTORE_DIR).as_str()))
+    }
+
     // Alternative key store types to be implemented via separate constructors
 
     // ----- Keyring utilities -----
