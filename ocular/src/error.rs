@@ -1,4 +1,5 @@
-use cosmrs::ErrorReport;
+use cosmrs::{self, ErrorReport};
+use std::io;
 use thiserror::Error;
 
 // Higher level errors: ChainClientError, ChainInfoError, ChainRegistryError
@@ -24,6 +25,18 @@ pub enum ChainClientError {
     AutomatedTxHandler(#[from] AutomatedTxHandlerError),
     #[error("{0}")]
     Cache(#[from] CacheError),
+    #[error("{0}")]
+    IO(#[from] io::Error),
+    #[error("{0}")]
+    TomlDe(#[from] toml::de::Error),
+    #[error("{0}")]
+    TomlSer(#[from] toml::ser::Error),
+    #[error("{0}")]
+    MsgConversion(#[from] ErrorReport),
+    #[error("{0}")]
+    UnauthorizedTx(String),
+    #[error("{0}")]
+    ChainId(#[from] cosmrs::tendermint::Error),
 }
 
 #[derive(Debug, Error)]

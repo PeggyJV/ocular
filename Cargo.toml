@@ -4,7 +4,3 @@ members = [
     "ocular_cli",
     "ocular"
 ]
-
-[patch.crates-io]
-cosmos-sdk-proto = { path = "../../forks/cosmos-rust/cosmos-sdk-proto" }
-cosmrs = { path = "../../forks/cosmos-rust/cosmrs" }

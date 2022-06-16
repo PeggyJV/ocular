@@ -11,7 +11,6 @@ use tendermint_rpc::{self, WebSocketClient, WebSocketClientDriver};
 use super::ChainName;
 
 pub mod authz;
-// pub mod automated_tx_handler;
 pub mod cache;
 pub mod query;
 pub mod tx;
@@ -23,11 +22,6 @@ pub struct ChainClient {
     pub keyring: Keyring,
     pub rpc_client: RpcHttpClient,
     pub cache: Option<Cache>,
-    // light_provider: ?
-    // input:
-    // output:
-    // codec: ? // needed?
-    // logger needed? i think rust does logging differently
 }
 
 impl ChainClient {

@@ -1,4 +1,4 @@
-use cosmrs::{Denom, AccountId};
+use cosmrs::{AccountId, Denom};
 use serde::{Deserialize, Serialize};
 
 use crate::error::TxError;
@@ -39,46 +39,34 @@ impl TryFrom<&Coin> for cosmrs::Coin {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-pub struct SendTx {
+pub struct Payment {
     #[serde(default)]
-    /// The bech32 address of the receiving account
     pub recipient: String,
     pub amount: u64,
     pub denom: String,
-    pub metadata: TxMetadata,
-}
-
-#[derive(Debug, Default, Serialize, Deserialize)]
-pub struct SendTxToml {
-    /// The name of the key in the client's keystore
-    pub sender: String,
-    pub transactions: Vec<SendTx>,
+    pub metadata: Option<TxMetadata>,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
-pub struct MultiSendIO {
+pub struct MultiSendIo {
     pub address: String,
     pub coins: Vec<Coin>,
 }
 
-impl TryFrom<MultiSendIO> for cosmrs::bank::MultiSendIO {
+impl TryFrom<MultiSendIo> for cosmrs::bank::MultiSendIo {
     type Error = TxError;
 
-    fn try_from(value: MultiSendIO) -> Result<cosmrs::bank::MultiSendIO, Self::Error> {
-        cosmrs::bank::MultiSendIO::try_from(&value)
+    fn try_from(value: MultiSendIo) -> Result<cosmrs::bank::MultiSendIo, Self::Error> {
+        cosmrs::bank::MultiSendIo::try_from(&value)
     }
 }
 
-impl TryFrom<&MultiSendIO> for cosmrs::bank::MultiSendIO {
+impl TryFrom<&MultiSendIo> for cosmrs::bank::MultiSendIo {
     type Error = TxError;
 
-    fn try_from(value: &MultiSendIO) -> Result<cosmrs::bank::MultiSendIO, Self::Error> {
-        let id = bech32::decode(value.address.as_str())?;
-        let bytes: Vec<u8> = id.1.iter().map(|b| b.to_u8()).collect();
-        let id = AccountId::new(id.0.as_str(), &*bytes)?;
-
-        Ok(cosmrs::bank::MultiSendIO {
-            address: id,
+    fn try_from(value: &MultiSendIo) -> Result<cosmrs::bank::MultiSendIo, Self::Error> {
+        Ok(cosmrs::bank::MultiSendIo {
+            address: value.address.as_str().parse::<AccountId>()?,
             coins: value
                 .coins
                 .iter()

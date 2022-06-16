@@ -37,12 +37,12 @@ thiserror = "1.0"
 tendermint-pre = { package = "tendermint", git = "https://github.com/informalsystems/tendermint-rs" }
 tendermint-rpc = { version = "0.23.7", features = ["websocket-client"] }
 tiny-bip39 = "0.8"
-tonic = { version = "0.7", features = ["transport"] }
+tonic = { version = "0.7.2", features = ["transport"] }
 url = "2.2.2"
 tendermint-proto = "0.23.5"
 tokio = "1.17.0"
-prost-types = "0.10.0"
-prost = "0.10.0"
+prost-types = "0.10.1"
+prost = "0.10.4"
 toml = "0.5.8"
 chrono = "0.4.0"
 uuid = { version = "0.8.2", features = ["serde", "v4"] }

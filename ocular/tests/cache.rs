@@ -5,12 +5,6 @@ use std::collections::HashSet;
 /// Chain ID to use for tests
 const CHAIN_ID: &str = "cosmrs-test";
 
-/// RPC port
-const RPC_PORT: u16 = 26657;
-
-/// gRPC port
-const GRPC_PORT: u16 = 9090;
-
 // We don't actually need the gaia node, but reusing it here for simplicty since single node chain test already has it configured.
 // Also provides us with a simple way to interact with a single node chain in this test if ever desired.
 const DOCKER_HUB_GAIA_SINGLE_NODE_TEST_IMAGE: &str = "philipjames11/gaia-test";

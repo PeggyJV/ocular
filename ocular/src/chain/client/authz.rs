@@ -1,5 +1,5 @@
 use crate::{
-    account::{Account, BaseAccount},
+    account::AccountInfo,
     cosmos_modules::{
         authz::{self, *},
         feegrant::{BasicAllowance, MsgGrantAllowance},
@@ -56,12 +56,11 @@ impl ChainClient {
     // TODO: support other types of authorization grants other than GenericAuthorization for send messages.
     pub async fn grant_send_authorization(
         &self,
-        granter: Account,
+        granter: AccountInfo,
         grantee: AccountId,
         expiration_timestamp: Option<prost_types::Timestamp>,
         tx_metadata: TxMetadata,
     ) -> Result<Response, ChainClientError> {
-        let signer = granter.private_key;
         let msg = MsgGrant {
             granter: granter.id.to_string(),
             grantee: grantee.to_string(),
@@ -76,8 +75,8 @@ impl ChainClient {
                 expiration: expiration_timestamp,
             }),
         };
-        let granter = self.query_account(granter.id.as_ref().to_string()).await?;
-        let granter = BaseAccount::try_from(granter)?;
+        let account = self.query_account(granter.id.as_ref().to_string()).await?;
+        let (account_number, sequence) = (account.account_number, account.sequence);
 
         // Build tx body.
         let msg_any = prost_types::Any {
@@ -86,33 +85,25 @@ impl ChainClient {
         };
         let tx_body = tx::Body::new(vec![msg_any], &tx_metadata.memo, tx_metadata.timeout_height);
 
-        self.sign_and_send_msg(
-            granter,
-            signer,
-            tx_body,
-            tx_metadata,
-            None,
-            None,
-        )
-        .await
+        self.sign_and_send_msg(granter, account_number, sequence, tx_body, tx_metadata, None, None)
+            .await
     }
 
     // Revoke Authorization
     // TODO: support other types of authorization revokes other than send messages.
     pub async fn revoke_send_authorization(
         &self,
-        granter: Account,
+        granter: AccountInfo,
         grantee: AccountId,
         tx_metadata: TxMetadata,
     ) -> Result<Response, ChainClientError> {
-        let signer = granter.private_key;
         let msg = MsgRevoke {
             granter: granter.id.to_string(),
             grantee: grantee.to_string(),
             msg_type_url: String::from("/cosmos.bank.v1beta1.MsgSend"),
         };
-        let granter = self.query_account(granter.id.as_ref().to_string()).await?;
-        let granter = BaseAccount::try_from(granter)?;
+        let account = self.query_account(granter.id.as_ref().to_string()).await?;
+        let (account_number, sequence) = (account.account_number, account.sequence);
 
         // Build tx body.
         let msg_any = prost_types::Any {
@@ -121,45 +112,41 @@ impl ChainClient {
         };
         let tx_body = tx::Body::new(vec![msg_any], &tx_metadata.memo, tx_metadata.timeout_height);
 
-        self.sign_and_send_msg(
-            granter,
-            signer,
-            tx_body,
-            tx_metadata,
-            None,
-            None,
-        )
-        .await
+        self.sign_and_send_msg(granter, account_number, sequence, tx_body, tx_metadata, None, None)
+            .await
     }
 
-    // Execute a transaction previously authorized by granter
+    // Execute a transaction previously authorized by another account on its behalf
     pub async fn execute_authorized_tx(
         &self,
-        grantee: Account,
-        msgs: Vec<::prost_types::Any>,
-        tx_metadata: TxMetadata,
+        grantee: AccountInfo,
         fee_payer: Option<AccountId>,
         fee_granter: Option<AccountId>,
+        msgs: Vec<::prost_types::Any>,
+        tx_metadata: Option<TxMetadata>,
     ) -> Result<Response, ChainClientError> {
-        let signer = grantee.private_key;
         let msg = MsgExec {
             grantee: grantee.id.to_string(),
             msgs,
         };
-        let grantee = self.query_account(grantee.id.as_ref().to_string()).await?;
-        let grantee = BaseAccount::try_from(grantee)?;
+        let account = self.query_account(grantee.id.as_ref().to_string()).await?;
+        let (account_number, sequence) = (account.account_number, account.sequence);
 
         // Build tx body.
         let msg_any = prost_types::Any {
             type_url: String::from("/cosmos.authz.v1beta1.MsgExec"),
             value: msg.encode_to_vec(),
         };
-
+        let tx_metadata = match tx_metadata {
+            Some(tm) => tm,
+            None => self.get_basic_tx_metadata().await?,
+        };
         let tx_body = tx::Body::new(vec![msg_any], &tx_metadata.memo, tx_metadata.timeout_height);
 
         self.sign_and_send_msg(
             grantee,
-            signer,
+            account_number,
+            sequence,
             tx_body,
             tx_metadata,
             fee_payer,
@@ -171,14 +158,13 @@ impl ChainClient {
     // Basic fee allowance
     pub async fn perform_basic_allowance_fee_grant(
         &self,
-        granter: Account,
+        granter: AccountInfo,
         grantee: AccountId,
         expiration: Option<prost_types::Timestamp>,
         // TODO: Standardize below Coin type to common cosmrs coin type once FeeGrants get looped in.
         spend_limit: cosmos_sdk_proto::cosmos::base::v1beta1::Coin,
         tx_metadata: TxMetadata,
     ) -> Result<Response, ChainClientError> {
-        let signer = granter.private_key;
         let allowance = BasicAllowance {
             spend_limit: vec![spend_limit],
             expiration,
@@ -191,25 +177,17 @@ impl ChainClient {
                 value: allowance.encode_to_vec(),
             }),
         };
-        let granter = self.query_account(granter.id.as_ref().to_string()).await?;
-        let granter = BaseAccount::try_from(granter)?;
+        let account = self.query_account(granter.id.as_ref().to_string()).await?;
+        let (account_number, sequence) = (account.account_number, account.sequence);
 
-        // Build tx body.
         let msg_any = prost_types::Any {
             type_url: String::from("/cosmos.feegrant.v1beta1.MsgGrantAllowance"),
             value: msg.encode_to_vec(),
         };
         let tx_body = tx::Body::new(vec![msg_any], &tx_metadata.memo, tx_metadata.timeout_height);
 
-        self.sign_and_send_msg(
-            granter,
-            signer,
-            tx_body,
-            tx_metadata,
-            None,
-            None,
-        )
-        .await
+        self.sign_and_send_msg(granter, account_number, sequence, tx_body, tx_metadata, None, None)
+            .await
     }
 }
 

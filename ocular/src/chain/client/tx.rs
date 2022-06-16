@@ -1,11 +1,10 @@
 use crate::{
-    account::{Account, BaseAccount},
+    account::AccountInfo,
     error::{ChainClientError, TxError},
-    tx::{TxMetadata, MultiSendIO},
+    tx::{MultiSendIo, TxMetadata},
 };
 use cosmrs::{
-    bank::{MsgSend, MsgMultiSend},
-    crypto::secp256k1::SigningKey,
+    bank::{MsgMultiSend, MsgSend},
     tx::{self, Fee, Msg, SignDoc, SignerInfo},
     AccountId, Coin,
 };
@@ -39,15 +38,16 @@ impl ChainClient {
     /// Helper method for signing and broadcasting messages.
     pub async fn sign_and_send_msg(
         &self,
-        sender: BaseAccount,
-        signer: SigningKey,
+        sender: AccountInfo,
+        account_number: u64,
+        sequence: u64,
         tx_body: tx::Body,
         tx_metadata: TxMetadata,
         fee_payer: Option<AccountId>,
         fee_granter: Option<AccountId>,
     ) -> Result<Response, ChainClientError> {
         // Create signer info.
-        let signer_info = SignerInfo::single_direct(Some(sender.pub_key), sender.sequence);
+        let signer_info = SignerInfo::single_direct(Some(sender.public_key), sequence);
 
         // Compute auth info from signer info by associating a fee.
         let auth_info = signer_info.auth_info(Fee {
@@ -56,17 +56,16 @@ impl ChainClient {
             payer: fee_payer,
             granter: fee_granter,
         });
-        let chain_id = &cosmrs::tendermint::chain::Id::try_from(self.config.chain_id.clone())
-            .expect(format!("failed to create chain ID from {}", self.config.chain_id).as_str());
+        let chain_id = &cosmrs::tendermint::chain::Id::try_from(self.config.chain_id.clone())?;
 
         // Create doc to be signed
-        let sign_doc = match SignDoc::new(&tx_body, &auth_info, chain_id, sender.account_number) {
+        let sign_doc = match SignDoc::new(&tx_body, &auth_info, chain_id, account_number) {
             Ok(doc) => doc,
             Err(err) => return Err(TxError::TypeConversion(err.to_string()).into()),
         };
 
         // Create raw signed transaction.
-        let tx_signed = match sign_doc.sign(&signer) {
+        let tx_signed = match sign_doc.sign(&sender.private_key) {
             Ok(raw) => raw,
             Err(err) => return Err(TxError::Signing(err.to_string()).into()),
         };
@@ -136,19 +135,17 @@ impl ChainClient {
     /// Signs and sends a simple transaction message.
     pub async fn send(
         &self,
-        sender: Account,
+        sender: AccountInfo,
         recipient: &str,
         amount: Coin,
         tx_metadata: Option<TxMetadata>,
     ) -> Result<Response, ChainClientError> {
-        let signer = sender.private_key;
         let recipient = match AccountId::from_str(recipient) {
             Ok(r) => r,
             Err(err) => {
                 return Err(TxError::Address(format!(
                     "failed to get AccountId from string {}: {}",
-                    recipient,
-                    err
+                    recipient, err
                 ))
                 .into())
             }
@@ -168,8 +165,8 @@ impl ChainClient {
             to_address: recipient,
             amount: vec![amount.clone()],
         };
-        let sender = self.query_account(sender.id.as_ref().to_string()).await?;
-        let sender = BaseAccount::try_from(sender)?;
+        let account = self.query_account(sender.id.as_ref().to_string()).await?;
+        let (account_number, sequence) = (account.account_number, account.sequence);
         let tx_metadata = match tx_metadata {
             Some(tm) => tm,
             None => self.get_basic_tx_metadata().await?,
@@ -179,24 +176,38 @@ impl ChainClient {
             Err(err) => return Err(TxError::Serialization(err.to_string()).into()),
         };
 
-        self.sign_and_send_msg(sender, signer, tx_body, tx_metadata, None, None)
-            .await
+        self.sign_and_send_msg(
+            sender,
+            account_number,
+            sequence,
+            tx_body,
+            tx_metadata,
+            None,
+            None,
+        )
+        .await
     }
 
+    /// Send coins in a MIMO fashion. If any coin transfers are invalid the entire transaction will fail.
     pub async fn multi_send(
         &self,
-        sender: Account,
-        inputs: Vec<MultiSendIO>,
-        outputs: Vec<MultiSendIO>,
+        sender: AccountInfo,
+        inputs: Vec<MultiSendIo>,
+        outputs: Vec<MultiSendIo>,
         tx_metadata: Option<TxMetadata>,
     ) -> Result<Response, ChainClientError> {
         let msg = MsgMultiSend {
-            inputs: inputs.iter().map(TryInto::try_into).collect::<Result<_, _>>()?,
-            outputs: outputs.iter().map(TryInto::try_into).collect::<Result<_, _>>()?,
+            inputs: inputs
+                .iter()
+                .map(TryInto::try_into)
+                .collect::<Result<_, _>>()?,
+            outputs: outputs
+                .iter()
+                .map(TryInto::try_into)
+                .collect::<Result<_, _>>()?,
         };
-        let signer = sender.private_key;
-        let sender = self.query_account(sender.id.as_ref().to_string()).await?;
-        let sender = BaseAccount::try_from(sender)?;
+        let account = self.query_account(sender.id.as_ref().to_string()).await?;
+        let (account_number, sequence) = (account.account_number, account.sequence);
         let tx_metadata = match tx_metadata {
             Some(tm) => tm,
             None => self.get_basic_tx_metadata().await?,
@@ -206,6 +217,15 @@ impl ChainClient {
             Err(err) => return Err(TxError::Serialization(err.to_string()).into()),
         };
 
-        self.sign_and_send_msg(sender, signer, tx_body, tx_metadata, None, None).await
+        self.sign_and_send_msg(
+            sender,
+            account_number,
+            sequence,
+            tx_body,
+            tx_metadata,
+            None,
+            None,
+        )
+        .await
     }
 }
