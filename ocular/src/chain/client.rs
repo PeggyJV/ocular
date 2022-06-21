@@ -10,6 +10,7 @@ use tendermint_rpc::{self, WebSocketClient, WebSocketClientDriver};
 
 use super::ChainName;
 
+pub mod airdrop;
 pub mod authz;
 pub mod cache;
 pub mod query;
