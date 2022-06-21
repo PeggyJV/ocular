@@ -1,7 +1,7 @@
 use crate::error::CacheError;
 
 use serde::{Deserialize, Serialize};
-use std::collections::HashSet;
+use std::collections::HashMap;
 use std::fs::File;
 use std::os::unix::fs::PermissionsExt;
 use std::path::PathBuf;
@@ -20,6 +20,7 @@ pub struct GrpcEndpointToml {
 #[derive(Debug, Default, Serialize, Deserialize)]
 pub struct GrpcEndpoint {
     pub address: String,
+    pub connsecutive_failed_connections: u8,
 }
 
 /// Broad cache object that can mange all ocular cache initialization
@@ -31,12 +32,20 @@ pub struct Cache {
 pub trait GrpcCache {
     /// Check if cache has been initialized
     fn is_initialized(&self) -> bool;
-    /// Add item to cache
-    fn add_item(&mut self, item: String) -> Result<(), CacheError>;
+    /// Add item to cache, overrides connsecutive_failed_connections if item already exists
+    fn add_item(
+        &mut self,
+        item: String,
+        connsecutive_failed_connections: u8,
+    ) -> Result<(), CacheError>;
     /// Remove item from cache
     fn remove_item(&mut self, item: String) -> Result<(), CacheError>;
+    /// Increments connsecutive_failed_connections if item already exists, or creates item with 1 failed connection if it DNE
+    fn increment_failed_connections(&mut self, item: String) -> Result<(), CacheError>;
     /// Retrieves a copy of all items from cache
-    fn get_all_items(&self) -> Result<HashSet<String>, CacheError>;
+    fn get_all_items(&self) -> Result<HashMap<String, u8>, CacheError>;
+    /// Retrieves connections failure threshold
+    fn get_connsecutive_failed_connections_threshold(&self) -> u8;
 }
 
 /// Cache initialization definitions
@@ -49,8 +58,10 @@ impl Cache {
     /// Toml will be required to be structured as so:
     /// [[endpoints]]
     ///     address = "35.230.37.28:9090"
+    ///     connsecutive_failed_connections = 0
     pub fn create_file_cache(
         file_path: Option<&str>,
+        connsecutive_failed_connections_threshold: u8,
         override_if_exists: bool,
     ) -> Result<Cache, CacheError> {
         // If none, create at default: (e.g. ~/.ocular/grpc_endpoints.toml)
@@ -100,7 +111,7 @@ impl Cache {
             Err(err) => return Err(CacheError::FileIO(err.to_string())),
         };
 
-        let mut endpoints = HashSet::new();
+        let mut endpoints = HashMap::new();
 
         // Load endpoints if they exist
         if path.exists() {
@@ -123,7 +134,10 @@ impl Cache {
                 dbg!(&toml);
 
                 for endpt in &toml.endpoints {
-                    endpoints.insert(endpt.address.to_string());
+                    endpoints.insert(
+                        endpt.address.to_string(),
+                        endpt.connsecutive_failed_connections,
+                    );
                 }
             }
         }
@@ -137,16 +151,27 @@ impl Cache {
         }
 
         Ok(Cache {
-            grpc_endpoint_cache: Box::new(FileCache { path, endpoints }),
+            grpc_endpoint_cache: Box::new(FileCache {
+                path,
+                endpoints,
+                connsecutive_failed_connections_threshold,
+            }),
         })
     }
 
     /// Constructor for in memory cache.
-    pub fn create_memory_cache(endpoints: Option<HashSet<String>>) -> Result<Cache, CacheError> {
+    pub fn create_memory_cache(
+        endpoints: Option<HashMap<String, u8>>,
+        connsecutive_failed_connections_threshold: u8,
+    ) -> Result<Cache, CacheError> {
         let cache = match endpoints {
-            Some(endpoints) => MemoryCache { endpoints },
+            Some(endpoints) => MemoryCache {
+                endpoints,
+                connsecutive_failed_connections_threshold,
+            },
             None => MemoryCache {
-                endpoints: HashSet::new(),
+                endpoints: HashMap::new(),
+                connsecutive_failed_connections_threshold,
             },
         };
 
@@ -159,7 +184,8 @@ impl Cache {
 /// File based cache
 pub struct FileCache {
     path: PathBuf,
-    endpoints: HashSet<String>,
+    endpoints: HashMap<String, u8>,
+    connsecutive_failed_connections_threshold: u8,
 }
 
 impl GrpcCache for FileCache {
@@ -167,8 +193,13 @@ impl GrpcCache for FileCache {
         self.path.capacity() != 0
     }
 
-    fn add_item(&mut self, item: String) -> Result<(), CacheError> {
-        self.endpoints.insert(item.clone());
+    fn add_item(
+        &mut self,
+        item: String,
+        connsecutive_failed_connections: u8,
+    ) -> Result<(), CacheError> {
+        self.endpoints
+            .insert(item.clone(), connsecutive_failed_connections);
 
         let content = match std::fs::read_to_string(&self.path) {
             Ok(result) => result,
@@ -192,7 +223,10 @@ impl GrpcCache for FileCache {
         }
 
         // Add new item
-        toml.endpoints.push(GrpcEndpoint { address: item });
+        toml.endpoints.push(GrpcEndpoint {
+            address: item,
+            connsecutive_failed_connections,
+        });
 
         let toml_string = toml::to_string(&toml).expect("Could not encode toml value.");
 
@@ -245,14 +279,52 @@ impl GrpcCache for FileCache {
         }
     }
 
-    fn get_all_items(&self) -> Result<HashSet<String>, CacheError> {
+    fn get_all_items(&self) -> Result<HashMap<String, u8>, CacheError> {
         Ok(self.endpoints.clone())
+    }
+
+    fn increment_failed_connections(&mut self, item: String) -> Result<(), CacheError> {
+        if self.endpoints.contains_key(&item) {
+            self.endpoints
+                .insert(item.clone(), self.endpoints.get(&item).unwrap() + 1);
+        } else {
+            self.endpoints.insert(item.clone(), 1);
+        }
+
+        // Check if element now at removal threshold
+        if self.endpoints.get(&item).unwrap() >= &self.connsecutive_failed_connections_threshold {
+            self.remove_item(item)
+                .expect("Error removing item from cache.");
+        }
+
+        // Update file
+        let mut toml: GrpcEndpointToml = GrpcEndpointToml::default();
+
+        for endpt in &self.endpoints {
+            toml.endpoints.push(GrpcEndpoint {
+                address: endpt.0.to_string(),
+                connsecutive_failed_connections: *endpt.1,
+            });
+        }
+
+        let toml_string = toml::to_string(&toml).expect("Could not encode toml value.");
+
+        // Rewrite file
+        match std::fs::write(&self.path, toml_string) {
+            Ok(_) => Ok(()),
+            Err(err) => Err(CacheError::FileIO(err.to_string())),
+        }
+    }
+
+    fn get_connsecutive_failed_connections_threshold(&self) -> u8 {
+        self.connsecutive_failed_connections_threshold
     }
 }
 
 /// Memory based cache
 pub struct MemoryCache {
-    endpoints: HashSet<String>,
+    endpoints: HashMap<String, u8>,
+    connsecutive_failed_connections_threshold: u8,
 }
 
 impl GrpcCache for MemoryCache {
@@ -261,8 +333,12 @@ impl GrpcCache for MemoryCache {
         true
     }
 
-    fn add_item(&mut self, item: String) -> Result<(), CacheError> {
-        self.endpoints.insert(item);
+    fn add_item(
+        &mut self,
+        item: String,
+        connsecutive_failed_connections: u8,
+    ) -> Result<(), CacheError> {
+        self.endpoints.insert(item, connsecutive_failed_connections);
 
         Ok(())
     }
@@ -273,7 +349,28 @@ impl GrpcCache for MemoryCache {
         Ok(())
     }
 
-    fn get_all_items(&self) -> Result<HashSet<String>, CacheError> {
+    fn get_all_items(&self) -> Result<HashMap<String, u8>, CacheError> {
         Ok(self.endpoints.clone())
+    }
+
+    fn increment_failed_connections(&mut self, item: String) -> Result<(), CacheError> {
+        if self.endpoints.contains_key(&item) {
+            self.endpoints
+                .insert(item.clone(), self.endpoints.get(&item).unwrap() + 1);
+        } else {
+            self.endpoints.insert(item.clone(), 1);
+        }
+
+        // Check if element now at removal threshold
+        if self.endpoints.get(&item).unwrap() >= &self.connsecutive_failed_connections_threshold {
+            self.remove_item(item)
+                .expect("Error removing item from cache.");
+        }
+
+        Ok(())
+    }
+
+    fn get_connsecutive_failed_connections_threshold(&self) -> u8 {
+        self.connsecutive_failed_connections_threshold
     }
 }

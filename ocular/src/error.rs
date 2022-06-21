@@ -47,6 +47,8 @@ pub enum ChainInfoError {
     GrpcEndpoint(#[from] GrpcError),
     #[error("invalid RPC endpoint(s): {0}")]
     RpcEndpoint(#[from] RpcError),
+    #[error("{0}")]
+    CacheError(#[from] CacheError),
 }
 
 #[derive(Debug, Error)]

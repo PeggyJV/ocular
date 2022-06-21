@@ -33,7 +33,7 @@ const GENERIC_AUTHORIZATION_URL: &str = "/cosmos.authz.v1beta1.GenericAuthorizat
 
 impl ChainClient {
     pub async fn verify_multi_send_grant(
-        &self,
+        &mut self,
         granter: AccountId,
         grantee: AccountId,
     ) -> Result<bool, ChainClientError> {

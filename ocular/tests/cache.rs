@@ -1,6 +1,6 @@
 use cosmrs::dev;
 use ocular::chain::client::cache::*;
-use std::collections::HashSet;
+use std::collections::HashMap;
 
 /// Chain ID to use for tests
 const CHAIN_ID: &str = "cosmrs-test";
@@ -37,7 +37,7 @@ fn file_cache_init() {
             let new_dir = &(base_dir + "/cache_test_1");
 
             // First check default configurations
-            let _cache = Cache::create_file_cache(None, false).expect("Could not create cache.");
+            let _cache = Cache::create_file_cache(None, 5, false).expect("Could not create cache.");
 
             let default_location = &(String::from(home_dir)
                 + &String::from("/")
@@ -53,13 +53,14 @@ fn file_cache_init() {
             assert!(!std::path::Path::new(test_filepath).exists());
 
             // Create new without override
-            let cache = Cache::create_file_cache(Some(test_filepath), false)
+            let cache = Cache::create_file_cache(Some(test_filepath), 5, false)
                 .expect("Could not create cache.");
 
             // Write to file a bit to test overrides
             let mut file = GrpcEndpointToml::default();
             file.endpoints.push(GrpcEndpoint {
                 address: String::from("localhost:8080"),
+                connsecutive_failed_connections: 0,
             });
             let toml_string = toml::to_string(&file).expect("Could not encode toml value.");
 
@@ -75,7 +76,7 @@ fn file_cache_init() {
             assert!(!file_output.is_empty());
 
             // Verify with override false, file contents still exists
-            let cache_2 = Cache::create_file_cache(Some(test_filepath), false)
+            let cache_2 = Cache::create_file_cache(Some(test_filepath), 5, false)
                 .expect("Could not create cache.");
             let file_output_check =
                 std::fs::read_to_string(test_filepath).expect("Could not read file.");
@@ -85,7 +86,7 @@ fn file_cache_init() {
             assert_eq!(file_output_check, file_output);
 
             // Test override
-            let cache_3 = Cache::create_file_cache(Some(test_filepath), true)
+            let cache_3 = Cache::create_file_cache(Some(test_filepath), 5, true)
                 .expect("Could not create cache.");
 
             // Verify file contents was overriden
@@ -130,7 +131,7 @@ fn file_cache_accessor_test() {
             let test_file = &(String::from(&testing_dir) + "/test.toml");
 
             let mut cache =
-                Cache::create_file_cache(Some(test_file), true).expect("Could not create cache");
+                Cache::create_file_cache(Some(test_file), 5, true).expect("Could not create cache");
 
             // Assert cache is empty to start in both memory and file
             assert!(cache
@@ -145,7 +146,7 @@ fn file_cache_accessor_test() {
             // Insert item
             cache
                 .grpc_endpoint_cache
-                .add_item(String::from("localhost:9090"))
+                .add_item(String::from("localhost:9090"), 0)
                 .expect("Could not add item to cache.");
 
             // Verify item exists in both memory and file
@@ -153,7 +154,7 @@ fn file_cache_accessor_test() {
                 .grpc_endpoint_cache
                 .get_all_items()
                 .expect("Could not get cache contents.")
-                .contains(&String::from("localhost:9090")));
+                .contains_key(&String::from("localhost:9090")));
             let contents = std::fs::read_to_string(&test_file).expect("Could not open file.");
             let toml: GrpcEndpointToml = toml::from_str(&contents).expect("Could not parse toml.");
             assert!(
@@ -163,7 +164,7 @@ fn file_cache_accessor_test() {
 
             assert!(cache
                 .grpc_endpoint_cache
-                .add_item(String::from("localhost:9090"))
+                .add_item(String::from("localhost:9090"), 0)
                 .is_ok());
 
             // Remove item
@@ -210,13 +211,13 @@ fn memory_cache_init() {
     dev::docker_run(&docker_args, || {
         init_tokio_runtime().block_on(async {
             // Attempt creation with no endpoints
-            assert!(Cache::create_memory_cache(None).is_ok());
+            assert!(Cache::create_memory_cache(None, 5).is_ok());
 
             // Attempt creation with some endpoints
-            let mut endpts = HashSet::new();
-            endpts.insert(String::from("localhost"));
+            let mut endpts = HashMap::new();
+            endpts.insert(String::from("localhost"), 0);
 
-            let cache = Cache::create_memory_cache(Some(endpts));
+            let cache = Cache::create_memory_cache(Some(endpts), 5);
 
             assert!(cache.is_ok());
 
@@ -237,7 +238,7 @@ fn memory_cache_accessor_test() {
 
     dev::docker_run(&docker_args, || {
         init_tokio_runtime().block_on(async {
-            let mut cache = Cache::create_memory_cache(None).expect("Could not create cache");
+            let mut cache = Cache::create_memory_cache(None, 5).expect("Could not create cache");
 
             // Assert cache is empty to start
             assert!(cache
@@ -249,7 +250,7 @@ fn memory_cache_accessor_test() {
             // Insert item
             cache
                 .grpc_endpoint_cache
-                .add_item(String::from("localhost:9090"))
+                .add_item(String::from("localhost:9090"), 0)
                 .expect("Could not add item to cache.");
 
             // Verify item exists
@@ -257,11 +258,11 @@ fn memory_cache_accessor_test() {
                 .grpc_endpoint_cache
                 .get_all_items()
                 .expect("Could not get cache contents.")
-                .contains(&String::from("localhost:9090")));
+                .contains_key(&String::from("localhost:9090")));
 
             assert!(cache
                 .grpc_endpoint_cache
-                .add_item(String::from("localhost:9090"))
+                .add_item(String::from("localhost:9090"), 0)
                 .is_ok());
 
             // Remove item

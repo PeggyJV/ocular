@@ -2,8 +2,13 @@
 
 // Requies docker
 use ocular::{
-    account::AccountInfo, chain::config::ChainClientConfig, cosmos_modules::*, keyring::Keyring,
-    tx::{MultiSendIo, TxMetadata},
+    chain::{
+        client::cache::Cache,
+        client::tx::{Account, TxMetadata},
+        config::ChainClientConfig,
+    },
+    cosmos_modules::*,
+    keyring::Keyring,
 };
 
 use bip32;
@@ -260,21 +265,25 @@ fn local_single_node_chain_test() {
     dev::docker_run(&docker_args, || {
         init_tokio_runtime().block_on(async {
             let rpc_address = format!("http://localhost:{}", RPC_PORT);
-            let grpc_address = format!("http://localhost:9090");
-            let config = ChainClientConfig {
-                chain_id: chain_id.to_string(),
-                rpc_address: rpc_address.clone(),
-                grpc_address,
-                account_prefix: ACCOUNT_PREFIX.to_string(),
-                gas_adjustment: 1.2,
-                default_fee: ocular::tx::Coin { amount: default_fee_amount.into(), denom: DENOM.to_string() }
-            };
-            let rpc_client = rpc::HttpClient::new(rpc_address.as_str()).expect("Could not create RPC");
-            let chain_client = ChainClient {
-                config: config.clone(),
+            let rpc_client =
+                rpc::HttpClient::new(rpc_address.as_str()).expect("Could not create RPC");
+                let mut cache = Cache::create_memory_cache(None, 10).unwrap();
+                let _res = cache.grpc_endpoint_cache.add_item(rpc_address.clone(), 0).unwrap();
+
+                let chain_client = ChainClient {
+                config: ChainClientConfig {
+                    chain_name: "cosmrs".to_string(),
+                    chain_id: chain_id.to_string(),
+                    rpc_address: rpc_address.clone(),
+                    grpc_address: String::from(""),
+                    account_prefix: ACCOUNT_PREFIX.to_string(),
+                    gas_adjustment: 1.2,
+                    default_fee: ocular::tx::Coin { amount: default_fee_amount.into(), denom: DENOM.to_string() }
+                },
                 keyring: Keyring::new_file_store(None).expect("Could not create keyring."),
                 rpc_client: rpc_client.clone(),
-                cache: None,
+                cache: Some(cache),
+                connection_retry_attempts: 0,
             };
 
             dev::poll_for_first_block(&rpc_client).await;

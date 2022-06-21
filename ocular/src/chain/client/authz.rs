@@ -4,7 +4,7 @@ use crate::{
         authz::{self, *},
         feegrant::{BasicAllowance, MsgGrantAllowance},
     },
-    error::{ChainClientError, GrpcError},
+    error::{ChainClientError, GrpcError, TxError},
     tx::TxMetadata,
 };
 use cosmrs::{tx, AccountId};
@@ -18,17 +18,58 @@ pub type AuthzQueryClient = authz::query_client::QueryClient<Channel>;
 
 impl ChainClient {
     // Authz queries
-    pub async fn get_authz_query_client(&self) -> Result<AuthzQueryClient, ChainClientError> {
-        self.check_for_grpc_address()?;
+    // TODO: Refractor code accross grpc clients by having keystore implement Sync (https://github.com/PeggyJV/ocular/pull/53#discussion_r880698565)
+    pub async fn get_authz_query_client(&mut self) -> Result<AuthzQueryClient, ChainClientError> {
+        let mut result: Result<AuthzQueryClient, ChainClientError> =
+            Err(TxError::Broadcast(String::from("Client connection never attempted.")).into());
 
-        AuthzQueryClient::connect(self.config.grpc_address.clone())
-            .await
-            .map_err(|e| GrpcError::Connection(e).into())
+        // Get grpc address randomly each time; shuffles on failures
+        for _i in 0u8..self.connection_retry_attempts + 1 {
+            // Attempt to use last healthy (or manually set) endpoint if it exists (in config)
+            let endpoint: String = if !self.config.grpc_address.is_empty() {
+                self.config.grpc_address.clone()
+            } else {
+                // Get a random endpoint from the cache
+                match self.get_random_grpc_endpoint().await {
+                    Ok(endpt) => endpt,
+                    Err(err) => return Err(GrpcError::MissingEndpoint(err.to_string()).into()),
+                }
+            };
+
+            result = AuthzQueryClient::connect(endpoint.clone())
+                .await
+                .map_err(|e| GrpcError::Connection(e).into());
+
+            // Return if result is valid client, or increment failure in cache if being used
+            if result.is_ok() {
+                // Reset consecutive failed connections to 0
+                self.cache
+                    .as_mut()
+                    .unwrap()
+                    .grpc_endpoint_cache
+                    .add_item(endpoint.clone(), 0)?;
+
+                // Update config to last healthy grpc connection address
+                self.config.grpc_address = endpoint.clone();
+
+                break;
+            } else if result.is_err() && self.cache.is_some() {
+                // Don't bother updating config grpc address if it fails, it'll be overriden upon a successful connection
+                let _res = self
+                    .cache
+                    .as_mut()
+                    .unwrap()
+                    .grpc_endpoint_cache
+                    .increment_failed_connections(endpoint)?;
+            }
+        }
+
+        result
     }
 
     // Query for a specific msg grant
     pub async fn query_authz_grant(
-        &self,
+        &mut self,
         granter: &str,
         grantee: &str,
         msg_type_url: &str,
@@ -55,7 +96,7 @@ impl ChainClient {
     // Grant Authorization
     // TODO: support other types of authorization grants other than GenericAuthorization for send messages.
     pub async fn grant_send_authorization(
-        &self,
+        &mut self,
         granter: AccountInfo,
         grantee: AccountId,
         expiration_timestamp: Option<prost_types::Timestamp>,
@@ -92,7 +133,7 @@ impl ChainClient {
     // Revoke Authorization
     // TODO: support other types of authorization revokes other than send messages.
     pub async fn revoke_send_authorization(
-        &self,
+        &mut self,
         granter: AccountInfo,
         grantee: AccountId,
         tx_metadata: TxMetadata,
@@ -118,7 +159,7 @@ impl ChainClient {
 
     // Execute a transaction previously authorized by another account on its behalf
     pub async fn execute_authorized_tx(
-        &self,
+        &mut self,
         grantee: AccountInfo,
         fee_payer: Option<AccountId>,
         fee_granter: Option<AccountId>,
@@ -157,7 +198,7 @@ impl ChainClient {
 
     // Basic fee allowance
     pub async fn perform_basic_allowance_fee_grant(
-        &self,
+        &mut self,
         granter: AccountInfo,
         grantee: AccountId,
         expiration: Option<prost_types::Timestamp>,
@@ -200,7 +241,7 @@ mod tests {
 
     #[assay]
     async fn gets_authz_client() {
-        let client = ChainClient::new(chain::COSMOSHUB).unwrap();
+        let mut client = ChainClient::create(chain::COSMOSHUB).unwrap();
 
         client
             .get_authz_query_client()

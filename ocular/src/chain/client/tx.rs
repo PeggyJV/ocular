@@ -134,7 +134,7 @@ impl ChainClient {
     // TODO: Make this extensible to multisig and multicoin (or add new methods for that)
     /// Signs and sends a simple transaction message.
     pub async fn send(
-        &self,
+        &mut self,
         sender: AccountInfo,
         recipient: &str,
         amount: Coin,
@@ -190,7 +190,7 @@ impl ChainClient {
 
     /// Send coins in a MIMO fashion. If any coin transfers are invalid the entire transaction will fail.
     pub async fn multi_send(
-        &self,
+        &mut self,
         sender: AccountInfo,
         inputs: Vec<MultiSendIo>,
         outputs: Vec<MultiSendIo>,
