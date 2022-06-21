@@ -74,8 +74,6 @@ impl Keyring {
                 + DEFAULT_FS_KEYSTORE_DIR
         };
 
-        dbg!(format!("Attempting to use path {}", path));
-
         let mut key_store = FileKeyStore {
             key_path: path,
             key_store: None,
@@ -714,9 +712,7 @@ mod tests {
             .is_err());
 
         // Make new key
-        let key = keyring.create_key("iguana", "", None, false);
-
-        dbg!(key.unwrap().phrase());
+        let _key = keyring.create_key("iguana", "", None, false);
 
         // Get key address
         let result = keyring.get_public_key_and_address("iguana", "cosmos");

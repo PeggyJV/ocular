@@ -45,37 +45,34 @@ impl ChainClient {
         // If any grants meet the following criteria we can be confident the transaction is authorized:
         // 1. The grant either has no expiration, or an expiration with more than 60 seconds remaining.
         // 2. The grant contains a generic authorization
-        Ok(res
-            .grants
-            .iter()
-            .any(|g| {
-                if g.expiration.is_some() {
-                    let expiration = g.expiration.clone().unwrap();
-                    let cutoff = i64::try_from(
-                        SystemTime::now()
-                            .duration_since(SystemTime::UNIX_EPOCH)
-                            .unwrap()
-                            .as_secs()
-                            + 60,
-                    )
-                    .expect("failed to derive time from system clock");
+        Ok(res.grants.iter().any(|g| {
+            if g.expiration.is_some() {
+                let expiration = g.expiration.clone().unwrap();
+                let cutoff = i64::try_from(
+                    SystemTime::now()
+                        .duration_since(SystemTime::UNIX_EPOCH)
+                        .unwrap()
+                        .as_secs()
+                        + 60,
+                )
+                .expect("failed to derive time from system clock");
 
-                    if expiration.seconds <= cutoff {
-                        return false;
-                    }
-                }
-                if g.authorization.is_none() {
+                if expiration.seconds <= cutoff {
                     return false;
                 }
-                // I don't actually thing this is a necessary check as there is no way to specify
-                // authorization for MultiSend without using a generic one
-                let authorization = g.authorization.clone().unwrap();
-                if authorization.type_url.as_str() != GENERIC_AUTHORIZATION_URL {
-                    return false;
-                }
+            }
+            if g.authorization.is_none() {
+                return false;
+            }
+            // I don't actually thing this is a necessary check as there is no way to specify
+            // authorization for MultiSend without using a generic one
+            let authorization = g.authorization.clone().unwrap();
+            if authorization.type_url.as_str() != GENERIC_AUTHORIZATION_URL {
+                return false;
+            }
 
-                true
-            }))
+            true
+        }))
     }
 
     pub async fn execute_delegated_airdrop(

@@ -126,8 +126,16 @@ impl ChainClient {
         };
         let tx_body = tx::Body::new(vec![msg_any], &tx_metadata.memo, tx_metadata.timeout_height);
 
-        self.sign_and_send_msg(granter, account_number, sequence, tx_body, tx_metadata, None, None)
-            .await
+        self.sign_and_send_msg(
+            granter,
+            account_number,
+            sequence,
+            tx_body,
+            tx_metadata,
+            None,
+            None,
+        )
+        .await
     }
 
     // Revoke Authorization
@@ -153,8 +161,16 @@ impl ChainClient {
         };
         let tx_body = tx::Body::new(vec![msg_any], &tx_metadata.memo, tx_metadata.timeout_height);
 
-        self.sign_and_send_msg(granter, account_number, sequence, tx_body, tx_metadata, None, None)
-            .await
+        self.sign_and_send_msg(
+            granter,
+            account_number,
+            sequence,
+            tx_body,
+            tx_metadata,
+            None,
+            None,
+        )
+        .await
     }
 
     // Execute a transaction previously authorized by another account on its behalf
@@ -227,8 +243,16 @@ impl ChainClient {
         };
         let tx_body = tx::Body::new(vec![msg_any], &tx_metadata.memo, tx_metadata.timeout_height);
 
-        self.sign_and_send_msg(granter, account_number, sequence, tx_body, tx_metadata, None, None)
-            .await
+        self.sign_and_send_msg(
+            granter,
+            account_number,
+            sequence,
+            tx_body,
+            tx_metadata,
+            None,
+            None,
+        )
+        .await
     }
 }
 
@@ -242,6 +266,7 @@ mod tests {
     #[assay]
     async fn gets_authz_client() {
         let mut client = ChainClient::create(chain::COSMOSHUB).unwrap();
+        client.config.grpc_address = "http://cosmoshub.strange.love:9090".to_string();
 
         client
             .get_authz_query_client()

@@ -2,13 +2,11 @@
 
 // Requies docker
 use ocular::{
-    chain::{
-        client::cache::Cache,
-        client::tx::{Account, TxMetadata},
-        config::ChainClientConfig,
-    },
+    account::AccountInfo,
+    chain::{client::cache::Cache, config::ChainClientConfig},
     cosmos_modules::*,
     keyring::Keyring,
+    tx::{MultiSendIo, TxMetadata},
 };
 
 use bip32;
@@ -16,7 +14,7 @@ use cosmos_sdk_proto::cosmos::authz::v1beta1::{
     GenericAuthorization, MsgExec, MsgGrant, MsgRevoke,
 };
 use cosmrs::{
-    bank::{MsgSend, MsgMultiSend},
+    bank::{MsgMultiSend, MsgSend},
     crypto::secp256k1::SigningKey,
     dev, rpc,
     tx::{self, AccountNumber, Fee, Msg, SignDoc, SignerInfo},
@@ -266,16 +264,16 @@ fn local_single_node_chain_test() {
         init_tokio_runtime().block_on(async {
             let rpc_address = format!("http://localhost:{}", RPC_PORT);
             let rpc_client =
-                rpc::HttpClient::new(rpc_address.as_str()).expect("Could not create RPC");
-                let mut cache = Cache::create_memory_cache(None, 10).unwrap();
-                let _res = cache.grpc_endpoint_cache.add_item(rpc_address.clone(), 0).unwrap();
-
-                let chain_client = ChainClient {
+            rpc::HttpClient::new(rpc_address.as_str()).expect("Could not create RPC");
+            let grpc_address = format!("http://localhost:9090");
+            let mut cache = Cache::create_memory_cache(None, 10).unwrap();
+            let _res = cache.grpc_endpoint_cache.add_item(grpc_address.clone(), 0).unwrap();
+            let mut chain_client = ChainClient {
                 config: ChainClientConfig {
                     chain_name: "cosmrs".to_string(),
                     chain_id: chain_id.to_string(),
                     rpc_address: rpc_address.clone(),
-                    grpc_address: String::from(""),
+                    grpc_address,
                     account_prefix: ACCOUNT_PREFIX.to_string(),
                     gas_adjustment: 1.2,
                     default_fee: ocular::tx::Coin { amount: default_fee_amount.into(), denom: DENOM.to_string() }
@@ -289,7 +287,7 @@ fn local_single_node_chain_test() {
             dev::poll_for_first_block(&rpc_client).await;
 
             let tx_metadata = TxMetadata {
-                fee: config.default_fee.clone(),
+                fee: chain_client.config.default_fee.clone(),
                 gas_limit: gas,
                 timeout_height: timeout_height.into(),
                 memo: MEMO.to_string(),
@@ -341,7 +339,7 @@ fn local_single_node_chain_test() {
             .expect("Could not create key.");
 
             let tx_metadata = TxMetadata {
-                fee: config.default_fee.clone(),
+                fee: chain_client.config.default_fee.clone(),
                 gas_limit: gas,
                 timeout_height: timeout_height.into(),
                 memo: MEMO.to_string(),
@@ -394,7 +392,7 @@ fn local_single_node_chain_test() {
             .expect("Could not create key.");
 
             let tx_metadata = TxMetadata {
-                fee: config.default_fee.clone(),
+                fee: chain_client.config.default_fee.clone(),
                 gas_limit: gas,
                 timeout_height: timeout_height.into(),
                 memo: MEMO.to_string(),
@@ -457,7 +455,7 @@ fn local_single_node_chain_test() {
             .expect("Could not create key.");
 
             let tx_metadata = TxMetadata {
-                fee: config.default_fee.clone(),
+                fee: chain_client.config.default_fee.clone(),
                 gas_limit: gas,
                 timeout_height: timeout_height.into(),
                 memo: MEMO.to_string(),
@@ -506,7 +504,7 @@ fn local_single_node_chain_test() {
             .expect("Could not create key.");
 
             let tx_metadata = TxMetadata {
-                fee: config.default_fee.clone(),
+                fee: chain_client.config.default_fee.clone(),
                 gas_limit: gas,
                 timeout_height: timeout_height.into(),
                 memo: String::from("Exec tx #2"),
@@ -640,7 +638,7 @@ fn local_single_node_chain_test() {
 
             // Test MsgMultiSend functionality
             let tx_metadata = TxMetadata {
-                fee: config.default_fee.clone(),
+                fee: chain_client.config.default_fee.clone(),
                 gas_limit: gas,
                 timeout_height: timeout_height.into(),
                 memo: MEMO.to_string(),
