@@ -126,16 +126,8 @@ impl ChainClient {
         };
         let tx_body = tx::Body::new(vec![msg_any], &tx_metadata.memo, tx_metadata.timeout_height);
 
-        self.sign_and_send_msg(
-            granter,
-            account_number,
-            sequence,
-            tx_body,
-            tx_metadata,
-            None,
-            None,
-        )
-        .await
+        self.sign_and_send_msg(granter, account_number, sequence, tx_body, tx_metadata)
+            .await
     }
 
     // Revoke Authorization
@@ -161,24 +153,14 @@ impl ChainClient {
         };
         let tx_body = tx::Body::new(vec![msg_any], &tx_metadata.memo, tx_metadata.timeout_height);
 
-        self.sign_and_send_msg(
-            granter,
-            account_number,
-            sequence,
-            tx_body,
-            tx_metadata,
-            None,
-            None,
-        )
-        .await
+        self.sign_and_send_msg(granter, account_number, sequence, tx_body, tx_metadata)
+            .await
     }
 
     // Execute a transaction previously authorized by another account on its behalf
     pub async fn execute_authorized_tx(
         &mut self,
         grantee: AccountInfo,
-        fee_payer: Option<AccountId>,
-        fee_granter: Option<AccountId>,
         msgs: Vec<::prost_types::Any>,
         tx_metadata: Option<TxMetadata>,
     ) -> Result<Response, ChainClientError> {
@@ -200,16 +182,8 @@ impl ChainClient {
         };
         let tx_body = tx::Body::new(vec![msg_any], &tx_metadata.memo, tx_metadata.timeout_height);
 
-        self.sign_and_send_msg(
-            grantee,
-            account_number,
-            sequence,
-            tx_body,
-            tx_metadata,
-            fee_payer,
-            fee_granter,
-        )
-        .await
+        self.sign_and_send_msg(grantee, account_number, sequence, tx_body, tx_metadata)
+            .await
     }
 
     // Basic fee allowance
@@ -243,16 +217,8 @@ impl ChainClient {
         };
         let tx_body = tx::Body::new(vec![msg_any], &tx_metadata.memo, tx_metadata.timeout_height);
 
-        self.sign_and_send_msg(
-            granter,
-            account_number,
-            sequence,
-            tx_body,
-            tx_metadata,
-            None,
-            None,
-        )
-        .await
+        self.sign_and_send_msg(granter, account_number, sequence, tx_body, tx_metadata)
+            .await
     }
 }
 

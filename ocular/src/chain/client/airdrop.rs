@@ -88,8 +88,6 @@ impl ChainClient {
         &mut self,
         granter: AccountInfo,
         grantee: AccountInfo,
-        fee_payer: Option<AccountId>,
-        fee_granter: Option<AccountId>,
         payments: Vec<Payment>,
         tx_metadata: Option<TxMetadata>,
     ) -> Result<Response, ChainClientError> {
@@ -110,29 +108,19 @@ impl ChainClient {
         }
         .to_any()?];
 
-        self.execute_authorized_tx(grantee, fee_payer, fee_granter, msgs, tx_metadata)
-            .await
+        self.execute_authorized_tx(grantee, msgs, tx_metadata).await
     }
 
     pub async fn execute_delegated_airdrop_from_toml(
         &mut self,
         granter: AccountInfo,
         grantee: AccountInfo,
-        fee_payer: Option<AccountId>,
-        fee_granter: Option<AccountId>,
         path: String,
         tx_metadata: Option<TxMetadata>,
     ) -> Result<Response, ChainClientError> {
         let payments = read_payments_toml(path)?;
-        self.execute_delegated_airdrop(
-            granter,
-            grantee,
-            fee_payer,
-            fee_granter,
-            payments,
-            tx_metadata,
-        )
-        .await
+        self.execute_delegated_airdrop(granter, grantee, payments, tx_metadata)
+            .await
     }
 
     pub async fn execute_airdrop(

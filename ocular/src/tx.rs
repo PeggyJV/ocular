@@ -7,6 +7,8 @@ use crate::error::TxError;
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct TxMetadata {
     pub fee: Coin,
+    pub fee_payer: Option<AccountId>,
+    pub fee_granter: Option<AccountId>,
     pub gas_limit: u64,
     pub timeout_height: u32,
     #[serde(default)]

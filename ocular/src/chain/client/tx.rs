@@ -28,6 +28,8 @@ impl ChainClient {
 
         Ok(TxMetadata {
             fee,
+            fee_payer: None,
+            fee_granter: None,
             gas_limit: 200000,
             timeout_height,
             memo: String::default(),
@@ -43,8 +45,6 @@ impl ChainClient {
         sequence: u64,
         tx_body: tx::Body,
         tx_metadata: TxMetadata,
-        fee_payer: Option<AccountId>,
-        fee_granter: Option<AccountId>,
     ) -> Result<Response, ChainClientError> {
         // Create signer info.
         let signer_info = SignerInfo::single_direct(Some(sender.public_key), sequence);
@@ -53,8 +53,8 @@ impl ChainClient {
         let auth_info = signer_info.auth_info(Fee {
             amount: vec![tx_metadata.fee.try_into()?],
             gas_limit: tx_metadata.gas_limit.into(),
-            payer: fee_payer,
-            granter: fee_granter,
+            payer: tx_metadata.fee_payer,
+            granter: tx_metadata.fee_granter,
         });
         let chain_id = &cosmrs::tendermint::chain::Id::try_from(self.config.chain_id.clone())?;
 
@@ -176,16 +176,8 @@ impl ChainClient {
             Err(err) => return Err(TxError::Serialization(err.to_string()).into()),
         };
 
-        self.sign_and_send_msg(
-            sender,
-            account_number,
-            sequence,
-            tx_body,
-            tx_metadata,
-            None,
-            None,
-        )
-        .await
+        self.sign_and_send_msg(sender, account_number, sequence, tx_body, tx_metadata)
+            .await
     }
 
     /// Send coins in a MIMO fashion. If any coin transfers are invalid the entire transaction will fail.
@@ -217,15 +209,7 @@ impl ChainClient {
             Err(err) => return Err(TxError::Serialization(err.to_string()).into()),
         };
 
-        self.sign_and_send_msg(
-            sender,
-            account_number,
-            sequence,
-            tx_body,
-            tx_metadata,
-            None,
-            None,
-        )
-        .await
+        self.sign_and_send_msg(sender, account_number, sequence, tx_body, tx_metadata)
+            .await
     }
 }

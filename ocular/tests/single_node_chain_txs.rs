@@ -288,6 +288,8 @@ fn local_single_node_chain_test() {
 
             let tx_metadata = TxMetadata {
                 fee: chain_client.config.default_fee.clone(),
+                fee_payer: None,
+                fee_granter: None,
                 gas_limit: gas,
                 timeout_height: timeout_height.into(),
                 memo: MEMO.to_string(),
@@ -312,7 +314,7 @@ fn local_single_node_chain_test() {
                     },
                     recipient_account_id.clone().as_ref(),
                     amount.clone(),
-                    Some(tx_metadata),
+                    Some(tx_metadata.clone()),
                 )
                 .await;
 
@@ -338,13 +340,6 @@ fn local_single_node_chain_test() {
             )
             .expect("Could not create key.");
 
-            let tx_metadata = TxMetadata {
-                fee: chain_client.config.default_fee.clone(),
-                gas_limit: gas,
-                timeout_height: timeout_height.into(),
-                memo: MEMO.to_string(),
-            };
-
             let actual_msg_grant_commit_response = chain_client
                 .grant_send_authorization(
                     AccountInfo {
@@ -357,7 +352,7 @@ fn local_single_node_chain_test() {
                         seconds: 4110314268,
                         nanos: 0,
                     }),
-                    tx_metadata,
+                    tx_metadata.clone(),
                 )
                 .await
                 .expect("Could not broadcast msg.");
@@ -391,13 +386,6 @@ fn local_single_node_chain_test() {
             )
             .expect("Could not create key.");
 
-            let tx_metadata = TxMetadata {
-                fee: chain_client.config.default_fee.clone(),
-                gas_limit: gas,
-                timeout_height: timeout_height.into(),
-                memo: MEMO.to_string(),
-            };
-
             let mut msgs_to_send: Vec<::prost_types::Any> = Vec::new();
             msgs_to_send.push(
                 MsgSend {
@@ -416,10 +404,8 @@ fn local_single_node_chain_test() {
                         public_key: grantee_private_key.public_key(),
                         private_key: grantee_private_key,
                     },
-                    None,
-                    None,
                     msgs_to_send,
-                    Some(tx_metadata),
+                    Some(tx_metadata.clone()),
                 )
                 .await
                 .expect("Could not broadcast msg.");
@@ -454,13 +440,6 @@ fn local_single_node_chain_test() {
             )
             .expect("Could not create key.");
 
-            let tx_metadata = TxMetadata {
-                fee: chain_client.config.default_fee.clone(),
-                gas_limit: gas,
-                timeout_height: timeout_height.into(),
-                memo: MEMO.to_string(),
-            };
-
             let actual_msg_revoke_commit_response = chain_client
                 .revoke_send_authorization(
                     AccountInfo {
@@ -469,7 +448,7 @@ fn local_single_node_chain_test() {
                         private_key: sender_private_key,
                     },
                     recipient_account_id.clone(),
-                    tx_metadata,
+                    tx_metadata.clone(),
                 )
                 .await
                 .expect("Could not broadcast msg.");
@@ -503,12 +482,9 @@ fn local_single_node_chain_test() {
             )
             .expect("Could not create key.");
 
-            let tx_metadata = TxMetadata {
-                fee: chain_client.config.default_fee.clone(),
-                gas_limit: gas,
-                timeout_height: timeout_height.into(),
-                memo: String::from("Exec tx #2"),
-            };
+            let mut tx_metadata_memoed = tx_metadata.clone();
+            tx_metadata_memoed.memo = String::from("Exec tx #2");
+
             let mut msgs_to_send: Vec<::prost_types::Any> = Vec::new();
             msgs_to_send.push(
                 MsgSend {
@@ -527,10 +503,8 @@ fn local_single_node_chain_test() {
                         public_key: grantee_private_key.public_key(),
                         private_key: grantee_private_key,
                     },
-                    None,
-                    None,
                     msgs_to_send,
-                    Some(tx_metadata.clone()),
+                    Some(tx_metadata_memoed),
                 )
                 .await
                 .expect("Could not broadcast msg.");
@@ -637,12 +611,6 @@ fn local_single_node_chain_test() {
                 .expect("Could not parse tx.");
 
             // Test MsgMultiSend functionality
-            let tx_metadata = TxMetadata {
-                fee: chain_client.config.default_fee.clone(),
-                gas_limit: gas,
-                timeout_height: timeout_height.into(),
-                memo: MEMO.to_string(),
-            };
             let actual_tx_commit_response = chain_client
                 .multi_send(
                     AccountInfo {
