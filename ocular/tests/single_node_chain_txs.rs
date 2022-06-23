@@ -260,15 +260,15 @@ fn local_single_node_chain_test() {
             ocular::tx::Coin {
                 amount: 50,
                 denom: DENOM.to_string(),
-            }
-        ]
+            },
+        ],
     };
     let input_b = MultiSendIo {
         address: sender_account_id.as_ref().to_string(),
         coins: vec![
             ocular::tx::Coin {
-            amount: 100,
-            denom: DENOM.to_string(),
+                amount: 100,
+                denom: DENOM.to_string(),
             },
             // ocular::tx::Coin {
             //     amount: 200,
@@ -286,15 +286,15 @@ fn local_single_node_chain_test() {
             ocular::tx::Coin {
                 amount: 75,
                 denom: DENOM.to_string(),
-            }
-        ]
+            },
+        ],
     };
     let output_b = MultiSendIo {
         address: recipient_account_id.as_ref().to_string(),
         coins: vec![
             ocular::tx::Coin {
-            amount: 75,
-            denom: DENOM.to_string(),
+                amount: 75,
+                denom: DENOM.to_string(),
             },
             // ocular::tx::Coin {
             //     amount: 475,
@@ -306,20 +306,31 @@ fn local_single_node_chain_test() {
     let outputs = vec![output_a.clone(), output_b.clone()];
 
     let msg_inputs: Vec<cosmrs::bank::MultiSendIo> = vec![
-        input_a.try_into().expect("couldn't convert multi send input value"),
-        input_b.try_into().expect("couldn't convert multi send input value"),
+        input_a
+            .try_into()
+            .expect("couldn't convert multi send input value"),
+        input_b
+            .try_into()
+            .expect("couldn't convert multi send input value"),
     ];
     let msg_outputs: Vec<cosmrs::bank::MultiSendIo> = vec![
-        output_a.try_into().expect("couldn't convert multi send output value"),
-        output_b.try_into().expect("couldn't convert multi send output value"),
+        output_a
+            .try_into()
+            .expect("couldn't convert multi send output value"),
+        output_b
+            .try_into()
+            .expect("couldn't convert multi send output value"),
     ];
     let msg_multi_send = MsgMultiSend {
         inputs: msg_inputs,
         outputs: msg_outputs,
-    }.to_any().expect("could not serialize multi send msg");
+    }
+    .to_any()
+    .expect("could not serialize multi send msg");
     let expected_multisend_tx_body = tx::Body::new(vec![msg_multi_send], MEMO, timeout_height);
     let expected_multisend_auth_info =
-        SignerInfo::single_direct(Some(sender_public_key), sequence_number + 3).auth_info(fee.clone());
+        SignerInfo::single_direct(Some(sender_public_key), sequence_number + 3)
+            .auth_info(fee.clone());
 
     let docker_args = [
         "-d",
