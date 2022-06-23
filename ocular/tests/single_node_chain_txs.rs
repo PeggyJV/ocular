@@ -109,11 +109,11 @@ fn local_single_node_chain_test() {
         .get_key("test_only_delegate_key_override_safe")
         .expect("Could not get private key");
     let ad_hoc_pub_info = temp_ring
-        .get_public_key_and_address("test_only_delegate_key_override_safe", ACCOUNT_PREFIX)
+        .get_account("test_only_delegate_key_override_safe", ACCOUNT_PREFIX)
         .expect("Could not get public key info.");
-    dbg!(ad_hoc_pub_info.account.as_ref());
+    dbg!(ad_hoc_pub_info.id.as_ref());
     let ad_hoc_acct = AccountInfo {
-        id: ad_hoc_pub_info.account,
+        id: ad_hoc_pub_info.id,
         public_key: ad_hoc_pub_info.public_key,
         private_key: ad_hoc_private_key,
     };

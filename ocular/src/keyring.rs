@@ -1,14 +1,15 @@
 use bip32::{Mnemonic, PrivateKey};
-use cosmrs::crypto::{secp256k1::SigningKey, PublicKey};
+use cosmrs::crypto::secp256k1::SigningKey;
 use k256::SecretKey;
 use rand_core::OsRng;
 use signatory::{
-    pkcs8::der::Document, pkcs8::DecodePrivateKey, pkcs8::EncodePrivateKey, pkcs8::LineEnding,
+    pkcs8::der::Document, pkcs8::DecodePrivateKey, pkcs8::EncodePrivateKey,
     FsKeyStore, KeyName,
 };
 use std::collections::HashSet;
 use std::path::Path;
 
+use crate::account::AccountInfo;
 use crate::error::KeyStoreError;
 
 // Constants
@@ -42,15 +43,6 @@ pub trait KeyStore {
 
     /// Load PrivateKeyDocumentfrom key store. Will return an error if key DNE under name.
     fn get_key(&self, key_name: &KeyName) -> Result<pkcs8::PrivateKeyDocument, KeyStoreError>;
-}
-
-/// Key name and address in Bech32 (aka segwit) format
-#[derive(Debug)]
-pub struct PublicKeyOutput {
-    /// Name must be unique.
-    pub name: String,
-    pub public_key: PublicKey,
-    pub account: cosmrs::AccountId,
 }
 
 /// Keyring that needs to be initialized before being used. Initialization parameters vary depending on type of key store being used.
@@ -87,7 +79,7 @@ impl Keyring {
         })
     }
 
-    pub fn try_default_file_store() -> Result<Self, KeyStoreError> {
+    pub fn try_default() -> Result<Self, KeyStoreError> {
         Keyring::new_file_store(Some(format!("~/{}", DEFAULT_FS_KEYSTORE_DIR).as_str()))
     }
 
@@ -241,44 +233,22 @@ impl Keyring {
         Ok(())
     }
 
-    /// Get key address in bech32 (aka segwit) format. Will throw an error if the key does not exist.
-    pub fn get_public_key_and_address(
-        &self,
-        name: &str,
-        prefix: &str,
-    ) -> Result<PublicKeyOutput, KeyStoreError> {
-        // Check if key exists
-        if !self.key_exists(name)? {
-            eprintln!("Key '{}', does not exist.", name);
-            return Err(KeyStoreError::DoesNotExist(name.to_string()));
+    /// Load [`AccountInfo`] from a key in the store
+    pub fn get_account(&self, key_name: &str, prefix: &str) -> Result<AccountInfo, KeyStoreError> {
+        if !self.key_exists(key_name)? {
+            return Err(KeyStoreError::DoesNotExist(key_name.to_string()));
         }
 
-        // Prepare signing key and parse into pem
-        let key_name = &KeyName::new(name)
-            .unwrap_or_else(|_| panic!("Could not create KeyName for '{}'.", name));
-
-        let signing_key = self.key_store.get_key(key_name)?;
-
-        let signing_key: k256::elliptic_curve::SecretKey<k256::Secp256k1> = signing_key
-            .to_pem(LineEnding::default())
-            .expect("Could not convert to pem.")
-            .parse()
-            .expect("Could not parse pem");
-
-        let signing_key_bytes = signing_key.to_bytes();
-
-        let verifying_key = SigningKey::from_bytes(&signing_key_bytes)
-            .expect("Could not create verifying key from signing key.")
-            .public_key();
-
-        let account_id = verifying_key
+        let private_key = self.get_key(key_name)?;
+        let public_key = private_key.public_key();
+        let account_id = public_key
             .account_id(prefix)
             .expect("Could not get account id from verifying key.");
 
-        Ok(PublicKeyOutput {
-            name: name.to_string(),
-            public_key: verifying_key,
-            account: account_id,
+        Ok(AccountInfo {
+            id: account_id,
+            private_key,
+            public_key,
         })
     }
 
@@ -707,15 +677,13 @@ mod tests {
             Keyring::new_file_store(Some(new_dir)).expect("Could not initialize keystore.");
 
         // Attempt to get key address that doesn't exist
-        assert!(keyring
-            .get_public_key_and_address("iguana", "cosmos")
-            .is_err());
+        assert!(keyring.get_account("iguana", "cosmos").is_err());
 
         // Make new key
         let _key = keyring.create_key("iguana", "", None, false);
 
         // Get key address
-        let result = keyring.get_public_key_and_address("iguana", "cosmos");
+        let result = keyring.get_account("iguana", "cosmos");
         assert!(result.is_ok());
 
         // Clean up dir
@@ -794,15 +762,11 @@ mod tests {
             Keyring::new_file_store(Some(new_dir)).expect("Could not initialize keystore.");
 
         // Verify key doesn't exist to start
-        assert!(keyring
-            .get_public_key_and_address("celery", "cosmos")
-            .is_err());
+        assert!(keyring.get_account("celery", "cosmos").is_err());
 
         // Create new key and get address
         let private_key = keyring.create_key("celery", "tomato", None, false).unwrap();
-        let public_key = keyring
-            .get_public_key_and_address("celery", "cosmos")
-            .unwrap();
+        let account = keyring.get_account("celery", "cosmos").unwrap();
 
         // Delete it
         assert!(keyring.delete_key("celery").is_ok());
@@ -814,11 +778,9 @@ mod tests {
             .is_ok());
 
         // Verify recovered key is equal to deleted one
-        let new_public_key = keyring
-            .get_public_key_and_address("new_celery", "cosmos")
-            .unwrap();
-        assert_eq!(new_public_key.account.as_ref(), public_key.account.as_ref());
-        assert_eq!(new_public_key.public_key, public_key.public_key);
+        let new_account = keyring.get_account("new_celery", "cosmos").unwrap();
+        assert_eq!(new_account.id.as_ref(), account.id.as_ref());
+        assert_eq!(new_account.public_key, account.public_key);
 
         // Clean up dir
         std::fs::remove_dir_all(new_dir)
@@ -899,15 +861,11 @@ mod tests {
             Keyring::new_file_store(Some(new_dir)).expect("Could not initialize keystore.");
 
         // Verify key doesn't exist to start
-        assert!(keyring
-            .get_public_key_and_address("trex", "cosmos")
-            .is_err());
+        assert!(keyring.get_account("trex", "cosmos").is_err());
 
         // Create new key and get address
         let private_key = keyring.create_key("trex", "jenga", None, false).unwrap();
-        let public_key = keyring
-            .get_public_key_and_address("trex", "cosmos")
-            .unwrap();
+        let account = keyring.get_account("trex", "cosmos").unwrap();
 
         // Delete it
         assert!(keyring.delete_key("trex").is_ok());
@@ -919,11 +877,9 @@ mod tests {
             .is_ok());
 
         // Verify recovered key is equal to deleted one
-        let new_public_key = keyring
-            .get_public_key_and_address("new_trex", "cosmos")
-            .unwrap();
-        assert_eq!(new_public_key.account.as_ref(), public_key.account.as_ref());
-        assert_eq!(new_public_key.public_key, public_key.public_key);
+        let new_account = keyring.get_account("new_trex", "cosmos").unwrap();
+        assert_eq!(new_account.id.as_ref(), account.id.as_ref());
+        assert_eq!(new_account.public_key, account.public_key);
 
         // Clean up dir
         std::fs::remove_dir_all(new_dir)

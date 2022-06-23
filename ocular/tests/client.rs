@@ -29,7 +29,7 @@ async fn manual_chain_client_path() {
             denom: "uatom".to_string(),
         },
     };
-    let keyring = Keyring::try_default_file_store().unwrap();
+    let keyring = Keyring::try_default().unwrap();
     let cache = Some(Cache::create_memory_cache(None, 5).unwrap());
 
     ChainClient::new(config, keyring, cache, 5).expect("failed to create client");
