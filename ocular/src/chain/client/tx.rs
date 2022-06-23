@@ -36,18 +36,17 @@ impl ChainClient {
         })
     }
 
-    // TODO: Make this extensible to multisig and multicoin (or add new methods for that)
     /// Helper method for signing and broadcasting messages.
     pub async fn sign_and_send_msg(
-        &self,
+        &mut self,
         sender: AccountInfo,
-        account_number: u64,
-        sequence: u64,
         tx_body: tx::Body,
         tx_metadata: TxMetadata,
     ) -> Result<Response, ChainClientError> {
+        let account = self.query_account(sender.id.as_ref().to_string()).await?;
+
         // Create signer info.
-        let signer_info = SignerInfo::single_direct(Some(sender.public_key), sequence);
+        let signer_info = SignerInfo::single_direct(Some(sender.public_key), account.sequence);
 
         // Compute auth info from signer info by associating a fee.
         let auth_info = signer_info.auth_info(Fee {
@@ -59,7 +58,7 @@ impl ChainClient {
         let chain_id = &cosmrs::tendermint::chain::Id::try_from(self.config.chain_id.clone())?;
 
         // Create doc to be signed
-        let sign_doc = match SignDoc::new(&tx_body, &auth_info, chain_id, account_number) {
+        let sign_doc = match SignDoc::new(&tx_body, &auth_info, chain_id, account.account_number) {
             Ok(doc) => doc,
             Err(err) => return Err(TxError::TypeConversion(err.to_string()).into()),
         };
@@ -165,8 +164,6 @@ impl ChainClient {
             to_address: recipient,
             amount: vec![amount.clone()],
         };
-        let account = self.query_account(sender.id.as_ref().to_string()).await?;
-        let (account_number, sequence) = (account.account_number, account.sequence);
         let tx_metadata = match tx_metadata {
             Some(tm) => tm,
             None => self.get_basic_tx_metadata().await?,
@@ -176,7 +173,7 @@ impl ChainClient {
             Err(err) => return Err(TxError::Serialization(err.to_string()).into()),
         };
 
-        self.sign_and_send_msg(sender, account_number, sequence, tx_body, tx_metadata)
+        self.sign_and_send_msg(sender, tx_body, tx_metadata)
             .await
     }
 
@@ -198,8 +195,6 @@ impl ChainClient {
                 .map(TryInto::try_into)
                 .collect::<Result<_, _>>()?,
         };
-        let account = self.query_account(sender.id.as_ref().to_string()).await?;
-        let (account_number, sequence) = (account.account_number, account.sequence);
         let tx_metadata = match tx_metadata {
             Some(tm) => tm,
             None => self.get_basic_tx_metadata().await?,
@@ -209,7 +204,7 @@ impl ChainClient {
             Err(err) => return Err(TxError::Serialization(err.to_string()).into()),
         };
 
-        self.sign_and_send_msg(sender, account_number, sequence, tx_body, tx_metadata)
+        self.sign_and_send_msg(sender, tx_body, tx_metadata)
             .await
     }
 }

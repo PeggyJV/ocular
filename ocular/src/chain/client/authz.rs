@@ -116,9 +116,6 @@ impl ChainClient {
                 expiration: expiration_timestamp,
             }),
         };
-        let account = self.query_account(granter.id.as_ref().to_string()).await?;
-
-        // Build tx body.
         let msg_any = prost_types::Any {
             type_url: String::from("/cosmos.authz.v1beta1.MsgGrant"),
             value: msg.encode_to_vec(),
@@ -127,8 +124,6 @@ impl ChainClient {
 
         self.sign_and_send_msg(
             granter,
-            account.account_number,
-            account.sequence,
             tx_body,
             tx_metadata,
         )
@@ -148,9 +143,6 @@ impl ChainClient {
             grantee: grantee.to_string(),
             msg_type_url: String::from("/cosmos.bank.v1beta1.MsgSend"),
         };
-        let account = self.query_account(granter.id.as_ref().to_string()).await?;
-
-        // Build tx body.
         let msg_any = prost_types::Any {
             type_url: String::from("/cosmos.authz.v1beta1.MsgRevoke"),
             value: msg.encode_to_vec(),
@@ -159,8 +151,6 @@ impl ChainClient {
 
         self.sign_and_send_msg(
             granter,
-            account.account_number,
-            account.sequence,
             tx_body,
             tx_metadata,
         )
@@ -178,9 +168,6 @@ impl ChainClient {
             grantee: grantee.id.to_string(),
             msgs,
         };
-        let account = self.query_account(grantee.id.as_ref().to_string()).await?;
-
-        // Build tx body.
         let msg_any = prost_types::Any {
             type_url: String::from("/cosmos.authz.v1beta1.MsgExec"),
             value: msg.encode_to_vec(),
@@ -193,8 +180,6 @@ impl ChainClient {
 
         self.sign_and_send_msg(
             grantee,
-            account.account_number,
-            account.sequence,
             tx_body,
             tx_metadata,
         )
@@ -223,7 +208,6 @@ impl ChainClient {
                 value: allowance.encode_to_vec(),
             }),
         };
-        let account = self.query_account(granter.id.as_ref().to_string()).await?;
         let msg_any = prost_types::Any {
             type_url: String::from("/cosmos.feegrant.v1beta1.MsgGrantAllowance"),
             value: msg.encode_to_vec(),
@@ -232,8 +216,6 @@ impl ChainClient {
 
         self.sign_and_send_msg(
             granter,
-            account.account_number,
-            account.sequence,
             tx_body,
             tx_metadata,
         )
