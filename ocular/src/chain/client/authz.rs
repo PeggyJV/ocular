@@ -117,7 +117,6 @@ impl ChainClient {
             }),
         };
         let account = self.query_account(granter.id.as_ref().to_string()).await?;
-        let (account_number, sequence) = (account.account_number, account.sequence);
 
         // Build tx body.
         let msg_any = prost_types::Any {
@@ -126,7 +125,7 @@ impl ChainClient {
         };
         let tx_body = tx::Body::new(vec![msg_any], &tx_metadata.memo, tx_metadata.timeout_height);
 
-        self.sign_and_send_msg(granter, account_number, sequence, tx_body, tx_metadata)
+        self.sign_and_send_msg(granter, account.account_number, account.sequence, tx_body, tx_metadata)
             .await
     }
 
@@ -144,7 +143,6 @@ impl ChainClient {
             msg_type_url: String::from("/cosmos.bank.v1beta1.MsgSend"),
         };
         let account = self.query_account(granter.id.as_ref().to_string()).await?;
-        let (account_number, sequence) = (account.account_number, account.sequence);
 
         // Build tx body.
         let msg_any = prost_types::Any {
@@ -153,8 +151,14 @@ impl ChainClient {
         };
         let tx_body = tx::Body::new(vec![msg_any], &tx_metadata.memo, tx_metadata.timeout_height);
 
-        self.sign_and_send_msg(granter, account_number, sequence, tx_body, tx_metadata)
-            .await
+        self.sign_and_send_msg(
+            granter,
+            account.account_number,
+            account.sequence,
+            tx_body,
+            tx_metadata,
+        )
+        .await
     }
 
     // Execute a transaction previously authorized by another account on its behalf
@@ -169,7 +173,6 @@ impl ChainClient {
             msgs,
         };
         let account = self.query_account(grantee.id.as_ref().to_string()).await?;
-        let (account_number, sequence) = (account.account_number, account.sequence);
 
         // Build tx body.
         let msg_any = prost_types::Any {
@@ -182,7 +185,7 @@ impl ChainClient {
         };
         let tx_body = tx::Body::new(vec![msg_any], &tx_metadata.memo, tx_metadata.timeout_height);
 
-        self.sign_and_send_msg(grantee, account_number, sequence, tx_body, tx_metadata)
+        self.sign_and_send_msg(grantee, account.account_number, account.sequence, tx_body, tx_metadata)
             .await
     }
 
@@ -209,16 +212,20 @@ impl ChainClient {
             }),
         };
         let account = self.query_account(granter.id.as_ref().to_string()).await?;
-        let (account_number, sequence) = (account.account_number, account.sequence);
-
         let msg_any = prost_types::Any {
             type_url: String::from("/cosmos.feegrant.v1beta1.MsgGrantAllowance"),
             value: msg.encode_to_vec(),
         };
         let tx_body = tx::Body::new(vec![msg_any], &tx_metadata.memo, tx_metadata.timeout_height);
 
-        self.sign_and_send_msg(granter, account_number, sequence, tx_body, tx_metadata)
-            .await
+        self.sign_and_send_msg(
+            granter,
+            account.account_number,
+            account.sequence,
+            tx_body,
+            tx_metadata,
+        )
+        .await
     }
 }
 
