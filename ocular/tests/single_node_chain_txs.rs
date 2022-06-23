@@ -249,6 +249,78 @@ fn local_single_node_chain_test() {
     .expect("Could not parse sign doc.");
     let _expected_msg_exec_raw = expected_msg_exec_sign_doc.sign(&sender_private_key);
 
+    // expected MsgMultiSend
+    let input_a = MultiSendIo {
+        address: sender_account_id.as_ref().to_string(),
+        coins: vec![
+            // ocular::tx::Coin {
+            //     amount: 300,
+            //     denom: "stake".to_string(),
+            // },
+            ocular::tx::Coin {
+                amount: 50,
+                denom: DENOM.to_string(),
+            }
+        ]
+    };
+    let input_b = MultiSendIo {
+        address: sender_account_id.as_ref().to_string(),
+        coins: vec![
+            ocular::tx::Coin {
+            amount: 100,
+            denom: DENOM.to_string(),
+            },
+            // ocular::tx::Coin {
+            //     amount: 200,
+            //     denom: "stake".to_string(),
+            // }
+        ],
+    };
+    let output_a = MultiSendIo {
+        address: ad_hoc_acct.id.as_ref().to_string(),
+        coins: vec![
+            // ocular::tx::Coin {
+            //     amount: 25,
+            //     denom: "stake".to_string(),
+            // },
+            ocular::tx::Coin {
+                amount: 75,
+                denom: DENOM.to_string(),
+            }
+        ]
+    };
+    let output_b = MultiSendIo {
+        address: recipient_account_id.as_ref().to_string(),
+        coins: vec![
+            ocular::tx::Coin {
+            amount: 75,
+            denom: DENOM.to_string(),
+            },
+            // ocular::tx::Coin {
+            //     amount: 475,
+            //     denom: "stake".to_string(),
+            // }
+        ],
+    };
+    let inputs = vec![input_a.clone(), input_b.clone()];
+    let outputs = vec![output_a.clone(), output_b.clone()];
+
+    let msg_inputs: Vec<cosmrs::bank::MultiSendIo> = vec![
+        input_a.try_into().expect("couldn't convert multi send input value"),
+        input_b.try_into().expect("couldn't convert multi send input value"),
+    ];
+    let msg_outputs: Vec<cosmrs::bank::MultiSendIo> = vec![
+        output_a.try_into().expect("couldn't convert multi send output value"),
+        output_b.try_into().expect("couldn't convert multi send output value"),
+    ];
+    let msg_multi_send = MsgMultiSend {
+        inputs: msg_inputs,
+        outputs: msg_outputs,
+    }.to_any().expect("could not serialize multi send msg");
+    let expected_multisend_tx_body = tx::Body::new(vec![msg_multi_send], MEMO, timeout_height);
+    let expected_multisend_auth_info =
+        SignerInfo::single_direct(Some(sender_public_key), sequence_number + 3).auth_info(fee.clone());
+
     let docker_args = [
         "-d",
         "-p",
@@ -519,84 +591,7 @@ fn local_single_node_chain_test() {
             // Assert permission error since acct delegation permission was revoked
             assert_eq!(&actual_msg_exec_commit_response.deliver_tx.log.to_string()[..82], "failed to execute message; message index: 0: authorization not found: unauthorized");
 
-            // Expected MsgMultiSend
-            let input_a = MultiSendIo {
-                address: sender_account_id.as_ref().to_string(),
-                coins: vec![
-                    // ocular::tx::Coin {
-                    //     amount: 300,
-                    //     denom: "stake".to_string(),
-                    // },
-                    ocular::tx::Coin {
-                        amount: 50,
-                        denom: DENOM.to_string(),
-                    }
-                ]
-            };
-            let input_b = MultiSendIo {
-                address: sender_account_id.as_ref().to_string(),
-                coins: vec![
-                    ocular::tx::Coin {
-                    amount: 100,
-                    denom: DENOM.to_string(),
-                    },
-                    // ocular::tx::Coin {
-                    //     amount: 200,
-                    //     denom: "stake".to_string(),
-                    // }
-                ],
-            };
-            let output_a = MultiSendIo {
-                address: ad_hoc_acct.id.as_ref().to_string(),
-                coins: vec![
-                    // ocular::tx::Coin {
-                    //     amount: 25,
-                    //     denom: "stake".to_string(),
-                    // },
-                    ocular::tx::Coin {
-                        amount: 75,
-                        denom: DENOM.to_string(),
-                    }
-                ]
-            };
-            let output_b = MultiSendIo {
-                address: recipient_account_id.as_ref().to_string(),
-                coins: vec![
-                    ocular::tx::Coin {
-                    amount: 75,
-                    denom: DENOM.to_string(),
-                    },
-                    // ocular::tx::Coin {
-                    //     amount: 475,
-                    //     denom: "stake".to_string(),
-                    // }
-                ],
-            };
-            let inputs = vec![input_a.clone(), input_b.clone()];
-            let outputs = vec![output_a.clone(), output_b.clone()];
-
-            let msg_inputs: Vec<cosmrs::bank::MultiSendIo> = vec![
-                input_a.try_into().expect("couldn't convert multi send input value"),
-                input_b.try_into().expect("couldn't convert multi send input value"),
-            ];
-            let msg_outputs: Vec<cosmrs::bank::MultiSendIo> = vec![
-                output_a.try_into().expect("couldn't convert multi send output value"),
-                output_b.try_into().expect("couldn't convert multi send output value"),
-            ];
-            let msg_multi_send = MsgMultiSend {
-                inputs: msg_inputs,
-                outputs: msg_outputs,
-            }.to_any().expect("could not serialize multi send msg");
-            let expected_tx_body = tx::Body::new(vec![msg_multi_send], MEMO, timeout_height);
-            let expected_auth_info =
-                SignerInfo::single_direct(Some(sender_public_key), sequence_number + 3).auth_info(fee.clone());
-            let expected_sign_doc = SignDoc::new(
-                &expected_tx_body,
-                &expected_auth_info,
-                &chain_id,
-                SENDER_ACCOUNT_NUMBER,
-            )
-            .expect("Could not parse sign doc.");
+            // Test MsgMultiSend functionality
             let sender_seed = sender_mnemonic.to_seed("");
             let sender_private_key: SigningKey = SigningKey::from_bytes(
                 &bip32::XPrv::derive_from_path(sender_seed, path)
@@ -605,12 +600,6 @@ fn local_single_node_chain_test() {
                     .to_bytes() as &[u8],
             )
             .expect("Could not create key.");
-
-            let _expected_tx_raw = expected_sign_doc
-                .sign(&sender_private_key)
-                .expect("Could not parse tx.");
-
-            // Test MsgMultiSend functionality
             let actual_tx_commit_response = chain_client
                 .multi_send(
                     AccountInfo {
@@ -638,8 +627,8 @@ fn local_single_node_chain_test() {
                 );
             }
             let actual_tx = dev::poll_for_tx(&rpc_client, actual_tx_commit_response.hash).await;
-            assert_eq!(&expected_tx_body, &actual_tx.body);
-            assert_eq!(&expected_auth_info, &actual_tx.auth_info);
+            assert_eq!(&expected_multisend_tx_body, &actual_tx.body);
+            assert_eq!(&expected_multisend_auth_info, &actual_tx.auth_info);
         });
     });
 }

@@ -125,8 +125,14 @@ impl ChainClient {
         };
         let tx_body = tx::Body::new(vec![msg_any], &tx_metadata.memo, tx_metadata.timeout_height);
 
-        self.sign_and_send_msg(granter, account.account_number, account.sequence, tx_body, tx_metadata)
-            .await
+        self.sign_and_send_msg(
+            granter,
+            account.account_number,
+            account.sequence,
+            tx_body,
+            tx_metadata,
+        )
+        .await
     }
 
     // Revoke Authorization
@@ -185,8 +191,14 @@ impl ChainClient {
         };
         let tx_body = tx::Body::new(vec![msg_any], &tx_metadata.memo, tx_metadata.timeout_height);
 
-        self.sign_and_send_msg(grantee, account.account_number, account.sequence, tx_body, tx_metadata)
-            .await
+        self.sign_and_send_msg(
+            grantee,
+            account.account_number,
+            account.sequence,
+            tx_body,
+            tx_metadata,
+        )
+        .await
     }
 
     // Basic fee allowance

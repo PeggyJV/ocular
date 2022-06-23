@@ -121,8 +121,7 @@ impl ChainInfo {
     }
 
     pub fn get_chain_config(&self) -> Result<ChainClientConfig, ChainInfoError> {
-        let rpc_address = executor::block_on(async { self.get_random_rpc_endpoint().await });
-        let rpc_address = rpc_address?;
+        let rpc_address = executor::block_on(async { self.get_random_rpc_endpoint().await })?;
 
         Ok(ChainClientConfig {
             account_prefix: self.bech32_prefix.clone(),
