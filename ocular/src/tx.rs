@@ -40,13 +40,19 @@ impl TryFrom<&Coin> for cosmrs::Coin {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
 pub struct Payment {
-    #[serde(default)]
     pub recipient: String,
     pub amount: u64,
     pub denom: String,
-    pub metadata: Option<TxMetadata>,
+}
+
+// just writing a naked Vec<T> to a toml file results in tables that
+// look like [[]] which the toml crate apparently can't deserialize,
+// so we need this wrapper
+#[derive(Debug, Deserialize, PartialEq, Serialize)]
+pub(crate) struct PaymentsWrapper {
+    pub payments: Vec<Payment>
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]

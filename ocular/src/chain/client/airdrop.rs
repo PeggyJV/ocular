@@ -8,7 +8,7 @@ use crate::{
     cosmos_modules,
     error::{AutomatedTxHandlerError, ChainClientError},
     keyring::Keyring,
-    tx::{Coin, MultiSendIo, Payment, TxMetadata},
+    tx::{Coin, MultiSendIo, Payment, TxMetadata, PaymentsWrapper},
 };
 use bip32::Mnemonic;
 use cosmos_sdk_proto::cosmos::authz::v1beta1::Grant;
@@ -171,10 +171,79 @@ pub fn multi_send_args_from_payments(
 // TO-DO different error type.
 pub fn read_payments_toml(path: String) -> Result<Vec<Payment>, ChainClientError> {
     let toml_string = fs::read_to_string(path)?;
-    Ok(toml::from_str(toml_string.as_str())?)
+    let wrapper: PaymentsWrapper = toml::from_str(toml_string.as_str())?;
+    Ok(wrapper.payments)
 }
 
-pub fn write_payments_toml(payments: &[Payment], path: String) -> Result<(), ChainClientError> {
-    let toml_string = toml::to_string(payments)?;
+pub fn write_payments_toml(path: String, payments: Vec<Payment>) -> Result<(), ChainClientError> {
+    let wrapper = PaymentsWrapper { payments: payments };
+    let toml_string = toml::to_string(&wrapper)?;
     Ok(fs::write(path, toml_string)?)
+}
+
+#[cfg(test)]
+mod tests {
+    use std::{fs::Permissions, os::unix::prelude::PermissionsExt};
+
+    use super::*;
+    use assay::assay;
+
+    #[assay]
+    fn writes_and_reads_payments_toml() {
+        // Set up payments and file path
+        let payment1 = Payment {
+            recipient: "bob".to_string(),
+            amount: 100,
+            denom: "dollarbucks".to_string(),
+        };
+        let payment2 = Payment {
+            recipient: "alice".to_string(),
+            amount: 35,
+            denom: "dingos".to_string(),
+        };
+        let payment3 = Payment {
+            recipient: "frank".to_string(),
+            amount: 10,
+            denom: "dollarbucks".to_string(),
+        };
+        let payments = vec![payment1, payment2, payment3];
+        let path_string = std::env::current_dir()
+            .unwrap()
+            .into_os_string()
+            .into_string()
+            .unwrap()
+            + "/payments_toml_test";
+        fs::create_dir_all(&path_string)?;
+        #[cfg(unix)]
+        fs::set_permissions(&path_string, Permissions::from_mode(0o700))?;
+        let path = Path::new(&path_string).canonicalize()?;
+        let st = path.metadata()?;
+
+        assert!(st.is_dir());
+
+        #[cfg(unix)]
+        assert!(st.permissions().mode() & 0o777 == 0o700);
+
+        // Write and read payments toml
+        let file_path = path_string.clone() + "payments.toml";
+        write_payments_toml(
+            file_path.clone(),
+            payments.clone(),
+        ).expect("failed to write payments toml");
+
+        let result = read_payments_toml(file_path).expect("failed to read payments toml");
+
+        assert_eq!(result.len(), 3);
+        assert_eq!(result[0], payments[0]);
+        assert_eq!(result[1], payments[1]);
+        assert_eq!(result[2], payments[2]);
+
+        // Clean up dir
+        std::fs::remove_dir_all(path)
+            .expect(&format!("Failed to delete test directory {:?}", path_string.clone()));
+
+        // Assert deleted
+        let result = std::panic::catch_unwind(|| std::fs::metadata(path_string).unwrap());
+        assert!(result.is_err());
+    }
 }
