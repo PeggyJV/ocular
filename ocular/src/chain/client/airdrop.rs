@@ -36,7 +36,7 @@ impl ChainClient {
         &mut self,
         granter: AccountId,
         grantee: AccountId,
-    ) -> Result<bool, ChainClientError> {
+    ) -> Result<(), ChainClientError> {
         // Verify grant exists for grantee from granter for MsgSend
         let res = self
             .query_authz_grant(granter.as_ref(), grantee.as_ref(), MSG_MULTI_SEND_URL)
@@ -45,7 +45,7 @@ impl ChainClient {
         // If any grants meet the following criteria we can be confident the transaction is authorized:
         // 1. The grant either has no expiration, or an expiration with more than 60 seconds remaining.
         // 2. The grant contains a generic authorization
-        Ok(res.grants.iter().any(|g| {
+        let grant_found = res.grants.iter().any(|g| {
             if g.expiration.is_some() {
                 let expiration = g.expiration.clone().unwrap();
                 let cutoff = i64::try_from(
@@ -64,7 +64,7 @@ impl ChainClient {
             if g.authorization.is_none() {
                 return false;
             }
-            // I don't actually thing this is a necessary check as there is no way to specify
+            // I don't actually think this is a necessary check as there is no way to specify
             // authorization for MultiSend without using a generic one
             let authorization = g.authorization.clone().unwrap();
             if authorization.type_url.as_str() != GENERIC_AUTHORIZATION_URL {
@@ -72,7 +72,16 @@ impl ChainClient {
             }
 
             true
-        }))
+        });
+        if !grant_found {
+            return Err(ChainClientError::UnauthorizedTx(format!(
+                "no relevant grant exists for {} on behalf of {}",
+                grantee.as_ref(),
+                granter.as_ref()
+            )));
+        }
+
+        Ok(())
     }
 
     pub async fn execute_delegated_airdrop(
@@ -86,6 +95,7 @@ impl ChainClient {
     ) -> Result<Response, ChainClientError> {
         self.verify_multi_send_grant(granter.id.clone(), grantee.id.clone())
             .await?;
+
         let (inputs, outputs) =
             multi_send_args_from_payments(granter.id.as_ref().to_string(), payments);
         let msgs: Vec<prost_types::Any> = vec![MsgMultiSend {
