@@ -6,9 +6,9 @@ use crate::{
     account::AccountInfo,
     chain::config::ChainClientConfig,
     cosmos_modules,
-    error::{AutomatedTxHandlerError, ChainClientError},
+    error::{AirdropError, ChainClientError},
     keyring::Keyring,
-    tx::{Coin, MultiSendIo, Payment, TxMetadata, PaymentsWrapper},
+    tx::{Coin, MultiSendIo, Payment, PaymentsToml, TxMetadata},
 };
 use bip32::Mnemonic;
 use cosmos_sdk_proto::cosmos::authz::v1beta1::Grant;
@@ -113,13 +113,37 @@ impl ChainClient {
 
     pub async fn execute_delegated_airdrop_from_toml(
         &mut self,
-        granter: AccountInfo,
-        grantee: AccountInfo,
         path: String,
         tx_metadata: Option<TxMetadata>,
     ) -> Result<Response, ChainClientError> {
-        let payments = read_payments_toml(path)?;
-        self.execute_delegated_airdrop(granter, grantee, payments, tx_metadata)
+        let payments_toml = read_payments_toml(path)?;
+        let grantee = match payments_toml.grantee_key_name {
+            Some(g) => self.keyring.get_account(&g, &self.config.account_prefix),
+            None => return Err(AirdropError::Toml("no grantee key name was provided for the delegated airdrop.".to_string()).into()),
+        }?;
+        let granter = self.keyring.get_account(&payments_toml.sender_key_name, &self.config.account_prefix)?;
+
+        // add fee_payer and fee_granter values to metadata if present
+        let basic_tx_metadata = self.get_basic_tx_metadata().await?;
+        let mut tx_metadata = tx_metadata.unwrap_or(basic_tx_metadata);
+        let tx_metadata = match (payments_toml.fee_granter, payments_toml.fee_payer) {
+            (None, Some(fp)) => {
+                tx_metadata.fee_payer = Some(AccountId::from_str(&fp)?);
+                tx_metadata
+            }
+            (Some(fg), None) =>  {
+                tx_metadata.fee_granter = Some(AccountId::from_str(&fg)?);
+                tx_metadata
+            },
+            (Some(fg), Some(fp)) => {
+                tx_metadata.fee_payer = Some(AccountId::from_str(&fp)?);
+                tx_metadata.fee_granter = Some(AccountId::from_str(&fg)?);
+                tx_metadata
+            }
+            _ => tx_metadata
+        };
+
+        self.execute_delegated_airdrop(granter, grantee, payments_toml.payments, Some(tx_metadata))
             .await
     }
 
@@ -136,12 +160,12 @@ impl ChainClient {
 
     pub async fn execute_airdrop_from_toml(
         &mut self,
-        sender: AccountInfo,
         path: String,
         tx_metadata: Option<TxMetadata>,
     ) -> Result<Response, ChainClientError> {
-        let payments = read_payments_toml(path)?;
-        self.execute_airdrop(sender, payments, tx_metadata).await
+        let payments_toml = read_payments_toml(path)?;
+        let sender = self.keyring.get_account(&payments_toml.sender_key_name, &self.config.account_prefix)?;
+        self.execute_airdrop(sender, payments_toml.payments, tx_metadata).await
     }
 }
 
@@ -169,15 +193,29 @@ pub fn multi_send_args_from_payments(
 }
 
 // TO-DO different error type.
-pub fn read_payments_toml(path: String) -> Result<Vec<Payment>, ChainClientError> {
+pub fn read_payments_toml(path: String) -> Result<PaymentsToml, ChainClientError> {
     let toml_string = fs::read_to_string(path)?;
-    let wrapper: PaymentsWrapper = toml::from_str(toml_string.as_str())?;
-    Ok(wrapper.payments)
+    Ok(toml::from_str(toml_string.as_str())?)
 }
 
-pub fn write_payments_toml(path: String, payments: Vec<Payment>) -> Result<(), ChainClientError> {
-    let wrapper = PaymentsWrapper { payments: payments };
-    let toml_string = toml::to_string(&wrapper)?;
+pub fn write_payments_toml(
+    path: String,
+    sender_key_name: String,
+    grantee_key_name: Option<String>,
+    fee_payer: Option<AccountId>,
+    fee_granter: Option<AccountId>,
+    payments: Vec<Payment>,
+) -> Result<(), ChainClientError> {
+    let fee_payer = fee_payer.map_or(None, |fp| Some(fp.as_ref().to_string()));
+    let fee_granter = fee_granter.map_or(None, |fg| Some(fg.as_ref().to_string()));
+    let toml_obj = PaymentsToml {
+        sender_key_name,
+        grantee_key_name,
+        fee_granter,
+        fee_payer,
+        payments: payments,
+    };
+    let toml_string = toml::to_string(&toml_obj)?;
     Ok(fs::write(path, toml_string)?)
 }
 
@@ -224,23 +262,41 @@ mod tests {
         #[cfg(unix)]
         assert!(st.permissions().mode() & 0o777 == 0o700);
 
+        let sender_key = "sender_key".to_string();
+        let grantee_key = Some("grantee_key".to_string());
+        let fee_granter =
+            Some(AccountId::from_str("cosmos142nrqssptljjajdkav8djftp87lvg0ghvm0m9c").unwrap());
+        let fee_payer =
+            Some(AccountId::from_str("cosmos1svs56wmqsezpjqgmvaf78rx3ut94pw6s7mxl05").unwrap());
+        let expected_result = PaymentsToml {
+            sender_key_name: sender_key.clone(),
+            grantee_key_name: grantee_key.clone(),
+            fee_granter: Some(fee_granter.clone().unwrap().as_ref().to_string()),
+            fee_payer: Some(fee_payer.clone().unwrap().as_ref().to_string()),
+            payments: payments.clone(),
+        };
+
         // Write and read payments toml
         let file_path = path_string.clone() + "payments.toml";
         write_payments_toml(
             file_path.clone(),
+            sender_key,
+            grantee_key,
+            fee_payer,
+            fee_granter,
             payments.clone(),
-        ).expect("failed to write payments toml");
+        )
+        .expect("failed to write payments toml");
 
         let result = read_payments_toml(file_path).expect("failed to read payments toml");
 
-        assert_eq!(result.len(), 3);
-        assert_eq!(result[0], payments[0]);
-        assert_eq!(result[1], payments[1]);
-        assert_eq!(result[2], payments[2]);
+        assert_eq!(result, expected_result);
 
         // Clean up dir
-        std::fs::remove_dir_all(path)
-            .expect(&format!("Failed to delete test directory {:?}", path_string.clone()));
+        std::fs::remove_dir_all(path).expect(&format!(
+            "Failed to delete test directory {:?}",
+            path_string.clone()
+        ));
 
         // Assert deleted
         let result = std::panic::catch_unwind(|| std::fs::metadata(path_string).unwrap());

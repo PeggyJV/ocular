@@ -253,10 +253,6 @@ fn local_single_node_chain_test() {
     let input_a = MultiSendIo {
         address: sender_account_id.as_ref().to_string(),
         coins: vec![
-            // ocular::tx::Coin {
-            //     amount: 300,
-            //     denom: "stake".to_string(),
-            // },
             ocular::tx::Coin {
                 amount: 50,
                 denom: DENOM.to_string(),
@@ -270,19 +266,11 @@ fn local_single_node_chain_test() {
                 amount: 100,
                 denom: DENOM.to_string(),
             },
-            // ocular::tx::Coin {
-            //     amount: 200,
-            //     denom: "stake".to_string(),
-            // }
         ],
     };
     let output_a = MultiSendIo {
         address: ad_hoc_acct.id.as_ref().to_string(),
         coins: vec![
-            // ocular::tx::Coin {
-            //     amount: 25,
-            //     denom: "stake".to_string(),
-            // },
             ocular::tx::Coin {
                 amount: 75,
                 denom: DENOM.to_string(),
@@ -296,10 +284,6 @@ fn local_single_node_chain_test() {
                 amount: 75,
                 denom: DENOM.to_string(),
             },
-            // ocular::tx::Coin {
-            //     amount: 475,
-            //     denom: "stake".to_string(),
-            // }
         ],
     };
     let inputs = vec![input_a.clone(), input_b.clone()];

@@ -22,7 +22,7 @@ pub enum ChainClientError {
     #[error("{0}")]
     Tx(#[from] TxError),
     #[error("{0}")]
-    AutomatedTxHandler(#[from] AutomatedTxHandlerError),
+    AutomatedTxHandler(#[from] AirdropError),
     #[error("{0}")]
     Cache(#[from] CacheError),
     #[error("{0}")]
@@ -132,7 +132,7 @@ impl From<bech32::Error> for TxError {
 }
 
 #[derive(Debug, Error)]
-pub enum AutomatedTxHandlerError {
+pub enum AirdropError {
     #[error("error reading file: {0}")]
     FileIO(String),
     #[error("error reading toml: {0}")]

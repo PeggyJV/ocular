@@ -47,11 +47,12 @@ pub struct Payment {
     pub denom: String,
 }
 
-// just writing a naked Vec<T> to a toml file results in tables that
-// look like [[]] which the toml crate apparently can't deserialize,
-// so we need this wrapper
 #[derive(Debug, Deserialize, PartialEq, Serialize)]
-pub(crate) struct PaymentsWrapper {
+pub struct PaymentsToml {
+    pub sender_key_name: String,
+    pub grantee_key_name: Option<String>,
+    pub fee_granter: Option<String>,
+    pub fee_payer: Option<String>,
     pub payments: Vec<Payment>
 }
 
