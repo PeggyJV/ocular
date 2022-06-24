@@ -173,8 +173,7 @@ impl ChainClient {
             Err(err) => return Err(TxError::Serialization(err.to_string()).into()),
         };
 
-        self.sign_and_send_msg(sender, tx_body, tx_metadata)
-            .await
+        self.sign_and_send_msg(sender, tx_body, tx_metadata).await
     }
 
     /// Send coins in a MIMO fashion. If any coin transfers are invalid the entire transaction will fail.
@@ -204,7 +203,6 @@ impl ChainClient {
             Err(err) => return Err(TxError::Serialization(err.to_string()).into()),
         };
 
-        self.sign_and_send_msg(sender, tx_body, tx_metadata)
-            .await
+        self.sign_and_send_msg(sender, tx_body, tx_metadata).await
     }
 }

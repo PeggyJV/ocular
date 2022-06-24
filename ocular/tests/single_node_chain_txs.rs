@@ -252,39 +252,31 @@ fn local_single_node_chain_test() {
     // expected MsgMultiSend
     let input_a = MultiSendIo {
         address: sender_account_id.as_ref().to_string(),
-        coins: vec![
-            ocular::tx::Coin {
-                amount: 50,
-                denom: DENOM.to_string(),
-            },
-        ],
+        coins: vec![ocular::tx::Coin {
+            amount: 50,
+            denom: DENOM.to_string(),
+        }],
     };
     let input_b = MultiSendIo {
         address: sender_account_id.as_ref().to_string(),
-        coins: vec![
-            ocular::tx::Coin {
-                amount: 100,
-                denom: DENOM.to_string(),
-            },
-        ],
+        coins: vec![ocular::tx::Coin {
+            amount: 100,
+            denom: DENOM.to_string(),
+        }],
     };
     let output_a = MultiSendIo {
         address: ad_hoc_acct.id.as_ref().to_string(),
-        coins: vec![
-            ocular::tx::Coin {
-                amount: 75,
-                denom: DENOM.to_string(),
-            },
-        ],
+        coins: vec![ocular::tx::Coin {
+            amount: 75,
+            denom: DENOM.to_string(),
+        }],
     };
     let output_b = MultiSendIo {
         address: recipient_account_id.as_ref().to_string(),
-        coins: vec![
-            ocular::tx::Coin {
-                amount: 75,
-                denom: DENOM.to_string(),
-            },
-        ],
+        coins: vec![ocular::tx::Coin {
+            amount: 75,
+            denom: DENOM.to_string(),
+        }],
     };
     let inputs = vec![input_a.clone(), input_b.clone()];
     let outputs = vec![output_a.clone(), output_b.clone()];

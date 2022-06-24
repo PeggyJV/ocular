@@ -3,8 +3,7 @@ use cosmrs::crypto::secp256k1::SigningKey;
 use k256::SecretKey;
 use rand_core::OsRng;
 use signatory::{
-    pkcs8::der::Document, pkcs8::DecodePrivateKey, pkcs8::EncodePrivateKey,
-    FsKeyStore, KeyName,
+    pkcs8::der::Document, pkcs8::DecodePrivateKey, pkcs8::EncodePrivateKey, FsKeyStore, KeyName,
 };
 use std::collections::HashSet;
 use std::path::Path;

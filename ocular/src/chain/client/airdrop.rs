@@ -119,9 +119,16 @@ impl ChainClient {
         let payments_toml = read_payments_toml(path)?;
         let grantee = match payments_toml.grantee_key_name {
             Some(g) => self.keyring.get_account(&g, &self.config.account_prefix),
-            None => return Err(AirdropError::Toml("no grantee key name was provided for the delegated airdrop.".to_string()).into()),
+            None => {
+                return Err(AirdropError::Toml(
+                    "no grantee key name was provided for the delegated airdrop.".to_string(),
+                )
+                .into())
+            }
         }?;
-        let granter = self.keyring.get_account(&payments_toml.sender_key_name, &self.config.account_prefix)?;
+        let granter = self
+            .keyring
+            .get_account(&payments_toml.sender_key_name, &self.config.account_prefix)?;
 
         // add fee_payer and fee_granter values to metadata if present
         let basic_tx_metadata = self.get_basic_tx_metadata().await?;
@@ -131,16 +138,16 @@ impl ChainClient {
                 tx_metadata.fee_payer = Some(AccountId::from_str(&fp)?);
                 tx_metadata
             }
-            (Some(fg), None) =>  {
+            (Some(fg), None) => {
                 tx_metadata.fee_granter = Some(AccountId::from_str(&fg)?);
                 tx_metadata
-            },
+            }
             (Some(fg), Some(fp)) => {
                 tx_metadata.fee_payer = Some(AccountId::from_str(&fp)?);
                 tx_metadata.fee_granter = Some(AccountId::from_str(&fg)?);
                 tx_metadata
             }
-            _ => tx_metadata
+            _ => tx_metadata,
         };
 
         self.execute_delegated_airdrop(granter, grantee, payments_toml.payments, Some(tx_metadata))
@@ -164,8 +171,11 @@ impl ChainClient {
         tx_metadata: Option<TxMetadata>,
     ) -> Result<Response, ChainClientError> {
         let payments_toml = read_payments_toml(path)?;
-        let sender = self.keyring.get_account(&payments_toml.sender_key_name, &self.config.account_prefix)?;
-        self.execute_airdrop(sender, payments_toml.payments, tx_metadata).await
+        let sender = self
+            .keyring
+            .get_account(&payments_toml.sender_key_name, &self.config.account_prefix)?;
+        self.execute_airdrop(sender, payments_toml.payments, tx_metadata)
+            .await
     }
 }
 
@@ -206,14 +216,14 @@ pub fn write_payments_toml(
     fee_granter: Option<AccountId>,
     payments: Vec<Payment>,
 ) -> Result<(), ChainClientError> {
-    let fee_payer = fee_payer.map_or(None, |fp| Some(fp.as_ref().to_string()));
-    let fee_granter = fee_granter.map_or(None, |fg| Some(fg.as_ref().to_string()));
+    let fee_payer = fee_payer.map(|fp| fp.as_ref().to_string());
+    let fee_granter = fee_granter.map(|fg| fg.as_ref().to_string());
     let toml_obj = PaymentsToml {
         sender_key_name,
         grantee_key_name,
         fee_granter,
         fee_payer,
-        payments: payments,
+        payments,
     };
     let toml_string = toml::to_string(&toml_obj)?;
     Ok(fs::write(path, toml_string)?)

@@ -53,7 +53,7 @@ pub struct PaymentsToml {
     pub grantee_key_name: Option<String>,
     pub fee_granter: Option<String>,
     pub fee_payer: Option<String>,
-    pub payments: Vec<Payment>
+    pub payments: Vec<Payment>,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]

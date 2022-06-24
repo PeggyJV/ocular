@@ -122,12 +122,7 @@ impl ChainClient {
         };
         let tx_body = tx::Body::new(vec![msg_any], &tx_metadata.memo, tx_metadata.timeout_height);
 
-        self.sign_and_send_msg(
-            granter,
-            tx_body,
-            tx_metadata,
-        )
-        .await
+        self.sign_and_send_msg(granter, tx_body, tx_metadata).await
     }
 
     // Revoke Authorization
@@ -149,12 +144,7 @@ impl ChainClient {
         };
         let tx_body = tx::Body::new(vec![msg_any], &tx_metadata.memo, tx_metadata.timeout_height);
 
-        self.sign_and_send_msg(
-            granter,
-            tx_body,
-            tx_metadata,
-        )
-        .await
+        self.sign_and_send_msg(granter, tx_body, tx_metadata).await
     }
 
     // Execute a transaction previously authorized by another account on its behalf
@@ -178,12 +168,7 @@ impl ChainClient {
         };
         let tx_body = tx::Body::new(vec![msg_any], &tx_metadata.memo, tx_metadata.timeout_height);
 
-        self.sign_and_send_msg(
-            grantee,
-            tx_body,
-            tx_metadata,
-        )
-        .await
+        self.sign_and_send_msg(grantee, tx_body, tx_metadata).await
     }
 
     // Basic fee allowance
@@ -214,12 +199,7 @@ impl ChainClient {
         };
         let tx_body = tx::Body::new(vec![msg_any], &tx_metadata.memo, tx_metadata.timeout_height);
 
-        self.sign_and_send_msg(
-            granter,
-            tx_body,
-            tx_metadata,
-        )
-        .await
+        self.sign_and_send_msg(granter, tx_body, tx_metadata).await
     }
 }
 
