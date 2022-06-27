@@ -2,8 +2,6 @@ use tendermint_pre;
 
 pub mod client;
 pub mod config;
-pub mod info;
-pub mod registry;
 
 pub type ChainName = tendermint_pre::chain::Id;
 

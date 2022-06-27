@@ -1,10 +1,9 @@
+/// Contains models for serializing and deserializing the `chain.json` in a given chain's directory in the registry repository,
+/// as well as some methods for getting configuration for a [`ChainClient`]
 use crate::{
-    chain::{
-        client,
-        config::ChainClientConfig,
-        registry::{self, AssetList},
-    },
+    chain::{client, config::ChainClientConfig},
     error::{ChainInfoError, RpcError},
+    registry::{self, assets::AssetList},
 };
 use futures::executor;
 use rand::{prelude::SliceRandom, thread_rng};
@@ -114,7 +113,7 @@ impl ChainInfo {
             .collect()
     }
 
-    pub async fn get_asset_list(&self) -> Result<AssetList, ChainInfoError> {
+    pub async fn get_asset_list(&self) -> Result<Option<AssetList>, ChainInfoError> {
         registry::get_assets(self.chain_name.as_str())
             .await
             .map_err(|r| r.into())
@@ -123,8 +122,8 @@ impl ChainInfo {
     pub fn get_chain_config(&self) -> Result<ChainClientConfig, ChainInfoError> {
         let mut gas_prices = String::default();
         let asset_list = executor::block_on(async { self.get_asset_list().await })?;
-        if !asset_list.assets.is_empty() {
-            gas_prices = format!("{:.2}{}", 0.01, asset_list.assets[0].base);
+        if asset_list.is_none() || !asset_list.clone().unwrap().assets.is_empty() {
+            gas_prices = format!("{:.2}{}", 0.01, asset_list.unwrap().assets[0].base);
         }
 
         let rpc_address = executor::block_on(async { self.get_random_rpc_endpoint().await })?;
@@ -176,7 +175,7 @@ impl ChainInfo {
     }
 }
 
-pub async fn get_cosmoshub_info() -> Result<ChainInfo, ChainInfoError> {
+pub async fn get_cosmoshub_info() -> Result<Option<ChainInfo>, ChainInfoError> {
     registry::get_chain("cosmoshub").await.map_err(|r| r.into())
 }
 
@@ -207,7 +206,7 @@ mod tests {
         let info = get_cosmoshub_info()
             .await
             .expect("failed to get cosmoshub ChainInfo");
-        let assets = info.get_asset_list().await;
+        let assets = info.unwrap().get_asset_list().await;
 
         assets.unwrap();
     }
@@ -220,7 +219,7 @@ mod tests {
         let info = get_cosmoshub_info()
             .await
             .expect("failed to get cosmoshub ChainInfo");
-        let config = info.get_chain_config();
+        let config = info.unwrap().get_chain_config();
 
         config.unwrap();
     }

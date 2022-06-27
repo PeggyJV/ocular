@@ -1,9 +1,11 @@
 #![warn(unused_qualifications)]
 
 use crate::{
-    chain::{client::cache::Cache, config::ChainClientConfig, registry::get_chain},
+    chain::{client::cache::Cache, config::ChainClientConfig},
     error::{ChainClientError, RpcError},
     keyring::Keyring,
+    registry::get_chain,
+    ChainRegistryError,
 };
 use futures::executor;
 use tendermint_rpc::{self, WebSocketClient, WebSocketClientDriver};
@@ -77,7 +79,17 @@ impl ChainClientBuilder {
     }
 
     pub async fn build(self) -> Result<ChainClient, ChainClientError> {
-        let info = get_chain(self.chain_name.as_str()).await?;
+        let info = match get_chain(self.chain_name.as_str()).await? {
+            Some(c) => c,
+            None => {
+                return Err(ChainRegistryError::UnsupportedChain(format!(
+                    "chain info for {} not found (no chain.json present)",
+                    &self.chain_name
+                ))
+                .into())
+            }
+        };
+
         let mut config = info.get_chain_config()?;
 
         if self.grpc_endpoint.is_some() {
@@ -124,7 +136,17 @@ impl ChainClientBuilder {
 }
 
 fn get_client(chain_name: &str) -> Result<ChainClient, ChainClientError> {
-    let chain = executor::block_on(async { get_chain(chain_name).await })?;
+    let chain = match executor::block_on(async { get_chain(chain_name).await })? {
+        Some(c) => c,
+        None => {
+            return Err(ChainRegistryError::UnsupportedChain(format!(
+                "chain info for {} not found (no chain.json present)",
+                chain_name
+            ))
+            .into())
+        }
+    };
+
     // Default to in memory cache
     let cache = Cache::create_memory_cache(None, 3)?;
     let config = chain.get_chain_config()?;
