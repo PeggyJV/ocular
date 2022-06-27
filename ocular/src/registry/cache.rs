@@ -33,17 +33,17 @@ impl RegistryCache {
     /// Returns a cached [`IBCPath`] representing a channel between [`chain_a`] and `chain_b` if it exists
     pub async fn get_path(
         &self,
-        chain_a: String,
-        chain_b: String,
+        chain_a: &str,
+        chain_b: &str,
     ) -> Result<Option<IBCPath>, ChainRegistryError> {
         if !self.is_initialized() {
             Self::initialize().await?;
         }
 
         let path_name = match chain_a.cmp(&chain_b) {
-            Ordering::Less => chain_a + "-" + &chain_b,
+            Ordering::Less => chain_a.to_string() + "-" + &chain_b,
             Ordering::Equal => return Ok(None),
-            Ordering::Greater => chain_b + "-" + &chain_a,
+            Ordering::Greater => chain_b.to_string() + "-" + &chain_a,
         };
 
         Ok(self.paths.get(&path_name).cloned())

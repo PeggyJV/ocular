@@ -11,7 +11,7 @@ async fn registry_cache_happy_path() {
     let chain_a = "cosmoshub";
     let chain_b = "osmosis";
     let result = cache
-        .get_path(chain_a.to_string(), chain_b.to_string())
+        .get_path(chain_a, chain_b)
         .await
         .unwrap()
         .unwrap();
@@ -20,7 +20,7 @@ async fn registry_cache_happy_path() {
 
     // reverse order
     let result = cache
-        .get_path(chain_b.to_string(), chain_a.to_string())
+        .get_path(chain_b, chain_a)
         .await
         .unwrap()
         .unwrap();
