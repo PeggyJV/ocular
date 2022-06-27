@@ -40,10 +40,10 @@ impl RegistryCache {
             Self::initialize().await?;
         }
 
-        let path_name = match chain_a.cmp(&chain_b) {
-            Ordering::Less => chain_a.to_string() + "-" + &chain_b,
+        let path_name = match chain_a.cmp(chain_b) {
+            Ordering::Less => chain_a.to_string() + "-" + chain_b,
             Ordering::Equal => return Ok(None),
-            Ordering::Greater => chain_b.to_string() + "-" + &chain_a,
+            Ordering::Greater => chain_b.to_string() + "-" + chain_a,
         };
 
         Ok(self.paths.get(&path_name).cloned())

@@ -10,20 +10,12 @@ async fn registry_cache_happy_path() {
 
     let chain_a = "cosmoshub";
     let chain_b = "osmosis";
-    let result = cache
-        .get_path(chain_a, chain_b)
-        .await
-        .unwrap()
-        .unwrap();
+    let result = cache.get_path(chain_a, chain_b).await.unwrap().unwrap();
     assert_eq!(result.chain_1.chain_name, "cosmoshub");
     assert_eq!(result.chain_2.chain_name, "osmosis");
 
     // reverse order
-    let result = cache
-        .get_path(chain_b, chain_a)
-        .await
-        .unwrap()
-        .unwrap();
+    let result = cache.get_path(chain_b, chain_a).await.unwrap().unwrap();
     assert_eq!(result.chain_1.chain_name, "cosmoshub");
     assert_eq!(result.chain_2.chain_name, "osmosis");
 
