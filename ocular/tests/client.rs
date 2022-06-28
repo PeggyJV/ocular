@@ -7,6 +7,7 @@ use ocular::{
         SOMMELIER,
     },
     keyring::Keyring,
+    tx::Coin,
 };
 
 #[assay]
@@ -21,11 +22,14 @@ async fn manual_chain_client_path() {
         chain_name: "cosmoshub".to_string(),
         chain_id: "cosmoshub-4".to_string(),
         gas_adjustment: 1.0,
-        gas_prices: 100_000u64.to_string(),
         grpc_address: "https://cosmoshub.strange.love:9090".to_string(),
         rpc_address: "https://cosmoshub-4.technofractal.com:443".to_string(),
+        default_fee: Coin {
+            amount: 0,
+            denom: "uatom".to_string(),
+        },
     };
-    let keyring = Keyring::try_default_file_store().unwrap();
+    let keyring = Keyring::try_default().unwrap();
     let cache = Some(Cache::create_memory_cache(None, 5).unwrap());
 
     ChainClient::new(config, keyring, cache, 5).expect("failed to create client");
@@ -49,7 +53,7 @@ async fn chain_client_builder_path() {
 #[assay]
 async fn query_latest_block_height() {
     let client = ChainClient::create(chain::COSMOSHUB).expect("failed to get test client");
-
+    dbg!("rpc address:", &client.config.rpc_address);
     client
         .query_latest_height()
         .await

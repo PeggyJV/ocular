@@ -121,22 +121,14 @@ impl ChainInfo {
     }
 
     pub fn get_chain_config(&self) -> Result<ChainClientConfig, ChainInfoError> {
-        let mut gas_prices = String::default();
-        let asset_list = executor::block_on(async { self.get_asset_list().await })?;
-        if !asset_list.assets.is_empty() {
-            gas_prices = format!("{:.2}{}", 0.01, asset_list.assets[0].base);
-        }
-
         let rpc_address = executor::block_on(async { self.get_random_rpc_endpoint().await })?;
 
         Ok(ChainClientConfig {
-            chain_name: self.chain_name.clone(),
             account_prefix: self.bech32_prefix.clone(),
             chain_id: self.chain_id.clone(),
             gas_adjustment: 1.2,
-            gas_prices,
             rpc_address,
-            grpc_address: String::from(""),
+            ..Default::default()
         })
     }
 

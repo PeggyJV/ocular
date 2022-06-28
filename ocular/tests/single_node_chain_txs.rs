@@ -2,13 +2,11 @@
 
 // Requies docker
 use ocular::{
-    chain::{
-        client::cache::Cache,
-        client::tx::{Account, TxMetadata},
-        config::ChainClientConfig,
-    },
+    account::AccountInfo,
+    chain::{client::cache::Cache, config::ChainClientConfig},
     cosmos_modules::*,
     keyring::Keyring,
+    tx::{MultiSendIo, TxMetadata},
 };
 
 use bip32;
@@ -16,7 +14,7 @@ use cosmos_sdk_proto::cosmos::authz::v1beta1::{
     GenericAuthorization, MsgExec, MsgGrant, MsgRevoke,
 };
 use cosmrs::{
-    bank::MsgSend,
+    bank::{MsgMultiSend, MsgSend},
     crypto::secp256k1::SigningKey,
     dev, rpc,
     tx::{self, AccountNumber, Fee, Msg, SignDoc, SignerInfo},
@@ -111,11 +109,11 @@ fn local_single_node_chain_test() {
         .get_key("test_only_delegate_key_override_safe")
         .expect("Could not get private key");
     let ad_hoc_pub_info = temp_ring
-        .get_public_key_and_address("test_only_delegate_key_override_safe", ACCOUNT_PREFIX)
+        .get_account("test_only_delegate_key_override_safe", ACCOUNT_PREFIX)
         .expect("Could not get public key info.");
-    dbg!(ad_hoc_pub_info.account.as_ref());
-    let ad_hoc_acct = Account {
-        id: ad_hoc_pub_info.account,
+    dbg!(ad_hoc_pub_info.id.as_ref());
+    let ad_hoc_acct = AccountInfo {
+        id: ad_hoc_pub_info.id,
         public_key: ad_hoc_pub_info.public_key,
         private_key: ad_hoc_private_key,
     };
@@ -124,8 +122,12 @@ fn local_single_node_chain_test() {
         amount: 1u8.into(),
         denom: DENOM.parse().expect("Could not parse denom."),
     };
-
-    let fee = Fee::from_amount_and_gas(amount.clone(), gas);
+    let default_fee_amount = 0u32;
+    let default_fee = Coin {
+        amount: default_fee_amount.into(),
+        denom: DENOM.parse().expect("Could not parse denom"),
+    };
+    let fee = Fee::from_amount_and_gas(default_fee.clone(), gas);
 
     // Expected MsgSend
     let msg_send = MsgSend {
@@ -247,10 +249,71 @@ fn local_single_node_chain_test() {
     .expect("Could not parse sign doc.");
     let _expected_msg_exec_raw = expected_msg_exec_sign_doc.sign(&sender_private_key);
 
+    // expected MsgMultiSend
+    let input_a = MultiSendIo {
+        address: sender_account_id.as_ref().to_string(),
+        coins: vec![ocular::tx::Coin {
+            amount: 50,
+            denom: DENOM.to_string(),
+        }],
+    };
+    let input_b = MultiSendIo {
+        address: sender_account_id.as_ref().to_string(),
+        coins: vec![ocular::tx::Coin {
+            amount: 100,
+            denom: DENOM.to_string(),
+        }],
+    };
+    let output_a = MultiSendIo {
+        address: ad_hoc_acct.id.as_ref().to_string(),
+        coins: vec![ocular::tx::Coin {
+            amount: 75,
+            denom: DENOM.to_string(),
+        }],
+    };
+    let output_b = MultiSendIo {
+        address: recipient_account_id.as_ref().to_string(),
+        coins: vec![ocular::tx::Coin {
+            amount: 75,
+            denom: DENOM.to_string(),
+        }],
+    };
+    let inputs = vec![input_a.clone(), input_b.clone()];
+    let outputs = vec![output_a.clone(), output_b.clone()];
+
+    let msg_inputs: Vec<cosmrs::bank::MultiSendIo> = vec![
+        input_a
+            .try_into()
+            .expect("couldn't convert multi send input value"),
+        input_b
+            .try_into()
+            .expect("couldn't convert multi send input value"),
+    ];
+    let msg_outputs: Vec<cosmrs::bank::MultiSendIo> = vec![
+        output_a
+            .try_into()
+            .expect("couldn't convert multi send output value"),
+        output_b
+            .try_into()
+            .expect("couldn't convert multi send output value"),
+    ];
+    let msg_multi_send = MsgMultiSend {
+        inputs: msg_inputs,
+        outputs: msg_outputs,
+    }
+    .to_any()
+    .expect("could not serialize multi send msg");
+    let expected_multisend_tx_body = tx::Body::new(vec![msg_multi_send], MEMO, timeout_height);
+    let expected_multisend_auth_info =
+        SignerInfo::single_direct(Some(sender_public_key), sequence_number + 3)
+            .auth_info(fee.clone());
+
     let docker_args = [
         "-d",
         "-p",
         &format!("{}:{}", RPC_PORT, RPC_PORT),
+        "-p",
+        &format!("{}:{}", 9090, 9090),
         DOCKER_HUB_GAIA_SINGLE_NODE_TEST_IMAGE,
         CHAIN_ID,
         &sender_account_id.to_string(),
@@ -260,19 +323,19 @@ fn local_single_node_chain_test() {
         init_tokio_runtime().block_on(async {
             let rpc_address = format!("http://localhost:{}", RPC_PORT);
             let rpc_client =
-                rpc::HttpClient::new(rpc_address.as_str()).expect("Could not create RPC");
-                let mut cache = Cache::create_memory_cache(None, 10).unwrap();
-                let _res = cache.grpc_endpoint_cache.add_item(rpc_address.clone(), 0).unwrap();
-
-                let chain_client = ChainClient {
+            rpc::HttpClient::new(rpc_address.as_str()).expect("Could not create RPC");
+            let grpc_address = format!("http://localhost:9090");
+            let mut cache = Cache::create_memory_cache(None, 10).unwrap();
+            let _res = cache.grpc_endpoint_cache.add_item(grpc_address.clone(), 0).unwrap();
+            let mut chain_client = ChainClient {
                 config: ChainClientConfig {
-                    chain_name: String::from("cosmrs"),
+                    chain_name: "cosmrs".to_string(),
                     chain_id: chain_id.to_string(),
                     rpc_address: rpc_address.clone(),
-                    grpc_address: String::from(""),
+                    grpc_address,
                     account_prefix: ACCOUNT_PREFIX.to_string(),
                     gas_adjustment: 1.2,
-                    gas_prices: gas.to_string(),
+                    default_fee: ocular::tx::Coin { amount: default_fee_amount.into(), denom: DENOM.to_string() }
                 },
                 keyring: Keyring::new_file_store(None).expect("Could not create keyring."),
                 rpc_client: rpc_client.clone(),
@@ -283,10 +346,9 @@ fn local_single_node_chain_test() {
             dev::poll_for_first_block(&rpc_client).await;
 
             let tx_metadata = TxMetadata {
-                chain_id: chain_id.clone(),
-                account_number: SENDER_ACCOUNT_NUMBER,
-                sequence_number: sequence_number,
-                gas_fee: amount.clone(),
+                fee: chain_client.config.default_fee.clone(),
+                fee_payer: None,
+                fee_granter: None,
                 gas_limit: gas,
                 timeout_height: timeout_height.into(),
                 memo: MEMO.to_string(),
@@ -304,32 +366,25 @@ fn local_single_node_chain_test() {
             // Test MsgSend functionality
             let actual_tx_commit_response = chain_client
                 .send(
-                    Account {
+                    AccountInfo {
                         id: sender_account_id.clone(),
                         public_key: sender_public_key,
                         private_key: sender_private_key,
                     },
-                    recipient_account_id.clone(),
+                    recipient_account_id.clone().as_ref(),
                     amount.clone(),
-                    tx_metadata,
+                    Some(tx_metadata.clone()),
                 )
-                .await
-                .expect("Could not broadcast msg.");
+                .await;
 
-            if actual_tx_commit_response.check_tx.code.is_err() {
-                panic!(
-                    "check_tx for msgsend failed: {:?}",
-                    actual_tx_commit_response.check_tx
+            if let Err(err) = &actual_tx_commit_response {
+                println!(
+                    "msgsend failed: {:?}",
+                    err
                 );
             }
 
-            if actual_tx_commit_response.deliver_tx.code.is_err() {
-                panic!(
-                    "deliver_tx for msgsend failed: {:?}",
-                    actual_tx_commit_response.deliver_tx
-                );
-            }
-
+            let actual_tx_commit_response = actual_tx_commit_response.unwrap();
             let actual_tx = dev::poll_for_tx(&rpc_client, actual_tx_commit_response.hash).await;
             assert_eq!(&expected_tx_body, &actual_tx.body);
             assert_eq!(&expected_auth_info, &actual_tx.auth_info);
@@ -344,19 +399,9 @@ fn local_single_node_chain_test() {
             )
             .expect("Could not create key.");
 
-            let tx_metadata = TxMetadata {
-                chain_id: chain_id.clone(),
-                account_number: SENDER_ACCOUNT_NUMBER,
-                sequence_number: sequence_number + 1,
-                gas_fee: amount.clone(),
-                gas_limit: gas,
-                timeout_height: timeout_height.into(),
-                memo: MEMO.to_string(),
-            };
-
             let actual_msg_grant_commit_response = chain_client
                 .grant_send_authorization(
-                    Account {
+                    AccountInfo {
                         id: sender_account_id.clone(),
                         public_key: sender_public_key,
                         private_key: sender_private_key,
@@ -366,7 +411,7 @@ fn local_single_node_chain_test() {
                         seconds: 4110314268,
                         nanos: 0,
                     }),
-                    tx_metadata,
+                    tx_metadata.clone(),
                 )
                 .await
                 .expect("Could not broadcast msg.");
@@ -400,16 +445,6 @@ fn local_single_node_chain_test() {
             )
             .expect("Could not create key.");
 
-            let tx_metadata = TxMetadata {
-                chain_id: chain_id.clone(),
-                account_number: RECIPIENT_ACCOUNT_NUMBER,
-                sequence_number: sequence_number,
-                gas_fee: amount.clone(),
-                gas_limit: gas,
-                timeout_height: timeout_height.into(),
-                memo: MEMO.to_string(),
-            };
-
             let mut msgs_to_send: Vec<::prost_types::Any> = Vec::new();
             msgs_to_send.push(
                 MsgSend {
@@ -423,15 +458,13 @@ fn local_single_node_chain_test() {
 
             let actual_msg_exec_commit_response = chain_client
                 .execute_authorized_tx(
-                    Account {
+                    AccountInfo {
                         id: recipient_account_id.clone(),
                         public_key: grantee_private_key.public_key(),
                         private_key: grantee_private_key,
                     },
                     msgs_to_send,
-                    tx_metadata,
-                    None,
-                    None
+                    Some(tx_metadata.clone()),
                 )
                 .await
                 .expect("Could not broadcast msg.");
@@ -466,25 +499,15 @@ fn local_single_node_chain_test() {
             )
             .expect("Could not create key.");
 
-            let tx_metadata = TxMetadata {
-                chain_id: chain_id.clone(),
-                account_number: SENDER_ACCOUNT_NUMBER,
-                sequence_number: sequence_number + 2,
-                gas_fee: amount.clone(),
-                gas_limit: gas,
-                timeout_height: timeout_height.into(),
-                memo: MEMO.to_string(),
-            };
-
             let actual_msg_revoke_commit_response = chain_client
                 .revoke_send_authorization(
-                    Account {
+                    AccountInfo {
                         id: sender_account_id.clone(),
                         public_key: sender_public_key,
                         private_key: sender_private_key,
                     },
                     recipient_account_id.clone(),
-                    tx_metadata,
+                    tx_metadata.clone(),
                 )
                 .await
                 .expect("Could not broadcast msg.");
@@ -518,18 +541,8 @@ fn local_single_node_chain_test() {
             )
             .expect("Could not create key.");
 
-            let tx_metadata = TxMetadata {
-                chain_id: chain_id.clone(),
-                account_number: RECIPIENT_ACCOUNT_NUMBER,
-                sequence_number: sequence_number + 1,
-                gas_fee: Coin {
-                    amount: 0u8.into(),
-                    denom: DENOM.parse().expect("Could not parse denom."),
-                },
-                gas_limit: gas,
-                timeout_height: timeout_height.into(),
-                memo: String::from("Exec tx #2"),
-            };
+            let mut tx_metadata_memoed = tx_metadata.clone();
+            tx_metadata_memoed.memo = String::from("Exec tx #2");
 
             let mut msgs_to_send: Vec<::prost_types::Any> = Vec::new();
             msgs_to_send.push(
@@ -544,15 +557,13 @@ fn local_single_node_chain_test() {
 
             let actual_msg_exec_commit_response = chain_client
                 .execute_authorized_tx(
-                    Account {
+                    AccountInfo {
                         id: recipient_account_id.clone(),
                         public_key: grantee_private_key.public_key(),
                         private_key: grantee_private_key,
                     },
                     msgs_to_send,
-                    tx_metadata.clone(),
-                    None,
-                    None
+                    Some(tx_metadata_memoed),
                 )
                 .await
                 .expect("Could not broadcast msg.");
@@ -566,6 +577,45 @@ fn local_single_node_chain_test() {
 
             // Assert permission error since acct delegation permission was revoked
             assert_eq!(&actual_msg_exec_commit_response.deliver_tx.log.to_string()[..82], "failed to execute message; message index: 0: authorization not found: unauthorized");
+
+            // Test MsgMultiSend functionality
+            let sender_seed = sender_mnemonic.to_seed("");
+            let sender_private_key: SigningKey = SigningKey::from_bytes(
+                &bip32::XPrv::derive_from_path(sender_seed, path)
+                    .expect("Could not create key.")
+                    .private_key()
+                    .to_bytes() as &[u8],
+            )
+            .expect("Could not create key.");
+            let actual_tx_commit_response = chain_client
+                .multi_send(
+                    AccountInfo {
+                        id: sender_account_id.clone(),
+                        public_key: sender_public_key,
+                        private_key: sender_private_key,
+                    },
+                    inputs,
+                    outputs,
+                    Some(tx_metadata),
+                )
+                .await
+                .expect("Could not broadcast msg");
+
+            if actual_tx_commit_response.check_tx.code.is_err() {
+                panic!(
+                    "check_tx for msgsend failed: {:?}",
+                    actual_tx_commit_response.check_tx
+                );
+            }
+            if actual_tx_commit_response.deliver_tx.code.is_err() {
+                panic!(
+                    "deliver_tx for msgsend failed: {:?}",
+                    actual_tx_commit_response.deliver_tx
+                );
+            }
+            let actual_tx = dev::poll_for_tx(&rpc_client, actual_tx_commit_response.hash).await;
+            assert_eq!(&expected_multisend_tx_body, &actual_tx.body);
+            assert_eq!(&expected_multisend_auth_info, &actual_tx.auth_info);
         });
     });
 }

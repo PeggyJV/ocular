@@ -1,5 +1,8 @@
+#![allow(clippy::too_many_arguments)]
+
 pub use error::ChainRegistryError;
 
+pub mod account;
 pub mod chain;
 pub mod cosmos_modules {
     pub use cosmrs::proto::cosmos::auth::v1beta1 as auth;
@@ -18,4 +21,5 @@ pub mod cosmos_modules {
 }
 pub mod error;
 pub mod keyring;
+pub mod tx;
 pub mod utils;
