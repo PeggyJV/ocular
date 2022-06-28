@@ -1,14 +1,16 @@
-use crate::error::TxError;
+use crate::{
+    account::AccountInfo,
+    error::{ChainClientError, TxError},
+    tx::{MultiSendIo, TxMetadata},
+};
 use cosmrs::{
-    bank::MsgSend,
-    crypto::{secp256k1::SigningKey, PublicKey},
-    tendermint::chain::Id,
+    bank::{MsgMultiSend, MsgSend},
     tx::{self, Fee, Msg, SignDoc, SignerInfo},
     AccountId, Coin,
 };
-use std::fs::File;
 use std::io::prelude::*;
 use std::os::unix::fs::PermissionsExt;
+use std::{fs::File, str::FromStr};
 use tendermint_rpc::endpoint::broadcast::tx_commit::Response;
 
 use super::ChainClient;
@@ -18,70 +20,59 @@ const TX_LOGGING_DIR: &str = "/.ocular/logs/txs";
 /// Unix permissions for dir
 const TX_LOGGING_DIR_PERMISSIONS: u32 = 0o700;
 
-/// Metadata wrapper for transactions
-#[derive(Clone, Debug)]
-pub struct TxMetadata {
-    pub chain_id: Id,
-    pub account_number: u64,
-    pub sequence_number: u64,
-    pub gas_fee: Coin,
-    pub gas_limit: u64,
-    pub timeout_height: u32,
-    pub memo: String,
-}
-
-///  Type to hold all information around an account.
-pub struct Account {
-    pub id: AccountId,
-    pub public_key: PublicKey,
-    pub private_key: SigningKey,
-}
-
 impl ChainClient {
-    // TODO: Make this extensible to multisig and multicoin (or add new methods for that)
+    pub async fn get_basic_tx_metadata(&self) -> Result<TxMetadata, ChainClientError> {
+        let current_height = self.query_latest_height().await?;
+        let timeout_height: u32 = (current_height + 30) as u32;
+        let fee = self.config.default_fee.clone();
+
+        Ok(TxMetadata {
+            fee,
+            fee_payer: None,
+            fee_granter: None,
+            gas_limit: 200000,
+            timeout_height,
+            memo: String::default(),
+        })
+    }
+
     /// Helper method for signing and broadcasting messages.
     pub async fn sign_and_send_msg(
-        &self,
-        sender_public_key: PublicKey,
-        sender_private_key: SigningKey,
+        &mut self,
+        sender: AccountInfo,
         tx_body: tx::Body,
         tx_metadata: TxMetadata,
-        fee_payer: Option<AccountId>,
-        fee_granter: Option<AccountId>,
-    ) -> Result<Response, TxError> {
+    ) -> Result<Response, ChainClientError> {
+        let account = self.query_account(sender.id.as_ref().to_string()).await?;
+
         // Create signer info.
-        let signer_info =
-            SignerInfo::single_direct(Some(sender_public_key), tx_metadata.sequence_number);
+        let signer_info = SignerInfo::single_direct(Some(sender.public_key), account.sequence);
 
         // Compute auth info from signer info by associating a fee.
         let auth_info = signer_info.auth_info(Fee {
-            amount: vec![tx_metadata.gas_fee],
+            amount: vec![tx_metadata.fee.try_into()?],
             gas_limit: tx_metadata.gas_limit.into(),
-            payer: fee_payer,
-            granter: fee_granter,
+            payer: tx_metadata.fee_payer,
+            granter: tx_metadata.fee_granter,
         });
+        let chain_id = &cosmrs::tendermint::chain::Id::try_from(self.config.chain_id.clone())?;
 
         // Create doc to be signed
-        let sign_doc = match SignDoc::new(
-            &tx_body,
-            &auth_info,
-            &tx_metadata.chain_id,
-            tx_metadata.account_number,
-        ) {
+        let sign_doc = match SignDoc::new(&tx_body, &auth_info, chain_id, account.account_number) {
             Ok(doc) => doc,
-            Err(err) => return Err(TxError::TypeConversionError(err.to_string())),
+            Err(err) => return Err(TxError::TypeConversion(err.to_string()).into()),
         };
 
         // Create raw signed transaction.
-        let tx_signed = match sign_doc.sign(&sender_private_key) {
+        let tx_signed = match sign_doc.sign(&sender.private_key) {
             Ok(raw) => raw,
-            Err(err) => return Err(TxError::SigningError(err.to_string())),
+            Err(err) => return Err(TxError::Signing(err.to_string()).into()),
         };
 
         // Broadcast transaction
         let response = match tx_signed.broadcast_commit(&self.rpc_client).await {
             Ok(response) => response,
-            Err(err) => return Err(TxError::BroadcastError(err.to_string())),
+            Err(err) => return Err(TxError::Broadcast(err.to_string()).into()),
         };
 
         // Store tx in logs with timestamp id in ~/.ocular/logs/txs
@@ -112,7 +103,7 @@ impl ChainClient {
         if st.is_err() {
             match std::fs::create_dir_all(&save_path) {
                 Ok(_res) => _res,
-                Err(err) => return Err(TxError::Logging(err.to_string())),
+                Err(err) => return Err(TxError::Logging(err.to_string()).into()),
             };
         }
 
@@ -122,17 +113,17 @@ impl ChainClient {
             std::fs::Permissions::from_mode(TX_LOGGING_DIR_PERMISSIONS),
         ) {
             Ok(_res) => _res,
-            Err(err) => return Err(TxError::Logging(err.to_string())),
+            Err(err) => return Err(TxError::Logging(err.to_string()).into()),
         };
 
         let mut file = match File::create(save_file) {
             Ok(res) => res,
-            Err(err) => return Err(TxError::Logging(err.to_string())),
+            Err(err) => return Err(TxError::Logging(err.to_string()).into()),
         };
 
         match file.write_all(format!("{:#?}", response).as_bytes()) {
             Ok(res) => res,
-            Err(err) => return Err(TxError::Logging(err.to_string())),
+            Err(err) => return Err(TxError::Logging(err.to_string()).into()),
         };
 
         // Finally return.
@@ -142,35 +133,76 @@ impl ChainClient {
     // TODO: Make this extensible to multisig and multicoin (or add new methods for that)
     /// Signs and sends a simple transaction message.
     pub async fn send(
-        &self,
-        sender_account: Account,
-        recipient_account_id: AccountId,
+        &mut self,
+        sender: AccountInfo,
+        recipient: &str,
         amount: Coin,
-        tx_metadata: TxMetadata,
-    ) -> Result<Response, TxError> {
-        // Create send message for amount
+        tx_metadata: Option<TxMetadata>,
+    ) -> Result<Response, ChainClientError> {
+        let recipient = match AccountId::from_str(recipient) {
+            Ok(r) => r,
+            Err(err) => {
+                return Err(TxError::Address(format!(
+                    "failed to get AccountId from string {}: {}",
+                    recipient, err
+                ))
+                .into())
+            }
+        };
+
+        if recipient.prefix() != self.config.account_prefix {
+            return Err(TxError::Address(format!(
+                "invalid address prefix. expected {}, got {}",
+                self.config.account_prefix,
+                recipient.prefix()
+            ))
+            .into());
+        }
+
         let msg = MsgSend {
-            from_address: sender_account.id,
-            to_address: recipient_account_id,
+            from_address: sender.id.clone(),
+            to_address: recipient,
             amount: vec![amount.clone()],
         };
-
-        // Build tx body.
+        let tx_metadata = match tx_metadata {
+            Some(tm) => tm,
+            None => self.get_basic_tx_metadata().await?,
+        };
         let tx_body = match msg.to_any() {
             Ok(msg) => tx::Body::new(vec![msg], &tx_metadata.memo, tx_metadata.timeout_height),
-            Err(err) => return Err(TxError::SerializationError(err.to_string())),
+            Err(err) => return Err(TxError::Serialization(err.to_string()).into()),
         };
 
-        self.sign_and_send_msg(
-            sender_account.public_key,
-            sender_account.private_key,
-            tx_body,
-            tx_metadata,
-            None,
-            None,
-        )
-        .await
+        self.sign_and_send_msg(sender, tx_body, tx_metadata).await
+    }
+
+    /// Send coins in a MIMO fashion. If any coin transfers are invalid the entire transaction will fail.
+    pub async fn multi_send(
+        &mut self,
+        sender: AccountInfo,
+        inputs: Vec<MultiSendIo>,
+        outputs: Vec<MultiSendIo>,
+        tx_metadata: Option<TxMetadata>,
+    ) -> Result<Response, ChainClientError> {
+        let msg = MsgMultiSend {
+            inputs: inputs
+                .iter()
+                .map(TryInto::try_into)
+                .collect::<Result<_, _>>()?,
+            outputs: outputs
+                .iter()
+                .map(TryInto::try_into)
+                .collect::<Result<_, _>>()?,
+        };
+        let tx_metadata = match tx_metadata {
+            Some(tm) => tm,
+            None => self.get_basic_tx_metadata().await?,
+        };
+        let tx_body = match msg.to_any() {
+            Ok(msg) => tx::Body::new(vec![msg], &tx_metadata.memo, tx_metadata.timeout_height),
+            Err(err) => return Err(TxError::Serialization(err.to_string()).into()),
+        };
+
+        self.sign_and_send_msg(sender, tx_body, tx_metadata).await
     }
 }
-
-// Disclaimer on testing: Since the above commands inherently require chains to operate, testing is deferred to integration tests in ocular/tests/single_node_chain_txs.rs

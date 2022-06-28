@@ -24,7 +24,7 @@ impl ChainClient {
     // TODO: Refractor code accross grpc clients by having keystore implement Sync (https://github.com/PeggyJV/ocular/pull/53#discussion_r880698565)
     pub async fn get_auth_query_client(&mut self) -> Result<AuthQueryClient, ChainClientError> {
         let mut result: Result<AuthQueryClient, ChainClientError> =
-            Err(TxError::BroadcastError(String::from("Client connection never attempted.")).into());
+            Err(TxError::Broadcast(String::from("Client connection never attempted.")).into());
 
         // Get grpc address randomly each time; shuffles on failures
         for _i in 0u8..self.connection_retry_attempts + 1 {
@@ -108,7 +108,7 @@ impl ChainClient {
     // TODO: Refractor code accross grpc clients by having keystore implement Sync (https://github.com/PeggyJV/ocular/pull/53#discussion_r880698565)
     pub async fn get_bank_query_client(&mut self) -> Result<BankQueryClient, ChainClientError> {
         let mut result: Result<BankQueryClient, ChainClientError> =
-            Err(TxError::BroadcastError(String::from("Client connection never attempted.")).into());
+            Err(TxError::Broadcast(String::from("Client connection never attempted.")).into());
 
         // Get grpc address randomly each time; shuffles on failures
         for _i in 0u8..self.connection_retry_attempts + 1 {

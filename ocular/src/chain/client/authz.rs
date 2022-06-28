@@ -1,10 +1,11 @@
 use crate::{
-    chain::client::tx::{Account, TxMetadata},
+    account::AccountInfo,
     cosmos_modules::{
         authz::{self, *},
         feegrant::{BasicAllowance, MsgGrantAllowance},
     },
     error::{ChainClientError, GrpcError, TxError},
+    tx::TxMetadata,
 };
 use cosmrs::{tx, AccountId};
 use prost::Message;
@@ -20,7 +21,7 @@ impl ChainClient {
     // TODO: Refractor code accross grpc clients by having keystore implement Sync (https://github.com/PeggyJV/ocular/pull/53#discussion_r880698565)
     pub async fn get_authz_query_client(&mut self) -> Result<AuthzQueryClient, ChainClientError> {
         let mut result: Result<AuthzQueryClient, ChainClientError> =
-            Err(TxError::BroadcastError(String::from("Client connection never attempted.")).into());
+            Err(TxError::Broadcast(String::from("Client connection never attempted.")).into());
 
         // Get grpc address randomly each time; shuffles on failures
         for _i in 0u8..self.connection_retry_attempts + 1 {
@@ -95,12 +96,12 @@ impl ChainClient {
     // Grant Authorization
     // TODO: support other types of authorization grants other than GenericAuthorization for send messages.
     pub async fn grant_send_authorization(
-        &self,
-        granter: Account,
+        &mut self,
+        granter: AccountInfo,
         grantee: AccountId,
         expiration_timestamp: Option<prost_types::Timestamp>,
         tx_metadata: TxMetadata,
-    ) -> Result<Response, TxError> {
+    ) -> Result<Response, ChainClientError> {
         let msg = MsgGrant {
             granter: granter.id.to_string(),
             grantee: grantee.to_string(),
@@ -115,107 +116,75 @@ impl ChainClient {
                 expiration: expiration_timestamp,
             }),
         };
-
-        // Build tx body.
         let msg_any = prost_types::Any {
             type_url: String::from("/cosmos.authz.v1beta1.MsgGrant"),
             value: msg.encode_to_vec(),
         };
-
         let tx_body = tx::Body::new(vec![msg_any], &tx_metadata.memo, tx_metadata.timeout_height);
 
-        self.sign_and_send_msg(
-            granter.public_key,
-            granter.private_key,
-            tx_body,
-            tx_metadata,
-            None,
-            None,
-        )
-        .await
+        self.sign_and_send_msg(granter, tx_body, tx_metadata).await
     }
 
     // Revoke Authorization
     // TODO: support other types of authorization revokes other than send messages.
     pub async fn revoke_send_authorization(
-        &self,
-        granter: Account,
+        &mut self,
+        granter: AccountInfo,
         grantee: AccountId,
         tx_metadata: TxMetadata,
-    ) -> Result<Response, TxError> {
+    ) -> Result<Response, ChainClientError> {
         let msg = MsgRevoke {
             granter: granter.id.to_string(),
             grantee: grantee.to_string(),
             msg_type_url: String::from("/cosmos.bank.v1beta1.MsgSend"),
         };
-
-        // Build tx body.
         let msg_any = prost_types::Any {
             type_url: String::from("/cosmos.authz.v1beta1.MsgRevoke"),
             value: msg.encode_to_vec(),
         };
-
         let tx_body = tx::Body::new(vec![msg_any], &tx_metadata.memo, tx_metadata.timeout_height);
 
-        self.sign_and_send_msg(
-            granter.public_key,
-            granter.private_key,
-            tx_body,
-            tx_metadata,
-            None,
-            None,
-        )
-        .await
+        self.sign_and_send_msg(granter, tx_body, tx_metadata).await
     }
 
-    // Execute a transaction previously authorized by granter
+    // Execute a transaction previously authorized by another account on its behalf
     pub async fn execute_authorized_tx(
-        &self,
-        grantee: Account,
+        &mut self,
+        grantee: AccountInfo,
         msgs: Vec<::prost_types::Any>,
-        tx_metadata: TxMetadata,
-        fee_payer: Option<AccountId>,
-        fee_granter: Option<AccountId>,
-    ) -> Result<Response, TxError> {
+        tx_metadata: Option<TxMetadata>,
+    ) -> Result<Response, ChainClientError> {
         let msg = MsgExec {
             grantee: grantee.id.to_string(),
             msgs,
         };
-
-        // Build tx body.
         let msg_any = prost_types::Any {
             type_url: String::from("/cosmos.authz.v1beta1.MsgExec"),
             value: msg.encode_to_vec(),
         };
-
+        let tx_metadata = match tx_metadata {
+            Some(tm) => tm,
+            None => self.get_basic_tx_metadata().await?,
+        };
         let tx_body = tx::Body::new(vec![msg_any], &tx_metadata.memo, tx_metadata.timeout_height);
 
-        self.sign_and_send_msg(
-            grantee.public_key,
-            grantee.private_key,
-            tx_body,
-            tx_metadata,
-            fee_payer,
-            fee_granter,
-        )
-        .await
+        self.sign_and_send_msg(grantee, tx_body, tx_metadata).await
     }
 
     // Basic fee allowance
     pub async fn perform_basic_allowance_fee_grant(
-        &self,
-        granter: Account,
+        &mut self,
+        granter: AccountInfo,
         grantee: AccountId,
         expiration: Option<prost_types::Timestamp>,
         // TODO: Standardize below Coin type to common cosmrs coin type once FeeGrants get looped in.
         spend_limit: cosmos_sdk_proto::cosmos::base::v1beta1::Coin,
         tx_metadata: TxMetadata,
-    ) -> Result<Response, TxError> {
+    ) -> Result<Response, ChainClientError> {
         let allowance = BasicAllowance {
             spend_limit: vec![spend_limit],
             expiration,
         };
-
         let msg = MsgGrantAllowance {
             granter: granter.id.to_string(),
             grantee: grantee.to_string(),
@@ -224,24 +193,13 @@ impl ChainClient {
                 value: allowance.encode_to_vec(),
             }),
         };
-
-        // Build tx body.
         let msg_any = prost_types::Any {
             type_url: String::from("/cosmos.feegrant.v1beta1.MsgGrantAllowance"),
             value: msg.encode_to_vec(),
         };
-
         let tx_body = tx::Body::new(vec![msg_any], &tx_metadata.memo, tx_metadata.timeout_height);
 
-        self.sign_and_send_msg(
-            granter.public_key,
-            granter.private_key,
-            tx_body,
-            tx_metadata,
-            None,
-            None,
-        )
-        .await
+        self.sign_and_send_msg(granter, tx_body, tx_metadata).await
     }
 }
 
@@ -255,6 +213,7 @@ mod tests {
     #[assay]
     async fn gets_authz_client() {
         let mut client = ChainClient::create(chain::COSMOSHUB).unwrap();
+        client.config.grpc_address = "http://cosmoshub.strange.love:9090".to_string();
 
         client
             .get_authz_query_client()
