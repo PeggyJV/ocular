@@ -5,6 +5,7 @@ use serde::de::DeserializeOwned;
 use self::{assets::AssetList, chain::ChainInfo, paths::IBCPath};
 
 pub mod assets;
+#[cfg(feature="registry-cache")]
 pub mod cache;
 pub mod chain;
 pub mod paths;

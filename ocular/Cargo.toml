@@ -46,3 +46,7 @@ prost = "0.9.0"
 toml = "0.5.8"
 chrono = "0.4.0"
 uuid = { version = "0.8.2", features = ["serde", "v4"] }
+
+[features]
+default = ["registry-cache"]
+registry-cache = []
