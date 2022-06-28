@@ -1,4 +1,4 @@
-/// Models for serializing and deserializing `assets.json` for a given chain
+/// Contains models for serializing and deserializing `assets.json` for a given chain
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, Default, Deserialize, Serialize)]

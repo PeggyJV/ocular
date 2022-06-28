@@ -1,8 +1,11 @@
+
 use crate::error::ChainRegistryError;
-use octocrab::models::repos::ContentItems;
 use serde::de::DeserializeOwned;
 
-use self::{assets::AssetList, chain::ChainInfo, paths::IBCPath};
+pub use self::{assets::*, chain::*, paths::*};
+
+#[cfg(all(feature = "registry-cache"))]
+pub use self::cache::*;
 
 pub mod assets;
 #[cfg(feature = "registry-cache")]
@@ -10,8 +13,11 @@ pub mod cache;
 pub mod chain;
 pub mod paths;
 
+// In the future we may want to provide a way for a user to set the desired ref for the registry
+// module to use when querying.
 const GIT_REF: &str = "d063b0fd6d1c20d6476880e5ea2212ade009f69e";
 
+/// Gets a list of chain names from the registry
 pub async fn list_chains() -> Result<Vec<String>, ChainRegistryError> {
     Ok(octocrab::instance()
         .repos("cosmos", "chain-registry")
@@ -27,6 +33,7 @@ pub async fn list_chains() -> Result<Vec<String>, ChainRegistryError> {
         .collect())
 }
 
+/// Gets a list of path names from the registry in the form <chain_a>-<chain_b>
 pub async fn list_paths() -> Result<Vec<String>, ChainRegistryError> {
     Ok(octocrab::instance()
         .repos("cosmos", "chain-registry")
@@ -41,6 +48,13 @@ pub async fn list_paths() -> Result<Vec<String>, ChainRegistryError> {
         .collect())
 }
 
+/// Retrieves the deserialized `assets.json` for a given chain. The result will contain
+/// `None` if the there is no `assets.json` present.
+///
+/// # Arguments
+///
+/// * `name` - The chain name. Must match the name of the chain's folder in the root directory of the
+/// [chain registry](https://github.com/cosmos/chain-registry).
 pub async fn get_assets(name: &str) -> Result<Option<AssetList>, ChainRegistryError> {
     let path = format!("{}/assetlist.json", name);
     let data = get_file_content(GIT_REF, &path).await?;
@@ -48,6 +62,13 @@ pub async fn get_assets(name: &str) -> Result<Option<AssetList>, ChainRegistryEr
     Ok(parse_json(data).await)
 }
 
+/// Retrieves the deserialized `chain.json` for a given chain. The result will contain
+/// `None` if the there is no `chain.json` present.
+///
+/// # Arguments
+///
+/// * `name` - The chain name. Must match the name of the chain's folder in the root directory of the
+/// [chain registry](https://github.com/cosmos/chain-registry).
 pub async fn get_chain(name: &str) -> Result<Option<ChainInfo>, ChainRegistryError> {
     let path = format!("{}/chain.json", name);
     let data = get_file_content(GIT_REF, &path).await?;
@@ -55,22 +76,23 @@ pub async fn get_chain(name: &str) -> Result<Option<ChainInfo>, ChainRegistryErr
     Ok(parse_json(data).await)
 }
 
+/// Retrieves the deserialized IBC path json for a given pair of chains. The result will contain
+/// `None` if the there is no path present.
+///
+/// # Arguments
+///
+/// * `name` - The chain name. Must match the name of the chain's folder in the root directory of the
+/// [chain registry](https://github.com/cosmos/chain-registry).
 pub async fn get_path(chain_a: &str, chain_b: &str) -> Result<Option<IBCPath>, ChainRegistryError> {
-    // path names order the chain names in alphabetically
-    let a = chain_a.min(chain_b);
-    let b = chain_a.max(chain_b);
-    let path = format!("_IBC/{}-{}.json", a, b);
+    // path names order the chain names alphabetically
+    let path = format!(
+        "_IBC/{}-{}.json",
+        chain_a.min(chain_b),
+        chain_a.max(chain_b)
+    );
     let data = get_file_content(GIT_REF, &path).await?;
 
     Ok(parse_json(data).await)
-}
-
-pub async fn get_content() -> Result<ContentItems, ChainRegistryError> {
-    Ok(octocrab::instance()
-        .repos("cosmos", "chain-registry")
-        .get_content()
-        .send()
-        .await?)
 }
 
 async fn get_file_content(r#ref: &str, path: &str) -> Result<String, ChainRegistryError> {
@@ -148,5 +170,13 @@ mod tests {
         let result = get_path(chain_b, chain_a).await.unwrap().unwrap();
         assert_eq!(result.chain_1.chain_name, "cosmoshub");
         assert_eq!(result.chain_2.chain_name, "osmosis");
+    }
+
+    #[assay]
+    async fn get_path_not_present_returns_none() {
+        let chain_a = "fake";
+        let chain_b = "osmosis";
+        let result = get_path(chain_b, chain_a).await.unwrap();
+        assert!(result.is_none())
     }
 }

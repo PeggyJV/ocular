@@ -2,10 +2,9 @@
 
 use crate::{
     chain::{client::cache::Cache, config::ChainClientConfig},
-    error::{ChainClientError, RpcError},
+    error::{ChainClientError, ChainRegistryError, RpcError},
     keyring::Keyring,
     registry::get_chain,
-    ChainRegistryError,
 };
 use futures::executor;
 use tendermint_rpc::{self, WebSocketClient, WebSocketClientDriver};

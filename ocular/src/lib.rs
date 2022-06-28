@@ -1,7 +1,5 @@
 #![allow(clippy::too_many_arguments)]
 
-pub use error::ChainRegistryError;
-
 pub mod account;
 pub mod chain;
 pub mod cosmos_modules {

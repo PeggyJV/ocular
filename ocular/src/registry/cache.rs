@@ -1,6 +1,7 @@
+/// Provides caching of registry data for easy querying and filtering.
 use crate::{
     registry::{self, paths::IBCPath},
-    ChainRegistryError,
+    error::ChainRegistryError,
 };
 use serde::{Deserialize, Serialize};
 use std::{cmp::Ordering, collections::HashMap};
@@ -10,14 +11,20 @@ use super::paths::Tag;
 // TO-DO:
 // - Option to load from local repo clone
 // - Currently don't see a need to cache chain/asset info but might need it in the future
+/// Used to cache IBC path data from the chain registry for easy filtering.
 #[derive(Default, Deserialize, Serialize)]
 pub struct RegistryCache {
     paths: HashMap<String, IBCPath>,
 }
 
-/// Used to cache IBC path data from the chain registry for easy filtering.
 impl RegistryCache {
-    /// Returns a cached [`IBCPath`] representing a channel between [`chain_a`] and `chain_b` if it exists
+    /// Returns a cached [`IBCPath`] representing a channel between `chain_a` and `chain_b` if it exists.
+    /// Passing in the same value for `chain_a` and `chain_b` will always return `Ok(None)`.
+    ///
+    /// # Arguments
+    ///
+    /// * `chain_a` - A chain name. Must match a directory name in the root of the chain registry repository `<https://github.com/cosmos/chain-registry>`
+    /// * `chain_b` - A chain name. Must match a directory name in the root of the chain registry repository `<https://github.com/cosmos/chain-registry>`
     pub async fn get_path(
         &self,
         chain_a: &str,
@@ -33,6 +40,23 @@ impl RegistryCache {
     }
 
     /// Returns cached [`IBCPath`] that match a provided [`Tag`]
+    ///
+    /// # Arguments
+    ///
+    /// * `tag` - A [`Tag`] representing the the desired key/value pair to filter by.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use ocular::registry::RegistryCache;
+    ///
+    /// // store paths from the registry repository in a cache
+    /// let cache = RegistryCache::try_new().await?
+    /// let dex = "osmosis".to_string();
+    ///
+    /// // paths will contain a vec of all IBC paths containing the tag dex:osmosis
+    /// let paths = cache.get_paths_filtered(Tag::Dex(dex))?;
+    /// ```
     pub async fn get_paths_filtered(&self, tag: Tag) -> Result<Vec<IBCPath>, ChainRegistryError> {
         Ok(self
             .paths

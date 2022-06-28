@@ -1,6 +1,6 @@
 #![cfg(all(feature = "registry-cache"))]
 use assay::assay;
-use ocular::registry::{cache::RegistryCache, paths::Tag};
+use ocular::registry::{RegistryCache, Tag};
 
 #[assay]
 async fn registry_cache_happy_path() {
