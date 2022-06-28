@@ -1,4 +1,4 @@
-#![cfg(all(feature="registry-cache"))]
+#![cfg(all(feature = "registry-cache"))]
 use assay::assay;
 use ocular::registry::{cache::RegistryCache, paths::Tag};
 
