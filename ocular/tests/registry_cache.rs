@@ -3,11 +3,9 @@ use ocular::registry::{cache::RegistryCache, paths::Tag};
 
 #[assay]
 async fn registry_cache_happy_path() {
-    assert!(RegistryCache::initialize().await.is_ok());
-
-    let cache = RegistryCache::get_read_lock().await;
-    assert!(cache.is_initialized());
-
+    let cache = RegistryCache::try_new()
+        .await
+        .expect("failed to initialize cache");
     let chain_a = "cosmoshub";
     let chain_b = "osmosis";
     let result = cache.get_path(chain_a, chain_b).await.unwrap().unwrap();

@@ -2,17 +2,10 @@ use crate::{
     registry::{self, paths::IBCPath},
     ChainRegistryError,
 };
-use lazy_static::lazy_static;
 use serde::{Deserialize, Serialize};
-use std::{cmp::Ordering, collections::HashMap, sync::Arc};
-use tokio::sync::{RwLock, RwLockReadGuard};
+use std::{cmp::Ordering, collections::HashMap};
 
 use super::paths::Tag;
-
-lazy_static! {
-    static ref REGISTRY_CACHE: Arc<RwLock<RegistryCache>> =
-        Arc::<RwLock::<RegistryCache>>::default();
-}
 
 // TO-DO:
 // - Option to load from local repo clone
@@ -20,26 +13,16 @@ lazy_static! {
 #[derive(Default, Deserialize, Serialize)]
 pub struct RegistryCache {
     paths: HashMap<String, IBCPath>,
-    path_names: Vec<String>,
 }
 
-/// Used to cache IBC path data from the chain registry for easy filtering. A static cache is initialized automatically.
-/// To acquire a read lock for it, use [`get_read_lock()`]
+/// Used to cache IBC path data from the chain registry for easy filtering.
 impl RegistryCache {
-    pub fn is_initialized(&self) -> bool {
-        !self.path_names.is_empty()
-    }
-
     /// Returns a cached [`IBCPath`] representing a channel between [`chain_a`] and `chain_b` if it exists
     pub async fn get_path(
         &self,
         chain_a: &str,
         chain_b: &str,
     ) -> Result<Option<IBCPath>, ChainRegistryError> {
-        if !self.is_initialized() {
-            Self::initialize().await?;
-        }
-
         let path_name = match chain_a.cmp(chain_b) {
             Ordering::Less => chain_a.to_string() + "-" + chain_b,
             Ordering::Equal => return Ok(None),
@@ -51,10 +34,6 @@ impl RegistryCache {
 
     /// Returns cached [`IBCPath`] that match a provided [`Tag`]
     pub async fn get_paths_filtered(&self, tag: Tag) -> Result<Vec<IBCPath>, ChainRegistryError> {
-        if !self.is_initialized() {
-            Self::initialize().await?;
-        }
-
         Ok(self
             .paths
             .iter()
@@ -68,32 +47,24 @@ impl RegistryCache {
             .collect())
     }
 
-    /// Gets a read lock on the static [`RegistryCache`]. The cache can be pre-loaded with IBC path data using the
-    /// [`load_ibc_paths()`] method, otherwise it will populate the first time data is requested from it.
-    pub async fn get_read_lock() -> RwLockReadGuard<'static, RegistryCache> {
-        REGISTRY_CACHE.read().await
-    }
-
-    /// Retrieves, deserializes, and caches each [`IBCPath`] from the Cosmos Chain Registry for easy filtering
-    pub async fn initialize() -> Result<(), ChainRegistryError> {
-        let mut cache = REGISTRY_CACHE.write().await;
+    /// Creates a new cache by retrieving and deserializing each [`IBCPath`] from the Cosmos Chain Registry for easy filtering
+    pub async fn try_new() -> Result<RegistryCache, ChainRegistryError> {
         let path_names = registry::list_paths().await?;
-        cache.path_names = path_names.clone();
+        let mut paths = HashMap::<String, IBCPath>::default();
 
-        for path_name in path_names {
-            let pn = path_name.clone();
+        for pn in path_names {
             let cn: Vec<&str> = pn.split('-').collect();
 
             // this unwrap is safe becauase we query the path directly from the list of path .json file names
             // retrieved earlier, therefore the Option returned should never be None.
-            cache.paths.insert(
-                path_name,
+            paths.insert(
+                pn.clone(),
                 registry::get_path(cn[0], cn[1])
                     .await?
                     .expect("path returned None"),
             );
         }
 
-        Ok(())
+        Ok(RegistryCache { paths })
     }
 }

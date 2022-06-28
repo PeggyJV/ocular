@@ -1,7 +1,7 @@
 use crate::{config, prelude::*};
 use abscissa_core::{Command, Runnable};
 use clap::Parser;
-use ocular::chain::info::ChainInfo;
+use ocular::registry::chain::ChainInfo;
 use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, fs, path::Path, str};
 
