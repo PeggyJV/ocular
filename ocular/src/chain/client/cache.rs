@@ -56,9 +56,12 @@ impl Cache {
     /// Otherwise if set to false, it will use what is found at the file or create a new one if not found.
     ///
     /// Toml will be required to be structured as so:
+    ///
+    /// ```toml
     /// [[endpoints]]
     ///     address = "35.230.37.28:9090"
     ///     connsecutive_failed_connections = 0
+    /// ```
     pub fn create_file_cache(
         file_path: Option<&str>,
         connsecutive_failed_connections_threshold: u8,
