@@ -3,12 +3,10 @@ use crate::{
     error::{ChainClientError, TxError},
     tx::TxMetadata,
 };
-use cosmrs::{
-    tx::{self, SignerInfo, Fee, SignDoc}
-};
+use cosmrs::tx::{self, Fee, SignDoc, SignerInfo};
+use std::fs::File;
 use std::io::prelude::*;
 use std::os::unix::fs::PermissionsExt;
-use std::fs::File;
 use tendermint_rpc::endpoint::broadcast::tx_commit::Response;
 
 use super::ChainClient;

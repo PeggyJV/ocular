@@ -1,8 +1,6 @@
 //! Query methods for the [Authz module](https://github.com/cosmos/cosmos-sdk/blob/main/proto/cosmos/authz/v1beta1/query.proto). If you need a query that does not have a method wrapper here, you can use the [`AuthzQueryClient`] directly.
 use crate::{
-    cosmos_modules::{
-        authz::{self, *},
-    },
+    cosmos_modules::authz::{self, *},
     error::{ChainClientError, GrpcError},
 };
 use async_trait::async_trait;

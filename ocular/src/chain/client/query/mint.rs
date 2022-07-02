@@ -2,7 +2,7 @@
 use async_trait::async_trait;
 use tonic::transport::Channel;
 
-use crate::{cosmos_modules::mint};
+use crate::cosmos_modules::mint;
 
 use super::QueryClient;
 

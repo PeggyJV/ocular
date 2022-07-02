@@ -4,7 +4,10 @@ use cosmos_sdk_proto::cosmos::base::query::v1beta1::PageRequest;
 use prost::Message;
 use tonic::transport::Channel;
 
-use crate::{cosmos_modules::auth, error::{ChainClientError, GrpcError}};
+use crate::{
+    cosmos_modules::auth,
+    error::{ChainClientError, GrpcError},
+};
 
 use super::{ChainClient, QueryClient};
 

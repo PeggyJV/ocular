@@ -1,9 +1,17 @@
 use std::str::FromStr;
 
-use cosmrs::{Coin, AccountId, bank::{MsgSend, MsgMultiSend}, tx::{Msg, self}};
+use cosmrs::{
+    bank::{MsgMultiSend, MsgSend},
+    tx::{self, Msg},
+    AccountId, Coin,
+};
 use tendermint_rpc::endpoint::broadcast::tx_commit::Response;
 
-use crate::{error::{TxError, ChainClientError}, tx::{TxMetadata, MultiSendIo}, account::AccountInfo};
+use crate::{
+    account::AccountInfo,
+    error::{ChainClientError, TxError},
+    tx::{MultiSendIo, TxMetadata},
+};
 
 use super::ChainClient;
 

@@ -3,7 +3,10 @@ use async_trait::async_trait;
 use cosmos_sdk_proto::cosmos::base::v1beta1::Coin;
 use tonic::transport::Channel;
 
-use crate::{cosmos_modules::bank, error::{ChainClientError, GrpcError}};
+use crate::{
+    cosmos_modules::bank,
+    error::{ChainClientError, GrpcError},
+};
 
 use super::{ChainClient, QueryClient};
 
