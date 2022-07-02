@@ -1,7 +1,7 @@
 /// Provides caching of registry data for easy querying and filtering.
 use crate::{
-    registry::{self, paths::IBCPath},
     error::ChainRegistryError,
+    registry::{self, paths::IBCPath},
 };
 use serde::{Deserialize, Serialize};
 use std::{cmp::Ordering, collections::HashMap};

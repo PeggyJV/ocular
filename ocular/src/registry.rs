@@ -1,4 +1,3 @@
-
 use crate::error::ChainRegistryError;
 use serde::de::DeserializeOwned;
 
