@@ -3,24 +3,30 @@
 //! # Examples
 //!
 //! ```no_run
-//! use cosmos_sdk_proto::cosmos::auth::QueryAccountsRequest;
-//! use ocular::chain::{ChainName::COSMOSHUB, client::ChainClient, query::*};
+//! use cosmos_sdk_proto::cosmos::auth::v1beta1::{BaseAccount, QueryAccountsRequest};
+//! use ocular::{chain::{COSMOSHUB, client::{ChainClient, query::*}}, error::ChainClientError};
+//! use prost::Message;
 //!
-//! // with ocular's `ChainClient`
-//! let client = ChainClient::create(COSMOSHUB).await.unwrap();
-//! let accounts = client.query_accounts(None).await.unwrap();
+//! async fn get_accounts_example() {
+//!     // with ocular's `ChainClient`
+//!     let mut client = ChainClient::create(COSMOSHUB).unwrap();
+//!     let accounts = client.query_accounts(None).await;
 //!
-//! // with proto query client
-//! let client = AuthQueryClient::connect("http://some-grpc-endpoint.com:9090").await.unwrap();
-//! let request = QueryAccountsRequest { pagination: None };
-//! let accounts = client
-//!     .accounts()
-//!     .await?
-//!     .into_inner()
-//!     .accounts
-//!     .iter()
-//!     .map(|any| auth::BaseAccount::decode(&any.value as &[u8]).unwrap())
-//!     .collect()
+//!     //or
+//!
+//!     // with proto query client
+//!     let mut client = AuthQueryClient::connect("http://some-grpc-endpoint.com:9090").await.unwrap();
+//!     let request = QueryAccountsRequest { pagination: None };
+//!     let accounts: Vec<BaseAccount> = client
+//!         .accounts(request)
+//!         .await
+//!         .unwrap()
+//!         .into_inner()
+//!         .accounts
+//!         .iter()
+//!         .map(|any| BaseAccount::decode(&any.value as &[u8]).unwrap())
+//!         .collect();
+//! }
 //! ```
 use async_trait::async_trait;
 use tendermint_rpc::Client as RpcClient;
@@ -50,7 +56,7 @@ pub mod staking;
 /// A marker trait for query client types in the Cosmos SDK proto
 pub trait QueryClient
 where
-    Self: Sized
+    Self: Sized,
 {
     type Transport;
 
@@ -62,7 +68,7 @@ pub struct ClientFactory;
 impl ClientFactory {
     pub async fn connect<T>(endpoint: String) -> Result<T, tonic::transport::Error>
     where
-        T: Sized + QueryClient<Transport = Channel>
+        T: Sized + QueryClient<Transport = Channel>,
     {
         T::connect(endpoint).await
     }
@@ -72,7 +78,7 @@ impl ChainClient {
     /// Constructor for query clients.
     pub async fn get_query_client<T>(&mut self) -> Result<T, ChainClientError>
     where
-        T: QueryClient<Transport = Channel>
+        T: QueryClient<Transport = Channel>,
     {
         let mut result: Result<T, ChainClientError> =
             Err(TxError::Broadcast(String::from("Client connection never attempted.")).into());
