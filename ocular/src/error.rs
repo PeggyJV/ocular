@@ -107,7 +107,7 @@ pub enum KeyStoreError {
     #[error("error deriving AccountId from PublicKey")]
     DerivingAccountId(#[from] ErrorReport),
     #[error("error during account retrieval")]
-    RetrievingAccount(#[from] AccountError)
+    RetrievingAccount(#[from] AccountError),
 }
 
 #[derive(Debug, Error)]
@@ -170,5 +170,5 @@ pub enum AccountError {
     #[error("error decoding account data: {0}")]
     Decode(#[from] ErrorReport),
     #[error("invalid key type")]
-    InvalidPublicKey(String)
+    InvalidPublicKey(String),
 }

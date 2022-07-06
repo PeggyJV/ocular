@@ -770,7 +770,10 @@ mod tests {
 
         // Verify recovered key is equal to deleted one
         let new_account = keyring.get_account("new_celery").unwrap();
-        assert_eq!(new_account.id("cosmos").as_ref(), account.id("cosmos").as_ref());
+        assert_eq!(
+            new_account.id("cosmos").as_ref(),
+            account.id("cosmos").as_ref()
+        );
         assert_eq!(new_account.public_key(), account.public_key());
 
         // Clean up dir
@@ -869,7 +872,10 @@ mod tests {
 
         // Verify recovered key is equal to deleted one
         let new_account = keyring.get_account("new_trex").unwrap();
-        assert_eq!(new_account.id("cosmos").as_ref(), account.id("cosmos").as_ref());
+        assert_eq!(
+            new_account.id("cosmos").as_ref(),
+            account.id("cosmos").as_ref()
+        );
         assert_eq!(new_account.public_key(), account.public_key());
 
         // Clean up dir

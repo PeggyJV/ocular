@@ -51,7 +51,9 @@ impl TryFrom<Arc<SigningKey>> for AccountInfo {
 
         // By doing this check here, we can assert that self.id() and self.address() will not error (so long as all constructors make this check)
         if let Err(_) = public_key.account_id("testprefix") {
-            return Err(AccountError::InvalidPublicKey("unable to derive AccountId from key".to_string()))
+            return Err(AccountError::InvalidPublicKey(
+                "unable to derive AccountId from key".to_string(),
+            ));
         }
 
         Ok(AccountInfo {

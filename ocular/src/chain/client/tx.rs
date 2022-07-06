@@ -43,7 +43,9 @@ impl ChainClient {
         tx_body: tx::Body,
         tx_metadata: TxMetadata,
     ) -> Result<Response, ChainClientError> {
-        let account = self.query_account(sender.address(&self.config.account_prefix)).await?;
+        let account = self
+            .query_account(sender.address(&self.config.account_prefix))
+            .await?;
 
         // Create signer info.
         let signer_info = SignerInfo::single_direct(Some(sender.public_key()), account.sequence);
