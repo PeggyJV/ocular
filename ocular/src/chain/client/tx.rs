@@ -43,10 +43,10 @@ impl ChainClient {
         tx_body: tx::Body,
         tx_metadata: TxMetadata,
     ) -> Result<Response, ChainClientError> {
-        let account = self.query_account(sender.id.as_ref().to_string()).await?;
+        let account = self.query_account(sender.address(&self.config.account_prefix)).await?;
 
         // Create signer info.
-        let signer_info = SignerInfo::single_direct(Some(sender.public_key), account.sequence);
+        let signer_info = SignerInfo::single_direct(Some(sender.public_key()), account.sequence);
 
         // Compute auth info from signer info by associating a fee.
         let auth_info = signer_info.auth_info(Fee {
@@ -64,7 +64,7 @@ impl ChainClient {
         };
 
         // Create raw signed transaction.
-        let tx_signed = match sign_doc.sign(&sender.private_key) {
+        let tx_signed = match sign_doc.sign(sender.private_key()) {
             Ok(raw) => raw,
             Err(err) => return Err(TxError::Signing(err.to_string()).into()),
         };
@@ -160,7 +160,7 @@ impl ChainClient {
         }
 
         let msg = MsgSend {
-            from_address: sender.id.clone(),
+            from_address: sender.id(&self.config.account_prefix).clone(),
             to_address: recipient,
             amount: vec![amount.clone()],
         };

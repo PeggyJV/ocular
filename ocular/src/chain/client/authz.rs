@@ -103,7 +103,7 @@ impl ChainClient {
         tx_metadata: TxMetadata,
     ) -> Result<Response, ChainClientError> {
         let msg = MsgGrant {
-            granter: granter.id.to_string(),
+            granter: granter.address(&self.config.account_prefix),
             grantee: grantee.to_string(),
             grant: Some(Grant {
                 authorization: Some(prost_types::Any {
@@ -134,7 +134,7 @@ impl ChainClient {
         tx_metadata: TxMetadata,
     ) -> Result<Response, ChainClientError> {
         let msg = MsgRevoke {
-            granter: granter.id.to_string(),
+            granter: granter.address(&self.config.account_prefix),
             grantee: grantee.to_string(),
             msg_type_url: String::from("/cosmos.bank.v1beta1.MsgSend"),
         };
@@ -155,7 +155,7 @@ impl ChainClient {
         tx_metadata: Option<TxMetadata>,
     ) -> Result<Response, ChainClientError> {
         let msg = MsgExec {
-            grantee: grantee.id.to_string(),
+            grantee: grantee.address(&self.config.account_prefix),
             msgs,
         };
         let msg_any = prost_types::Any {
@@ -186,7 +186,7 @@ impl ChainClient {
             expiration,
         };
         let msg = MsgGrantAllowance {
-            granter: granter.id.to_string(),
+            granter: granter.address(&self.config.account_prefix),
             grantee: grantee.to_string(),
             allowance: Some(prost_types::Any {
                 type_url: String::from("/cosmos.feegrant.v1beta1.BasicAllowance"),

@@ -91,11 +91,11 @@ impl ChainClient {
         payments: Vec<Payment>,
         tx_metadata: Option<TxMetadata>,
     ) -> Result<Response, ChainClientError> {
-        self.verify_multi_send_grant(granter.id.clone(), grantee.id.clone())
+        self.verify_multi_send_grant(granter.id(&self.config.account_prefix), grantee.id(&self.config.account_prefix))
             .await?;
 
         let (inputs, outputs) =
-            multi_send_args_from_payments(granter.id.as_ref().to_string(), payments);
+            multi_send_args_from_payments(granter.address(&self.config.account_prefix), payments);
         let msgs: Vec<prost_types::Any> = vec![MsgMultiSend {
             inputs: inputs
                 .iter()
@@ -118,7 +118,7 @@ impl ChainClient {
     ) -> Result<Response, ChainClientError> {
         let payments_toml = read_payments_toml(path)?;
         let grantee = match payments_toml.grantee_key_name {
-            Some(g) => self.keyring.get_account(&g, &self.config.account_prefix),
+            Some(g) => self.keyring.get_account(&g),
             None => {
                 return Err(AirdropError::Toml(
                     "no grantee key name was provided for the delegated airdrop.".to_string(),
@@ -128,7 +128,7 @@ impl ChainClient {
         }?;
         let granter = self
             .keyring
-            .get_account(&payments_toml.sender_key_name, &self.config.account_prefix)?;
+            .get_account(&payments_toml.sender_key_name)?;
 
         // add fee_payer and fee_granter values to metadata if present
         let basic_tx_metadata = self.get_basic_tx_metadata().await?;
@@ -161,7 +161,7 @@ impl ChainClient {
         tx_metadata: Option<TxMetadata>,
     ) -> Result<Response, ChainClientError> {
         let (inputs, outputs) =
-            multi_send_args_from_payments(sender.id.as_ref().to_string(), payments);
+            multi_send_args_from_payments(sender.address(&self.config.account_prefix), payments);
         self.multi_send(sender, inputs, outputs, tx_metadata).await
     }
 
@@ -173,7 +173,7 @@ impl ChainClient {
         let payments_toml = read_payments_toml(path)?;
         let sender = self
             .keyring
-            .get_account(&payments_toml.sender_key_name, &self.config.account_prefix)?;
+            .get_account(&payments_toml.sender_key_name)?;
         self.execute_airdrop(sender, payments_toml.payments, tx_metadata)
             .await
     }
