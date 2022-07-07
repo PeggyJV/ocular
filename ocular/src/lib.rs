@@ -18,6 +18,7 @@ pub mod cosmos_modules {
     pub use cosmrs::proto::cosmos::staking::v1beta1 as staking;
 }
 pub mod error;
+pub(crate) mod github;
 pub mod keyring;
 pub mod registry;
 pub mod tx;

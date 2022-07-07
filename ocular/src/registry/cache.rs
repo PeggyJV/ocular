@@ -47,11 +47,11 @@ impl RegistryCache {
     ///
     /// # Examples
     ///
-    /// ```
-    /// use ocular::registry::RegistryCache;
+    /// ```ignore
+    /// use ocular::registry::{RegistryCache, Tag};
     ///
     /// // store paths from the registry repository in a cache
-    /// let cache = RegistryCache::try_new().await?
+    /// let cache = RegistryCache::try_new().await?;
     /// let dex = "osmosis".to_string();
     ///
     /// // paths will contain a vec of all IBC paths containing the tag dex:osmosis

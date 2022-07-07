@@ -1,4 +1,5 @@
-use crate::error::ChainRegistryError;
+use crate::{error::ChainRegistryError, github::Content};
+use http::Method;
 use serde::de::DeserializeOwned;
 
 pub use self::{assets::*, chain::*, paths::*};
@@ -12,38 +13,44 @@ pub mod cache;
 pub mod chain;
 pub mod paths;
 
+const VERSION: &str = env!("CARGO_PKG_VERSION");
 // In the future we may want to provide a way for a user to set the desired ref for the registry
 // module to use when querying.
 const GIT_REF: &str = "d063b0fd6d1c20d6476880e5ea2212ade009f69e";
+const REPO_URL: &str = "https://api.github.com/repos/cosmos/chain-registry/contents";
+
+async fn get(url: String) -> Result<String, ChainRegistryError> {
+    let client = reqwest::Client::new();
+    let req = client
+        .request(Method::GET, url)
+        .header("User-Agent", format!("ocular/{}", VERSION))
+        .build()?;
+    Ok(client.execute(req).await?.text().await?)
+}
 
 /// Gets a list of chain names from the registry
 pub async fn list_chains() -> Result<Vec<String>, ChainRegistryError> {
-    Ok(octocrab::instance()
-        .repos("cosmos", "chain-registry")
-        .get_content()
-        .send()
-        .await?
-        .take_items()
-        .into_iter()
-        .filter(|item| {
-            item.r#type == "dir" && item.name != ".github" && !item.name.starts_with('_')
-        })
-        .map(|item| item.name)
+    let url = format!("{}?ref={}", REPO_URL, GIT_REF,);
+    let json = get(url).await?;
+    let contents: Vec<Content> = serde_json::from_str(json.as_str())?;
+
+    Ok(contents
+        .iter()
+        .filter(|c| c.type_field == "dir" && !c.name.starts_with('_') && c.name != ".github")
+        .map(|c| c.clone().name)
         .collect())
 }
 
 /// Gets a list of path names from the registry in the form <chain_a>-<chain_b>
 pub async fn list_paths() -> Result<Vec<String>, ChainRegistryError> {
-    Ok(octocrab::instance()
-        .repos("cosmos", "chain-registry")
-        .get_content()
-        .path("_IBC/")
-        .send()
-        .await?
-        .take_items()
-        .into_iter()
-        .filter(|item| item.r#type == "file" && item.name.ends_with(".json"))
-        .map(|item| item.name[..item.name.len() - ".json".len()].to_string())
+    let url = format!("{}/_IBC?ref={}", REPO_URL, GIT_REF,);
+    let json = get(url).await?;
+    let contents: Vec<Content> = serde_json::from_str(json.as_str())?;
+
+    Ok(contents
+        .iter()
+        .filter(|c| c.type_field == "file" && !c.name.starts_with('_') && c.name.ends_with(".json"))
+        .map(|c| c.name[..c.name.len() - ".json".len()].to_string())
         .collect())
 }
 
@@ -146,7 +153,6 @@ mod tests {
     #[assay]
     async fn lists_paths() {
         let paths = list_paths().await.unwrap();
-        println!("{:?}", paths);
         assert!(paths.len() > 0);
         paths
             .iter()
