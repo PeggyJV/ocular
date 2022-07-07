@@ -1,6 +1,6 @@
 use crate::{
     chain::{
-        client::{query::BankQueryClient, ChainClient},
+        client::{query::bank::BankQueryClient, ChainClient},
         registry::{self},
     },
     error::{ChainInfoError, GrpcError, RpcError},
