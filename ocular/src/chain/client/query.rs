@@ -58,8 +58,7 @@ impl ChainClient {
                 break;
             } else if result.is_err() && self.cache.is_some() {
                 // Don't bother updating config grpc address if it fails, it'll be overriden upon a successful connection
-                self
-                    .cache
+                self.cache
                     .as_mut()
                     .unwrap()
                     .grpc_endpoint_cache
@@ -142,8 +141,7 @@ impl ChainClient {
                 break;
             } else if result.is_err() && self.cache.is_some() {
                 // Don't bother updating config grpc address if it fails, it'll be overriden upon a successful connection
-                self
-                    .cache
+                self.cache
                     .as_mut()
                     .unwrap()
                     .grpc_endpoint_cache

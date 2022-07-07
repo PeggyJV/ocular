@@ -55,8 +55,7 @@ impl ChainClient {
                 break;
             } else if result.is_err() && self.cache.is_some() {
                 // Don't bother updating config grpc address if it fails, it'll be overriden upon a successful connection
-                self
-                    .cache
+                self.cache
                     .as_mut()
                     .unwrap()
                     .grpc_endpoint_cache
@@ -103,7 +102,7 @@ impl ChainClient {
         tx_metadata: TxMetadata,
     ) -> Result<Response, ChainClientError> {
         let msg = MsgGrant {
-            granter: granter.address(&self.config.account_prefix),
+            granter: granter.address(&self.config.account_prefix)?,
             grantee: grantee.to_string(),
             grant: Some(Grant {
                 authorization: Some(prost_types::Any {
@@ -134,7 +133,7 @@ impl ChainClient {
         tx_metadata: TxMetadata,
     ) -> Result<Response, ChainClientError> {
         let msg = MsgRevoke {
-            granter: granter.address(&self.config.account_prefix),
+            granter: granter.address(&self.config.account_prefix)?,
             grantee: grantee.to_string(),
             msg_type_url: String::from("/cosmos.bank.v1beta1.MsgSend"),
         };
@@ -155,7 +154,7 @@ impl ChainClient {
         tx_metadata: Option<TxMetadata>,
     ) -> Result<Response, ChainClientError> {
         let msg = MsgExec {
-            grantee: grantee.address(&self.config.account_prefix),
+            grantee: grantee.address(&self.config.account_prefix)?,
             msgs,
         };
         let msg_any = prost_types::Any {
@@ -186,7 +185,7 @@ impl ChainClient {
             expiration,
         };
         let msg = MsgGrantAllowance {
-            granter: granter.address(&self.config.account_prefix),
+            granter: granter.address(&self.config.account_prefix)?,
             grantee: grantee.to_string(),
             allowance: Some(prost_types::Any {
                 type_url: String::from("/cosmos.feegrant.v1beta1.BasicAllowance"),

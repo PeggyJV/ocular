@@ -44,7 +44,7 @@ impl ChainClient {
         tx_metadata: TxMetadata,
     ) -> Result<Response, ChainClientError> {
         let account = self
-            .query_account(sender.address(&self.config.account_prefix))
+            .query_account(sender.address(&self.config.account_prefix)?)
             .await?;
 
         // Create signer info.
@@ -162,7 +162,7 @@ impl ChainClient {
         }
 
         let msg = MsgSend {
-            from_address: sender.id(&self.config.account_prefix),
+            from_address: sender.id(&self.config.account_prefix)?,
             to_address: recipient,
             amount: vec![amount.clone()],
         };

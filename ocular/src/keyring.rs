@@ -240,7 +240,7 @@ impl Keyring {
 
         let private_key = self.get_key(key_name)?;
 
-        Ok(AccountInfo::try_from(private_key)?)
+        Ok(AccountInfo::from(private_key))
     }
 
     /// List all keys.
@@ -771,8 +771,8 @@ mod tests {
         // Verify recovered key is equal to deleted one
         let new_account = keyring.get_account("new_celery").unwrap();
         assert_eq!(
-            new_account.id("cosmos").as_ref(),
-            account.id("cosmos").as_ref()
+            new_account.id("cosmos").unwrap().as_ref(),
+            account.id("cosmos").unwrap().as_ref()
         );
         assert_eq!(new_account.public_key(), account.public_key());
 
@@ -873,8 +873,8 @@ mod tests {
         // Verify recovered key is equal to deleted one
         let new_account = keyring.get_account("new_trex").unwrap();
         assert_eq!(
-            new_account.id("cosmos").as_ref(),
-            account.id("cosmos").as_ref()
+            new_account.id("cosmos").unwrap().as_ref(),
+            account.id("cosmos").unwrap().as_ref()
         );
         assert_eq!(new_account.public_key(), account.public_key());
 

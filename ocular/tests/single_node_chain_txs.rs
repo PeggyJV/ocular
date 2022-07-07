@@ -69,7 +69,7 @@ fn local_single_node_chain_test() {
         &format!("{}:{}", 9090, 9090),
         DOCKER_HUB_GAIA_SINGLE_NODE_TEST_IMAGE,
         CHAIN_ID,
-        &sender_account.address(ACCOUNT_PREFIX),
+        &sender_account.address(ACCOUNT_PREFIX).unwrap(),
     ];
 
     dev::docker_run(&docker_args, || {
@@ -105,8 +105,8 @@ fn local_single_node_chain_test() {
 
             // Expected MsgSend
             let msg_send = MsgSend {
-                from_address: sender_account.id(ACCOUNT_PREFIX),
-                to_address: recipient_account.id(ACCOUNT_PREFIX),
+                from_address: sender_account.id(ACCOUNT_PREFIX).unwrap(),
+                to_address: recipient_account.id(ACCOUNT_PREFIX).unwrap(),
                 amount: vec![amount.clone()],
             }
             .to_any()
@@ -128,8 +128,8 @@ fn local_single_node_chain_test() {
 
             // Expected MsgGrant
             let msg_grant = MsgGrant {
-                granter: sender_account.address(ACCOUNT_PREFIX),
-                grantee: recipient_account.address(ACCOUNT_PREFIX),
+                granter: sender_account.address(ACCOUNT_PREFIX).unwrap(),
+                grantee: recipient_account.address(ACCOUNT_PREFIX).unwrap(),
                 grant: Some(authz::Grant {
                     authorization: Some(prost_types::Any {
                         type_url: String::from("/cosmos.authz.v1beta1.GenericAuthorization"),
@@ -165,8 +165,8 @@ fn local_single_node_chain_test() {
 
             // Expected MsgRevoke
             let msg_revoke = MsgRevoke {
-                granter: sender_account.address(ACCOUNT_PREFIX),
-                grantee: recipient_account.address(ACCOUNT_PREFIX),
+                granter: sender_account.address(ACCOUNT_PREFIX).unwrap(),
+                grantee: recipient_account.address(ACCOUNT_PREFIX).unwrap(),
                 msg_type_url: String::from("/cosmos.bank.v1beta1.MsgSend"),
             };
 
@@ -192,8 +192,8 @@ fn local_single_node_chain_test() {
             let mut msgs_to_execute: Vec<::prost_types::Any> = Vec::new();
             msgs_to_execute.push(
                 MsgSend {
-                    from_address: sender_account.id(ACCOUNT_PREFIX),
-                    to_address: ad_hoc_account.id(ACCOUNT_PREFIX),
+                    from_address: sender_account.id(ACCOUNT_PREFIX).unwrap(),
+                    to_address: ad_hoc_account.id(ACCOUNT_PREFIX).unwrap(),
                     amount: vec![amount.clone()],
                 }
                 .to_any()
@@ -201,7 +201,7 @@ fn local_single_node_chain_test() {
             );
 
             let msg_exec = MsgExec {
-                grantee: recipient_account.address(ACCOUNT_PREFIX),
+                grantee: recipient_account.address(ACCOUNT_PREFIX).unwrap(),
                 msgs: msgs_to_execute,
             };
 
@@ -225,28 +225,28 @@ fn local_single_node_chain_test() {
 
             // expected MsgMultiSend
             let input_a = MultiSendIo {
-                address: sender_account.address(ACCOUNT_PREFIX),
+                address: sender_account.address(ACCOUNT_PREFIX).unwrap(),
                 coins: vec![ocular::tx::Coin {
                     amount: 50,
                     denom: DENOM.to_string(),
                 }],
             };
             let input_b = MultiSendIo {
-                address: sender_account.address(ACCOUNT_PREFIX),
+                address: sender_account.address(ACCOUNT_PREFIX).unwrap(),
                 coins: vec![ocular::tx::Coin {
                     amount: 100,
                     denom: DENOM.to_string(),
                 }],
             };
             let output_a = MultiSendIo {
-                address: ad_hoc_account.address(ACCOUNT_PREFIX),
+                address: ad_hoc_account.address(ACCOUNT_PREFIX).unwrap(),
                 coins: vec![ocular::tx::Coin {
                     amount: 75,
                     denom: DENOM.to_string(),
                 }],
             };
             let output_b = MultiSendIo {
-                address: recipient_account.address(ACCOUNT_PREFIX),
+                address: recipient_account.address(ACCOUNT_PREFIX).unwrap(),
                 coins: vec![ocular::tx::Coin {
                     amount: 75,
                     denom: DENOM.to_string(),
@@ -319,7 +319,7 @@ fn local_single_node_chain_test() {
             let actual_tx_commit_response = chain_client
                 .send(
                     sender_account.clone(),
-                    recipient_account.id(ACCOUNT_PREFIX).as_ref(),
+                    recipient_account.id(ACCOUNT_PREFIX).unwrap().as_ref(),
                     amount.clone(),
                     Some(tx_metadata.clone()),
                 )
@@ -341,7 +341,7 @@ fn local_single_node_chain_test() {
             let actual_msg_grant_commit_response = chain_client
                 .grant_send_authorization(
                     sender_account.clone(),
-                    recipient_account.id(ACCOUNT_PREFIX),
+                    recipient_account.id(ACCOUNT_PREFIX).unwrap(),
                     Some(prost_types::Timestamp {
                         seconds: 4110314268,
                         nanos: 0,
@@ -376,8 +376,8 @@ fn local_single_node_chain_test() {
             let mut msgs_to_send: Vec<::prost_types::Any> = Vec::new();
             msgs_to_send.push(
                 MsgSend {
-                    from_address: sender_account.id(ACCOUNT_PREFIX),
-                    to_address: ad_hoc_account.id(ACCOUNT_PREFIX),
+                    from_address: sender_account.id(ACCOUNT_PREFIX).unwrap(),
+                    to_address: ad_hoc_account.id(ACCOUNT_PREFIX).unwrap(),
                     amount: vec![amount.clone()],
                 }
                 .to_any()
@@ -417,7 +417,7 @@ fn local_single_node_chain_test() {
             let actual_msg_revoke_commit_response = chain_client
                 .revoke_send_authorization(
                     sender_account.clone(),
-                    grantee_account.id(ACCOUNT_PREFIX),
+                    grantee_account.id(ACCOUNT_PREFIX).unwrap(),
                     tx_metadata.clone(),
                 )
                 .await
@@ -449,8 +449,8 @@ fn local_single_node_chain_test() {
             let mut msgs_to_send: Vec<::prost_types::Any> = Vec::new();
             msgs_to_send.push(
                 MsgSend {
-                    from_address: sender_account.id(ACCOUNT_PREFIX),
-                    to_address: ad_hoc_account.id(ACCOUNT_PREFIX),
+                    from_address: sender_account.id(ACCOUNT_PREFIX).unwrap(),
+                    to_address: ad_hoc_account.id(ACCOUNT_PREFIX).unwrap(),
                     amount: vec![amount.clone()],
                 }
                 .to_any()

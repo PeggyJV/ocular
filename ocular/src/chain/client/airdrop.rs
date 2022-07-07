@@ -92,13 +92,13 @@ impl ChainClient {
         tx_metadata: Option<TxMetadata>,
     ) -> Result<Response, ChainClientError> {
         self.verify_multi_send_grant(
-            granter.id(&self.config.account_prefix),
-            grantee.id(&self.config.account_prefix),
+            granter.id(&self.config.account_prefix)?,
+            grantee.id(&self.config.account_prefix)?,
         )
         .await?;
 
         let (inputs, outputs) =
-            multi_send_args_from_payments(granter.address(&self.config.account_prefix), payments);
+            multi_send_args_from_payments(granter.address(&self.config.account_prefix)?, payments);
         let msgs: Vec<prost_types::Any> = vec![MsgMultiSend {
             inputs: inputs
                 .iter()
@@ -162,7 +162,7 @@ impl ChainClient {
         tx_metadata: Option<TxMetadata>,
     ) -> Result<Response, ChainClientError> {
         let (inputs, outputs) =
-            multi_send_args_from_payments(sender.address(&self.config.account_prefix), payments);
+            multi_send_args_from_payments(sender.address(&self.config.account_prefix)?, payments);
         self.multi_send(sender, inputs, outputs, tx_metadata).await
     }
 

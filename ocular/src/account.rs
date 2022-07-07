@@ -15,14 +15,12 @@ pub struct AccountInfo {
 }
 
 impl AccountInfo {
-    pub fn address(&self, prefix: &str) -> String {
-        self.id(prefix).as_ref().to_string()
+    pub fn address(&self, prefix: &str) -> Result<String, AccountError> {
+        Ok(self.id(prefix)?.as_ref().to_string())
     }
 
-    pub fn id(&self, prefix: &str) -> AccountId {
-        self.public_key
-            .account_id(prefix)
-            .expect("failed to derive account id from public key. if this panic ever occurs there is a bug with AccountInfo construction.")
+    pub fn id(&self, prefix: &str) -> Result<AccountId, AccountError> {
+        Ok(self.public_key.account_id(prefix)?)
     }
 
     pub fn public_key(&self) -> PublicKey {
@@ -34,32 +32,21 @@ impl AccountInfo {
     }
 }
 
-impl TryFrom<SigningKey> for AccountInfo {
-    type Error = AccountError;
-
-    fn try_from(value: SigningKey) -> Result<Self, Self::Error> {
-        Self::try_from(Arc::new(value))
+impl From<SigningKey> for AccountInfo {
+    fn from(value: SigningKey) -> Self {
+        Self::from(Arc::new(value))
     }
 }
 
-impl TryFrom<Arc<SigningKey>> for AccountInfo {
-    type Error = AccountError;
-
-    fn try_from(value: Arc<SigningKey>) -> Result<Self, Self::Error> {
+impl From<Arc<SigningKey>> for AccountInfo {
+    fn from(value: Arc<SigningKey>) -> Self {
         let private_key = value;
         let public_key = private_key.public_key();
 
-        // By doing this check here, we can assert that self.id() and self.address() will not error (so long as all constructors make this check)
-        if public_key.account_id("testprefix").is_err() {
-            return Err(AccountError::InvalidPublicKey(
-                "unable to derive AccountId from key".to_string(),
-            ));
-        }
-
-        Ok(AccountInfo {
+        AccountInfo {
             private_key,
             public_key,
-        })
+        }
     }
 }
 
