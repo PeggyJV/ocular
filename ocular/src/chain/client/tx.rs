@@ -162,7 +162,7 @@ impl ChainClient {
         }
 
         let msg = MsgSend {
-            from_address: sender.id(&self.config.account_prefix).clone(),
+            from_address: sender.id(&self.config.account_prefix),
             to_address: recipient,
             amount: vec![amount.clone()],
         };

@@ -75,7 +75,7 @@ impl ChainClient {
                 .get_connsecutive_failed_connections_threshold();
 
             for endpt in &endpoints {
-                let _res = self
+                self
                     .cache
                     .as_mut()
                     .expect("Error accessing cache.")
