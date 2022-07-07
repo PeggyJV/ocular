@@ -106,6 +106,10 @@ pub enum KeyStoreError {
     UnableToRetrieveKey(String),
     #[error("error reading file: {0}")]
     FileIO(String),
+    #[error("error deriving AccountId from PublicKey")]
+    DerivingAccountId(#[from] ErrorReport),
+    #[error("error during account retrieval")]
+    RetrievingAccount(#[from] AccountError),
 }
 
 #[derive(Debug, Error)]
@@ -167,4 +171,6 @@ pub enum AccountError {
     Empty(String),
     #[error("error decoding account data: {0}")]
     Decode(#[from] ErrorReport),
+    #[error("invalid key type")]
+    InvalidPublicKey(String),
 }
