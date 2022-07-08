@@ -103,12 +103,7 @@ pub async fn get_path(chain_a: &str, chain_b: &str) -> Result<Option<IBCPath>, C
 }
 
 async fn get_file_content(r#ref: &str, path: &str) -> Result<String, ChainRegistryError> {
-    let url = format!(
-        "{}/{}/{}",
-        RAW_FILE_REPO_URL,
-        r#ref,
-        path
-    );
+    let url = format!("{}/{}/{}", RAW_FILE_REPO_URL, r#ref, path);
     Ok(reqwest::get(url).await?.text().await?)
 }
 
