@@ -17,6 +17,7 @@ const VERSION: &str = env!("CARGO_PKG_VERSION");
 // In the future we may want to provide a way for a user to set the desired ref for the registry
 // module to use when querying.
 const GIT_REF: &str = "d063b0fd6d1c20d6476880e5ea2212ade009f69e";
+const RAW_FILE_REPO_URL: &str = "https://raw.githubusercontent.com/cosmos/chain-registry";
 const REPO_URL: &str = "https://api.github.com/repos/cosmos/chain-registry/contents";
 
 async fn get(url: String) -> Result<String, ChainRegistryError> {
@@ -103,8 +104,10 @@ pub async fn get_path(chain_a: &str, chain_b: &str) -> Result<Option<IBCPath>, C
 
 async fn get_file_content(r#ref: &str, path: &str) -> Result<String, ChainRegistryError> {
     let url = format!(
-        "https://raw.githubusercontent.com/cosmos/chain-registry/{}/{}",
-        r#ref, path
+        "{}/{}/{}",
+        RAW_FILE_REPO_URL,
+        r#ref,
+        path
     );
     Ok(reqwest::get(url).await?.text().await?)
 }
