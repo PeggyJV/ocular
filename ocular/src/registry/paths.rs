@@ -40,9 +40,9 @@ pub struct Chain2 {
 #[serde(default, rename_all = "camelCase")]
 pub struct Channel {
     #[serde(rename = "chain-1")]
-    pub chain_1: Chain12,
+    pub chain_1: ChannelChain1,
     #[serde(rename = "chain-2")]
-    pub chain_2: Chain22,
+    pub chain_2: ChannelChain2,
     pub ordering: String,
     pub version: String,
     pub tags: Tags,
@@ -50,7 +50,7 @@ pub struct Channel {
 
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(default, rename_all = "camelCase")]
-pub struct Chain12 {
+pub struct ChannelChain1 {
     #[serde(rename = "channel-id")]
     pub channel_id: String,
     #[serde(rename = "port-id")]
@@ -59,7 +59,7 @@ pub struct Chain12 {
 
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(default, rename_all = "camelCase")]
-pub struct Chain22 {
+pub struct ChannelChain2 {
     #[serde(rename = "channel-id")]
     pub channel_id: String,
     #[serde(rename = "port-id")]
