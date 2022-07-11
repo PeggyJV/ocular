@@ -59,8 +59,8 @@ impl Cache {
     ///
     /// ```toml
     /// [[endpoints]]
-    ///     address = "35.230.37.28:9090"
-    ///     connsecutive_failed_connections = 0
+    /// address = "35.230.37.28:9090"
+    /// connsecutive_failed_connections = 0
     /// ```
     pub fn create_file_cache(
         file_path: Option<&str>,

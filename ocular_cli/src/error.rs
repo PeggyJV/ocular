@@ -1,7 +1,7 @@
 //! Error types
 
 use abscissa_core::error::{BoxError, Context};
-use ocular::ChainRegistryError;
+use ocular::error::ChainRegistryError;
 use std::{
     fmt::{self, Display},
     io,

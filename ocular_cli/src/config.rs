@@ -6,7 +6,7 @@
 use crate::error::Error;
 use abscissa_core::tracing::debug;
 use dirs;
-use ocular::chain::{info::ChainInfo, registry};
+use ocular::registry::{self, chain::ChainInfo};
 use serde::{Deserialize, Serialize};
 use std::{
     fs,
@@ -61,11 +61,19 @@ async fn get_default_chains() -> Result<Vec<ChainInfo>, Error> {
     let mut chains = Vec::<ChainInfo>::with_capacity(2);
 
     match registry::get_chain("cosmoshub").await {
-        Ok(info) => chains.push(info),
+        Ok(info) => {
+            if info.is_some() {
+                chains.push(info.unwrap())
+            }
+        }
         Err(err) => return Err(err.into()),
     };
     match registry::get_chain("osmosis").await {
-        Ok(info) => chains.push(info),
+        Ok(info) => {
+            if info.is_some() {
+                chains.push(info.unwrap())
+            }
+        }
         Err(err) => return Err(err.into()),
     };
 

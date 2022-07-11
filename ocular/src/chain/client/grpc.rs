@@ -1,10 +1,7 @@
 use crate::{
-    chain::{
-        client::{query::bank::BankQueryClient, ChainClient},
-        registry::{self},
-    },
+    chain::client::{query::BankQueryClient, ChainClient},
     error::{ChainInfoError, GrpcError, RpcError},
-    utils,
+    registry, utils,
 };
 use rand::prelude::SliceRandom;
 use rand::thread_rng;
@@ -89,6 +86,7 @@ impl ChainClient {
     async fn get_all_grpc_endpoints(&self) -> Vec<String> {
         let info = registry::get_chain(&self.config.chain_name)
             .await
+            .expect("Could not get chain info.")
             .expect("Could not get chain info.");
 
         info.apis
