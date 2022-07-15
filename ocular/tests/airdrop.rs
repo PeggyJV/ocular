@@ -1,21 +1,12 @@
-use std::{thread, time::Duration};
-
-use cosmrs::{dev, rpc, Tx, tendermint::chain};
 use ocular::{
     account::AccountInfo,
-    chain::{
-        client::{cache::Cache, ChainClient},
-        config::ChainClientConfig,
-    },
-    keyring::Keyring,
     tx::{Coin, Payment},
 };
 use rand::Rng;
-use rpc::{endpoint::broadcast::tx_commit::Response, HttpClient};
 
 use crate::utils::{
-    run_single_node_test, ACCOUNT_PREFIX, CHAIN_ID, DENOM, MULTISEND_BASE_GAS_APPROX,
-    PAYMENT_GAS_APPROX, RPC_PORT,
+    init_test_chain_client, run_single_node_test, wait_for_tx, ACCOUNT_PREFIX, DENOM,
+    MULTISEND_BASE_GAS_APPROX, PAYMENT_GAS_APPROX,
 };
 
 mod utils;
@@ -191,62 +182,4 @@ fn generate_payments(accounts: &Vec<AccountInfo>) -> Vec<Payment> {
             denom: DENOM.to_string(),
         })
         .collect()
-}
-
-async fn init_test_chain_client() -> ChainClient {
-    let rpc_address = format!("http://localhost:{}", RPC_PORT);
-    let rpc_client = rpc::HttpClient::new(rpc_address.as_str()).expect("Could not create RPC");
-
-    dev::poll_for_first_block(&rpc_client).await;
-
-    let grpc_address = format!("http://localhost:9090");
-    let mut cache = Cache::create_memory_cache(None, 10).unwrap();
-    let _res = cache
-        .grpc_endpoint_cache
-        .add_item(grpc_address.clone(), 0)
-        .unwrap();
-
-    ChainClient {
-        config: ChainClientConfig {
-            chain_name: "cosmrs".to_string(),
-            chain_id: CHAIN_ID.to_string(),
-            rpc_address: rpc_address.clone(),
-            grpc_address,
-            account_prefix: ACCOUNT_PREFIX.to_string(),
-            gas_adjustment: 1.2,
-            default_fee: ocular::tx::Coin {
-                amount: 0u64,
-                denom: DENOM.to_string(),
-            },
-        },
-        keyring: Keyring::new_file_store(None).expect("Could not create keyring."),
-        rpc_client: rpc_client.clone(),
-        cache: Some(cache),
-        connection_retry_attempts: 0,
-    }
-}
-
-async fn wait_for_tx(client: &HttpClient, res: &Response, retries: u64) {
-    if res.check_tx.code.is_err() {
-        panic!("CheckTx error for {}", res.hash);
-    }
-
-    if res.deliver_tx.code.is_err() {
-        panic!("DeliverTx error for {}", res.hash);
-    }
-
-    let mut result_tx: Option<Tx> = None;
-    for _ in 0..retries {
-        if let Ok(tx) = Tx::find_by_hash(client, res.hash).await {
-            result_tx = Some(tx);
-        }
-
-        if result_tx.is_some() {
-            return;
-        }
-
-        thread::sleep(Duration::from_secs(6));
-    }
-
-    panic!("timed out waiting for transaction {}", res.hash);
 }

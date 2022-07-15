@@ -1,9 +1,11 @@
 #![allow(dead_code)]
 
-use std::{ffi::OsStr, process, str, panic};
+use std::{ffi::OsStr, process, str, panic, thread, time::Duration};
 
+use cosmrs::{dev, Tx};
 use futures::Future;
-use ocular::account::AccountInfo;
+use ocular::{account::AccountInfo, chain::{client::{ChainClient, cache::Cache}, config::ChainClientConfig}, keyring::Keyring};
+use tendermint_rpc::{HttpClient, endpoint::broadcast::tx_commit::Response};
 
 /// Chain ID to use for tests
 pub const CHAIN_ID: &str = "cosmrs-test";
@@ -32,6 +34,64 @@ pub const DENOM: &str = "samoleans";
 // note some adaptations to file strucutre needed to build successfully (moving scripts and making directories)
 // Disclaimer: Upon cosmos sdk (and other) updates, this image may need to be rebuilt and reuploaded.
 pub const DOCKER_HUB_GAIA_SINGLE_NODE_TEST_IMAGE: &str = "philipjames11/gaia-test";
+
+pub async fn init_test_chain_client() -> ChainClient {
+    let rpc_address = format!("http://localhost:{}", RPC_PORT);
+    let rpc_client = HttpClient::new(rpc_address.as_str()).expect("Could not create RPC");
+
+    dev::poll_for_first_block(&rpc_client).await;
+
+    let grpc_address = format!("http://localhost:9090");
+    let mut cache = Cache::create_memory_cache(None, 10).unwrap();
+    let _res = cache
+        .grpc_endpoint_cache
+        .add_item(grpc_address.clone(), 0)
+        .unwrap();
+
+    ChainClient {
+        config: ChainClientConfig {
+            chain_name: "cosmrs".to_string(),
+            chain_id: CHAIN_ID.to_string(),
+            rpc_address: rpc_address.clone(),
+            grpc_address,
+            account_prefix: ACCOUNT_PREFIX.to_string(),
+            gas_adjustment: 1.2,
+            default_fee: ocular::tx::Coin {
+                amount: 0u64,
+                denom: DENOM.to_string(),
+            },
+        },
+        keyring: Keyring::new_file_store(None).expect("Could not create keyring."),
+        rpc_client: rpc_client.clone(),
+        cache: Some(cache),
+        connection_retry_attempts: 0,
+    }
+}
+
+pub async fn wait_for_tx(client: &HttpClient, res: &Response, retries: u64) {
+    if res.check_tx.code.is_err() {
+        panic!("CheckTx error for {}", res.hash);
+    }
+
+    if res.deliver_tx.code.is_err() {
+        panic!("DeliverTx error for {}", res.hash);
+    }
+
+    let mut result_tx: Option<Tx> = None;
+    for _ in 0..retries {
+        if let Ok(tx) = Tx::find_by_hash(client, res.hash).await {
+            result_tx = Some(tx);
+        }
+
+        if result_tx.is_some() {
+            return;
+        }
+
+        thread::sleep(Duration::from_secs(6));
+    }
+
+    panic!("timed out waiting for transaction {}", res.hash);
+}
 
 /// Execute a given `docker` command, returning what was written to stdout
 /// if the command completed successfully.

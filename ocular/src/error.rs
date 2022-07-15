@@ -1,4 +1,4 @@
-use cosmrs::{self, ErrorReport};
+use cosmrs::{self, ErrorReport, tendermint};
 use std::io;
 use thiserror::Error;
 
@@ -128,6 +128,10 @@ pub enum TxError {
     Logging(String),
     #[error("invalid tx size")]
     Size(String),
+    #[error("error getting account")]
+    Account(String),
+    #[error("tendermint error")]
+    Tendermint(#[from] tendermint::error::Error)
 }
 
 impl From<bech32::Error> for TxError {
