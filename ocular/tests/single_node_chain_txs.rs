@@ -5,7 +5,7 @@ use ocular::{
     chain::{client::cache::Cache, config::ChainClientConfig},
     cosmos_modules::*,
     keyring::Keyring,
-    tx::{MultiSendIo, TxMetadata},
+    tx::{Coin, MultiSendIo, TxMetadata},
 };
 
 use cosmos_sdk_proto::cosmos::authz::v1beta1::{
@@ -15,12 +15,14 @@ use cosmrs::{
     bank::{MsgMultiSend, MsgSend},
     dev, rpc,
     tx::{self, AccountNumber, Fee, Msg, SignDoc, SignerInfo},
-    Coin,
 };
 use ocular::chain::client::ChainClient;
 use prost::Message;
+use utils::init_tokio_runtime;
 
 use std::{panic, str};
+
+mod utils;
 
 /// Chain ID to use for tests
 const CHAIN_ID: &str = "cosmrs-test";
@@ -94,10 +96,10 @@ fn local_single_node_chain_test() {
 
             let amount = Coin {
                 amount: 1u8.into(),
-                denom: DENOM.parse().expect("Could not parse denom."),
+                denom: DENOM.to_string(),
             };
             let default_fee_amount = 0u32;
-            let default_fee = Coin {
+            let default_fee = cosmrs::Coin {
                 amount: default_fee_amount.into(),
                 denom: DENOM.parse().expect("Could not parse denom"),
             };
@@ -107,7 +109,7 @@ fn local_single_node_chain_test() {
             let msg_send = MsgSend {
                 from_address: sender_account.id(ACCOUNT_PREFIX).unwrap(),
                 to_address: recipient_account.id(ACCOUNT_PREFIX).unwrap(),
-                amount: vec![amount.clone()],
+                amount: vec![amount.clone().try_into().unwrap()],
             }
             .to_any()
             .expect("Could not serlialize msg.");
@@ -194,7 +196,7 @@ fn local_single_node_chain_test() {
                 MsgSend {
                     from_address: sender_account.id(ACCOUNT_PREFIX).unwrap(),
                     to_address: ad_hoc_account.id(ACCOUNT_PREFIX).unwrap(),
-                    amount: vec![amount.clone()],
+                    amount: vec![amount.clone().try_into().unwrap()],
                 }
                 .to_any()
                 .expect("Could not serlialize msg."),
@@ -318,7 +320,7 @@ fn local_single_node_chain_test() {
             // Test MsgSend functionality
             let actual_tx_commit_response = chain_client
                 .send(
-                    sender_account.clone(),
+                    &sender_account,
                     recipient_account.id(ACCOUNT_PREFIX).unwrap().as_ref(),
                     amount.clone(),
                     Some(tx_metadata.clone()),
@@ -339,14 +341,15 @@ fn local_single_node_chain_test() {
 
             // Test MsgGrant functionality
             let actual_msg_grant_commit_response = chain_client
-                .grant_send_authorization(
-                    sender_account.clone(),
+                .grant_generic_authorization(
+                    &sender_account,
                     recipient_account.id(ACCOUNT_PREFIX).unwrap(),
+                    "/cosmos.bank.v1beta1.MsgSend".to_string(),
                     Some(prost_types::Timestamp {
                         seconds: 4110314268,
                         nanos: 0,
                     }),
-                    tx_metadata.clone(),
+                    Some(tx_metadata.clone()),
                 )
                 .await
                 .expect("Could not broadcast msg.");
@@ -378,7 +381,7 @@ fn local_single_node_chain_test() {
                 MsgSend {
                     from_address: sender_account.id(ACCOUNT_PREFIX).unwrap(),
                     to_address: ad_hoc_account.id(ACCOUNT_PREFIX).unwrap(),
-                    amount: vec![amount.clone()],
+                    amount: vec![amount.clone().try_into().unwrap()],
                 }
                 .to_any()
                 .expect("Could not serlialize msg."),
@@ -386,7 +389,7 @@ fn local_single_node_chain_test() {
 
             let actual_msg_exec_commit_response = chain_client
                 .execute_authorized_tx(
-                    grantee_account.clone(),
+                    &grantee_account,
                     msgs_to_send,
                     Some(tx_metadata.clone()),
                 )
@@ -407,6 +410,27 @@ fn local_single_node_chain_test() {
                 );
             }
 
+            let query_response = chain_client.query_authz_grant(
+                &sender_account.address(ACCOUNT_PREFIX).unwrap(),
+                &grantee_account.address(ACCOUNT_PREFIX).unwrap(),
+                "/cosmos.bank.v1beta1.MsgSend"
+            )
+            .await
+            .unwrap();
+
+            println!("Explicit query: {:?}", query_response.grants);
+
+            let query_response = chain_client.query_authz_grant(
+                &sender_account.address(ACCOUNT_PREFIX).unwrap(),
+                &grantee_account.address(ACCOUNT_PREFIX).unwrap(),
+                ""
+            )
+            .await
+            .unwrap();
+
+            println!("Explicit query: {:?}", query_response.grants);
+
+
             let actual_msg_exec =
                 dev::poll_for_tx(&rpc_client, actual_msg_exec_commit_response.hash).await;
 
@@ -415,10 +439,11 @@ fn local_single_node_chain_test() {
 
             // Test MsgRevoke functionality
             let actual_msg_revoke_commit_response = chain_client
-                .revoke_send_authorization(
-                    sender_account.clone(),
+                .revoke_authorization(
+                    &sender_account,
                     grantee_account.id(ACCOUNT_PREFIX).unwrap(),
-                    tx_metadata.clone(),
+                    "/cosmos.bank.v1beta1.MsgSend".to_string(),
+                    Some(tx_metadata.clone()),
                 )
                 .await
                 .expect("Could not broadcast msg.");
@@ -451,7 +476,7 @@ fn local_single_node_chain_test() {
                 MsgSend {
                     from_address: sender_account.id(ACCOUNT_PREFIX).unwrap(),
                     to_address: ad_hoc_account.id(ACCOUNT_PREFIX).unwrap(),
-                    amount: vec![amount.clone()],
+                    amount: vec![amount.clone().try_into().unwrap()],
                 }
                 .to_any()
                 .expect("Could not serlialize msg."),
@@ -459,7 +484,7 @@ fn local_single_node_chain_test() {
 
             let actual_msg_exec_commit_response = chain_client
                 .execute_authorized_tx(
-                    grantee_account.clone(),
+                    &grantee_account,
                     msgs_to_send,
                     Some(tx_metadata_memoed),
                 )
@@ -479,7 +504,7 @@ fn local_single_node_chain_test() {
             // Test MsgMultiSend functionality
             let actual_tx_commit_response = chain_client
                 .multi_send(
-                    sender_account.clone(),
+                    &sender_account,
                     inputs,
                     outputs,
                     Some(tx_metadata),
@@ -504,12 +529,4 @@ fn local_single_node_chain_test() {
             assert_eq!(&expected_multisend_auth_info, &actual_tx.auth_info);
         });
     });
-}
-
-/// Initialize Tokio runtime
-fn init_tokio_runtime() -> tokio::runtime::Runtime {
-    tokio::runtime::Builder::new_current_thread()
-        .enable_all()
-        .build()
-        .expect("Could not build tokio runtime")
 }

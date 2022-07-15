@@ -13,7 +13,7 @@ use crate::error::KeyStoreError;
 
 // Constants
 // TODO: Move to independant constants file if reused elsewhere
-const COSMOS_BASE_DERIVATION_PATH: &str = "m/44'/118'/0'/0/0";
+pub const COSMOS_BASE_DERIVATION_PATH: &str = "m/44'/118'/0'/0/0";
 const DEFAULT_FS_KEYSTORE_DIR: &str = "/.ocular/keys";
 
 /// Basic keystore traits that all backends are expected to implement

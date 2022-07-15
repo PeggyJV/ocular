@@ -34,12 +34,12 @@ const GENERIC_AUTHORIZATION_URL: &str = "/cosmos.authz.v1beta1.GenericAuthorizat
 impl ChainClient {
     pub async fn verify_multi_send_grant(
         &mut self,
-        granter: AccountId,
-        grantee: AccountId,
+        granter: &str,
+        grantee: &str,
     ) -> Result<(), ChainClientError> {
         // Verify grant exists for grantee from granter for MsgSend
         let res = self
-            .query_authz_grant(granter.as_ref(), grantee.as_ref(), MSG_MULTI_SEND_URL)
+            .query_authz_grant(granter, grantee, MSG_MULTI_SEND_URL)
             .await?;
 
         // If any grants meet the following criteria we can be confident the transaction is authorized:
@@ -76,8 +76,8 @@ impl ChainClient {
         if !grant_found {
             return Err(ChainClientError::UnauthorizedTx(format!(
                 "no relevant grant exists for {} on behalf of {}",
-                grantee.as_ref(),
-                granter.as_ref()
+                grantee,
+                granter
             )));
         }
 
@@ -86,19 +86,18 @@ impl ChainClient {
 
     pub async fn execute_delegated_airdrop(
         &mut self,
-        granter: AccountInfo,
-        grantee: AccountInfo,
+        granter: &str,
+        grantee: &AccountInfo,
         payments: Vec<Payment>,
         tx_metadata: Option<TxMetadata>,
     ) -> Result<Response, ChainClientError> {
         self.verify_multi_send_grant(
-            granter.id(&self.config.account_prefix)?,
-            grantee.id(&self.config.account_prefix)?,
+            granter,
+            &grantee.address(&self.config.account_prefix)?,
         )
         .await?;
 
-        let (inputs, outputs) =
-            multi_send_args_from_payments(granter.address(&self.config.account_prefix)?, payments);
+        let (inputs, outputs) = multi_send_args_from_payments(granter, payments);
         let msgs: Vec<prost_types::Any> = vec![MsgMultiSend {
             inputs: inputs
                 .iter()
@@ -151,18 +150,23 @@ impl ChainClient {
             _ => tx_metadata,
         };
 
-        self.execute_delegated_airdrop(granter, grantee, payments_toml.payments, Some(tx_metadata))
-            .await
+        self.execute_delegated_airdrop(
+            &granter.address(&self.config.account_prefix)?,
+            &grantee,
+            payments_toml.payments,
+            Some(tx_metadata),
+        )
+        .await
     }
 
     pub async fn execute_airdrop(
         &mut self,
-        sender: AccountInfo,
+        sender: &AccountInfo,
         payments: Vec<Payment>,
         tx_metadata: Option<TxMetadata>,
     ) -> Result<Response, ChainClientError> {
         let (inputs, outputs) =
-            multi_send_args_from_payments(sender.address(&self.config.account_prefix)?, payments);
+            multi_send_args_from_payments(&sender.address(&self.config.account_prefix)?, payments);
         self.multi_send(sender, inputs, outputs, tx_metadata).await
     }
 
@@ -173,13 +177,13 @@ impl ChainClient {
     ) -> Result<Response, ChainClientError> {
         let payments_toml = read_payments_toml(path)?;
         let sender = self.keyring.get_account(&payments_toml.sender_key_name)?;
-        self.execute_airdrop(sender, payments_toml.payments, tx_metadata)
+        self.execute_airdrop(&sender, payments_toml.payments, tx_metadata)
             .await
     }
 }
 
 pub fn multi_send_args_from_payments(
-    sender_addr: String,
+    sender_addr: &str,
     payments: Vec<Payment>,
 ) -> (Vec<MultiSendIo>, Vec<MultiSendIo>) {
     let mut inputs = Vec::<MultiSendIo>::new();
@@ -190,7 +194,7 @@ pub fn multi_send_args_from_payments(
             amount: p.amount,
         }];
         inputs.push(MultiSendIo {
-            address: sender_addr.clone(),
+            address: sender_addr.to_string(),
             coins: coins.clone(),
         });
         outputs.push(MultiSendIo {

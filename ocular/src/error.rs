@@ -126,6 +126,8 @@ pub enum TxError {
     Broadcast(String),
     #[error("error logging response: {0}")]
     Logging(String),
+    #[error("invalid tx size")]
+    Size(String),
 }
 
 impl From<bech32::Error> for TxError {

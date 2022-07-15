@@ -40,12 +40,12 @@ impl ChainClient {
     /// Helper method for signing and broadcasting messages.
     pub async fn sign_and_send_msg(
         &mut self,
-        sender: AccountInfo,
+        sender: &AccountInfo,
         tx_body: tx::Body,
         tx_metadata: TxMetadata,
     ) -> Result<Response, ChainClientError> {
         let account = self
-            .query_account(sender.address(&self.config.account_prefix)?)
+            .query_account(&sender.address(&self.config.account_prefix)?)
             .await?;
 
         // Create signer info.
@@ -71,6 +71,14 @@ impl ChainClient {
             Ok(raw) => raw,
             Err(err) => return Err(TxError::Signing(err.to_string()).into()),
         };
+
+        // default max tx size for cosmos chains is 1MB
+        // TO-DO: Make this size configurable in ChainClientConfig?
+        // TO-DO: Avoid cloning for performance purposes?
+        let tx_size = tx_signed.clone().to_bytes()?.len();
+        if tx_size >= (1024 * 1024) {
+            return Err(TxError::Size(format!("tx size ({} bytes) must be less than 1MB", tx_size)).into());
+        }
 
         // Broadcast transaction
         let response = match tx_signed.broadcast_commit(&self.rpc_client).await {

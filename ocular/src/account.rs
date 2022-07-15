@@ -1,8 +1,12 @@
 use std::sync::Arc;
 
+use bip32::{Mnemonic, PrivateKey};
 use cosmrs::{crypto::secp256k1::SigningKey, crypto::PublicKey, AccountId};
+use k256::SecretKey;
+use pkcs8::{DecodePrivateKey, EncodePrivateKey};
+use rand_core::OsRng;
 
-use crate::error::AccountError;
+use crate::{error::AccountError, keyring::COSMOS_BASE_DERIVATION_PATH};
 
 /// Represents a local account derived from a [`SigningKey`].
 ///
@@ -15,6 +19,28 @@ pub struct AccountInfo {
 }
 
 impl AccountInfo {
+    /// Constructor that generates a new private key
+    pub fn new(password: &str) -> AccountInfo {
+        let mnemonic = Mnemonic::random(&mut OsRng, Default::default());
+        let seed = mnemonic.to_seed(password);
+        let derivation_path = COSMOS_BASE_DERIVATION_PATH;
+        let derivation_path = derivation_path
+            .parse::<bip32::DerivationPath>()
+            .expect("Could not parse derivation path.");
+        let extended_signing_key =
+            bip32::XPrv::derive_from_path(seed, &derivation_path).expect("Could not derive key.");
+        let signing_key = k256::SecretKey::from(extended_signing_key.private_key());
+        let encoded_key = signing_key
+            .to_pkcs8_der()
+            .expect("Could not PKCS8 encode private key");
+        let decoded_private_key: SecretKey = DecodePrivateKey::from_pkcs8_doc(&encoded_key)
+            .expect("Could not decode private key document.");
+        let private_key = SigningKey::from_bytes(&decoded_private_key.to_bytes())
+            .expect("Could not create signing key.");
+
+        AccountInfo::from(private_key)
+    }
+
     pub fn address(&self, prefix: &str) -> Result<String, AccountError> {
         Ok(self.id(prefix)?.as_ref().to_string())
     }

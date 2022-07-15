@@ -16,12 +16,13 @@ use super::ChainClient;
 impl ChainClient {
     // Grant Authorization
     // TODO: support other types of authorization grants other than GenericAuthorization for send messages.
-    pub async fn grant_send_authorization(
+    pub async fn grant_generic_authorization(
         &mut self,
-        granter: AccountInfo,
+        granter: &AccountInfo,
         grantee: AccountId,
+        msg_url: String,
         expiration_timestamp: Option<prost_types::Timestamp>,
-        tx_metadata: TxMetadata,
+        tx_metadata: Option<TxMetadata>,
     ) -> Result<Response, ChainClientError> {
         let msg = MsgGrant {
             granter: granter.address(&self.config.account_prefix)?,
@@ -30,16 +31,21 @@ impl ChainClient {
                 authorization: Some(prost_types::Any {
                     type_url: String::from("/cosmos.authz.v1beta1.GenericAuthorization"),
                     value: GenericAuthorization {
-                        msg: String::from("/cosmos.bank.v1beta1.MsgSend"),
+                        msg: msg_url,
                     }
                     .encode_to_vec(),
                 }),
                 expiration: expiration_timestamp,
             }),
         };
+        println!("GRANT AUTH ENCODED: {:?}", std::str::from_utf8(&msg.grant.clone().unwrap().authorization.unwrap().value));
         let msg_any = prost_types::Any {
             type_url: String::from("/cosmos.authz.v1beta1.MsgGrant"),
             value: msg.encode_to_vec(),
+        };
+        let tx_metadata = match tx_metadata {
+            Some(tm) => tm,
+            None => self.get_basic_tx_metadata().await?,
         };
         let tx_body = tx::Body::new(vec![msg_any], &tx_metadata.memo, tx_metadata.timeout_height);
 
@@ -48,20 +54,25 @@ impl ChainClient {
 
     // Revoke Authorization
     // TODO: support other types of authorization revokes other than send messages.
-    pub async fn revoke_send_authorization(
+    pub async fn revoke_authorization(
         &mut self,
-        granter: AccountInfo,
+        granter: &AccountInfo,
         grantee: AccountId,
-        tx_metadata: TxMetadata,
+        msg_url: String,
+        tx_metadata: Option<TxMetadata>,
     ) -> Result<Response, ChainClientError> {
         let msg = MsgRevoke {
             granter: granter.address(&self.config.account_prefix)?,
             grantee: grantee.to_string(),
-            msg_type_url: String::from("/cosmos.bank.v1beta1.MsgSend"),
+            msg_type_url: msg_url,
         };
         let msg_any = prost_types::Any {
             type_url: String::from("/cosmos.authz.v1beta1.MsgRevoke"),
             value: msg.encode_to_vec(),
+        };
+        let tx_metadata = match tx_metadata {
+            Some(tm) => tm,
+            None => self.get_basic_tx_metadata().await?,
         };
         let tx_body = tx::Body::new(vec![msg_any], &tx_metadata.memo, tx_metadata.timeout_height);
 
@@ -71,7 +82,7 @@ impl ChainClient {
     // Execute a transaction previously authorized by another account on its behalf
     pub async fn execute_authorized_tx(
         &mut self,
-        grantee: AccountInfo,
+        grantee: &AccountInfo,
         msgs: Vec<::prost_types::Any>,
         tx_metadata: Option<TxMetadata>,
     ) -> Result<Response, ChainClientError> {
@@ -95,12 +106,12 @@ impl ChainClient {
     // Basic fee allowance
     pub async fn perform_basic_allowance_fee_grant(
         &mut self,
-        granter: AccountInfo,
+        granter: &AccountInfo,
         grantee: AccountId,
+        spend_limit: cosmos_sdk_proto::cosmos::base::v1beta1::Coin,
         expiration: Option<prost_types::Timestamp>,
         // TODO: Standardize below Coin type to common cosmrs coin type once FeeGrants get looped in.
-        spend_limit: cosmos_sdk_proto::cosmos::base::v1beta1::Coin,
-        tx_metadata: TxMetadata,
+        tx_metadata: Option<TxMetadata>,
     ) -> Result<Response, ChainClientError> {
         let allowance = BasicAllowance {
             spend_limit: vec![spend_limit],
@@ -117,6 +128,10 @@ impl ChainClient {
         let msg_any = prost_types::Any {
             type_url: String::from("/cosmos.feegrant.v1beta1.MsgGrantAllowance"),
             value: msg.encode_to_vec(),
+        };
+        let tx_metadata = match tx_metadata {
+            Some(tm) => tm,
+            None => self.get_basic_tx_metadata().await?,
         };
         let tx_body = tx::Body::new(vec![msg_any], &tx_metadata.memo, tx_metadata.timeout_height);
 
