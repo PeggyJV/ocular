@@ -183,27 +183,39 @@ impl ChainClient {
     }
 }
 
+/// Creates arguments for a MultiSend transaction from a vec of [`Payment`]. We require a single
+/// `Input` because, for Authz transactions, the tx will be considered to have multiple signers if
+/// there are multiple `Input`s, which is not allowed by the authz msg `MsgExec`.
 pub fn multi_send_args_from_payments(
     sender_addr: String,
     payments: Vec<Payment>,
 ) -> (Vec<MultiSendIo>, Vec<MultiSendIo>) {
-    let mut inputs = Vec::<MultiSendIo>::new();
-    let mut outputs = inputs.clone();
+    let mut outputs = Vec::<MultiSendIo>::new();
+    let mut coins_total = HashMap::<String, u64>::new();
     payments.iter().for_each(|p| {
-        let coins = vec![Coin {
-            denom: p.denom.clone(),
-            amount: p.amount,
-        }];
-        inputs.push(MultiSendIo {
-            address: sender_addr.clone(),
-            coins: coins.clone(),
-        });
+        let key = p.denom.clone();
+        let value = p.amount;
+        if coins_total.contains_key(&key) {
+            coins_total.insert(key.clone(), coins_total.get(&key).unwrap() + value);
+        } else {
+            coins_total.insert(key, value);
+        }
+
         outputs.push(MultiSendIo {
             address: p.recipient.clone(),
-            coins,
+            coins: vec![Coin {
+                denom: p.denom.clone(),
+                amount: p.amount,
+            }],
         });
     });
-    (inputs, outputs)
+
+    let coins_input = coins_total.iter().map(|kv| Coin { denom: kv.0.to_owned(), amount: *kv.1 }).collect();
+    let input = vec![MultiSendIo{
+        address: sender_addr,
+        coins: coins_input
+    }];
+    (input, outputs)
 }
 
 // TO-DO different error type.
