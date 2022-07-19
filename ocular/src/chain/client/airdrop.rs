@@ -151,8 +151,13 @@ impl ChainClient {
             _ => tx_metadata,
         };
 
-        self.execute_delegated_airdrop(&granter, &grantee, payments_toml.payments, Some(tx_metadata))
-            .await
+        self.execute_delegated_airdrop(
+            &granter,
+            &grantee,
+            payments_toml.payments,
+            Some(tx_metadata),
+        )
+        .await
     }
 
     pub async fn execute_airdrop(

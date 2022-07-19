@@ -38,7 +38,7 @@ pub enum ChainClientError {
     #[error("{0}")]
     ChainId(#[from] cosmrs::tendermint::Error),
     #[error("{0}")]
-    Math(String)
+    Math(String),
 }
 
 #[derive(Debug, Error)]

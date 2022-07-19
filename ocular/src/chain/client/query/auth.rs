@@ -28,7 +28,9 @@ impl ChainClient {
         address: &str,
     ) -> Result<auth::BaseAccount, ChainClientError> {
         let mut query_client = self.get_query_client::<AuthQueryClient>().await?;
-        let request = auth::QueryAccountRequest { address: address.to_string() };
+        let request = auth::QueryAccountRequest {
+            address: address.to_string(),
+        };
         let response = query_client
             .account(request)
             .await
