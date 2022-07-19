@@ -1,6 +1,6 @@
 #![allow(dead_code)]
 
-use std::{ffi::OsStr, process, str, panic};
+use std::{ffi::OsStr, panic, process, str};
 
 use futures::Future;
 use ocular::account::AccountInfo;
@@ -78,8 +78,7 @@ where
 }
 
 // Invoke `docker kill` then `docker rm` with the given arguments.
-pub fn docker_cleanup(container_name: &str) -> String
-{
+pub fn docker_cleanup(container_name: &str) -> String {
     let args = [container_name];
     docker_kill(args);
 
@@ -96,15 +95,11 @@ pub fn init_tokio_runtime() -> tokio::runtime::Runtime {
 
 pub(crate) fn run_single_node_test<Fut>(container_name: &str, test: fn(AccountInfo) -> Fut)
 where
-    Fut: Future<Output = ()>
+    Fut: Future<Output = ()>,
 {
-    let f = || {
-        init_tokio_runtime().block_on(async {
-            surround(container_name, test).await
-        })
-    };
+    let f = || init_tokio_runtime().block_on(async { surround(container_name, test).await });
 
-    match panic::catch_unwind(f){
+    match panic::catch_unwind(f) {
         Ok(result) => result,
         Err(cause) => {
             docker_cleanup(container_name);
@@ -116,9 +111,9 @@ where
 async fn surround<F, Fut>(container_name: &str, test: F)
 where
     F: FnOnce(AccountInfo) -> Fut,
-    Fut: Future<Output = ()>
+    Fut: Future<Output = ()>,
 {
-let sender_account = AccountInfo::new("");
+    let sender_account = AccountInfo::new("");
     let sender_address = sender_account.address(ACCOUNT_PREFIX).unwrap();
 
     println!("Sender address: {}", sender_address);
@@ -140,4 +135,15 @@ let sender_account = AccountInfo::new("");
     docker_run(&docker_args);
     test(sender_account).await;
     docker_kill(&[container_name]);
+}
+
+
+pub fn generate_accounts(n: u64) -> Vec<AccountInfo> {
+    let mut accounts = Vec::<AccountInfo>::new();
+
+    for _ in 0..n {
+        accounts.push(AccountInfo::new(""));
+    }
+
+    accounts
 }
