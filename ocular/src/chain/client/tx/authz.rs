@@ -1,3 +1,5 @@
+use std::time::{Duration, SystemTime};
+
 use crate::{
     account::AccountInfo,
     cosmos_modules::{
@@ -16,13 +18,25 @@ use super::ChainClient;
 impl ChainClient {
     // Grant Authorization
     // TODO: support other types of authorization grants other than GenericAuthorization for send messages.
-    pub async fn grant_send_authorization(
+    pub async fn grant_generic_authorization(
         &mut self,
         granter: &AccountInfo,
         grantee: AccountId,
+        message: &str,
         expiration_timestamp: Option<prost_types::Timestamp>,
-        tx_metadata: TxMetadata,
+        tx_metadata: Option<TxMetadata>,
     ) -> Result<Response, ChainClientError> {
+        let expiration: prost_types::Timestamp = match expiration_timestamp {
+            Some(exp) => exp,
+            None => {
+                // defaults to 24 hour expiration
+                let timestamp = SystemTime::now()
+                    .checked_add(Duration::from_secs(86400))
+                    .unwrap();
+                prost_types::Timestamp::from(timestamp)
+            }
+        };
+
         let msg = MsgGrant {
             granter: granter.address(&self.config.account_prefix)?,
             grantee: grantee.to_string(),
@@ -30,16 +44,20 @@ impl ChainClient {
                 authorization: Some(prost_types::Any {
                     type_url: String::from("/cosmos.authz.v1beta1.GenericAuthorization"),
                     value: GenericAuthorization {
-                        msg: String::from("/cosmos.bank.v1beta1.MsgSend"),
+                        msg: String::from(message),
                     }
                     .encode_to_vec(),
                 }),
-                expiration: expiration_timestamp,
+                expiration: Some(expiration),
             }),
         };
         let msg_any = prost_types::Any {
             type_url: String::from("/cosmos.authz.v1beta1.MsgGrant"),
             value: msg.encode_to_vec(),
+        };
+        let tx_metadata = match tx_metadata {
+            Some(tm) => tm,
+            None => self.get_basic_tx_metadata().await?,
         };
         let tx_body = tx::Body::new(vec![msg_any], &tx_metadata.memo, tx_metadata.timeout_height);
 
@@ -52,7 +70,7 @@ impl ChainClient {
         &mut self,
         granter: &AccountInfo,
         grantee: AccountId,
-        tx_metadata: TxMetadata,
+        tx_metadata: Option<TxMetadata>,
     ) -> Result<Response, ChainClientError> {
         let msg = MsgRevoke {
             granter: granter.address(&self.config.account_prefix)?,
@@ -62,6 +80,10 @@ impl ChainClient {
         let msg_any = prost_types::Any {
             type_url: String::from("/cosmos.authz.v1beta1.MsgRevoke"),
             value: msg.encode_to_vec(),
+        };
+        let tx_metadata = match tx_metadata {
+            Some(tm) => tm,
+            None => self.get_basic_tx_metadata().await?,
         };
         let tx_body = tx::Body::new(vec![msg_any], &tx_metadata.memo, tx_metadata.timeout_height);
 
