@@ -18,7 +18,7 @@ impl ChainClient {
     // TODO: support other types of authorization grants other than GenericAuthorization for send messages.
     pub async fn grant_send_authorization(
         &mut self,
-        granter: AccountInfo,
+        granter: &AccountInfo,
         grantee: AccountId,
         expiration_timestamp: Option<prost_types::Timestamp>,
         tx_metadata: TxMetadata,
@@ -50,7 +50,7 @@ impl ChainClient {
     // TODO: support other types of authorization revokes other than send messages.
     pub async fn revoke_send_authorization(
         &mut self,
-        granter: AccountInfo,
+        granter: &AccountInfo,
         grantee: AccountId,
         tx_metadata: TxMetadata,
     ) -> Result<Response, ChainClientError> {
@@ -71,7 +71,7 @@ impl ChainClient {
     // Execute a transaction previously authorized by another account on its behalf
     pub async fn execute_authorized_tx(
         &mut self,
-        grantee: AccountInfo,
+        grantee: &AccountInfo,
         msgs: Vec<::prost_types::Any>,
         tx_metadata: Option<TxMetadata>,
     ) -> Result<Response, ChainClientError> {
@@ -95,7 +95,7 @@ impl ChainClient {
     // Basic fee allowance
     pub async fn perform_basic_allowance_fee_grant(
         &mut self,
-        granter: AccountInfo,
+        granter: &AccountInfo,
         grantee: AccountId,
         expiration: Option<prost_types::Timestamp>,
         // TODO: Standardize below Coin type to common cosmrs coin type once FeeGrants get looped in.

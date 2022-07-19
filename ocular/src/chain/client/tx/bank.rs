@@ -20,7 +20,7 @@ impl ChainClient {
     /// Signs and sends a simple transaction message.
     pub async fn send(
         &mut self,
-        sender: AccountInfo,
+        sender: &AccountInfo,
         recipient: &str,
         amount: Coin,
         tx_metadata: Option<TxMetadata>,
@@ -65,7 +65,7 @@ impl ChainClient {
     /// Send coins in a MIMO fashion. If any coin transfers are invalid the entire transaction will fail.
     pub async fn multi_send(
         &mut self,
-        sender: AccountInfo,
+        sender: &AccountInfo,
         inputs: Vec<MultiSendIo>,
         outputs: Vec<MultiSendIo>,
         tx_metadata: Option<TxMetadata>,

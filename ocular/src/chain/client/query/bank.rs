@@ -24,11 +24,11 @@ impl QueryClient for BankQueryClient {
 impl ChainClient {
     pub async fn query_all_balances(
         &mut self,
-        address: String,
+        address: &str,
     ) -> Result<Vec<Coin>, ChainClientError> {
         let mut query_client = self.get_query_client::<BankQueryClient>().await?;
         let request = bank::QueryAllBalancesRequest {
-            address,
+            address: address.to_string(),
             pagination: None,
         };
         let response = query_client

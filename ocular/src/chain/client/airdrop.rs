@@ -86,8 +86,8 @@ impl ChainClient {
 
     pub async fn execute_delegated_airdrop(
         &mut self,
-        granter: AccountInfo,
-        grantee: AccountInfo,
+        granter: &AccountInfo,
+        grantee: &AccountInfo,
         payments: Vec<Payment>,
         tx_metadata: Option<TxMetadata>,
     ) -> Result<Response, ChainClientError> {
@@ -151,13 +151,13 @@ impl ChainClient {
             _ => tx_metadata,
         };
 
-        self.execute_delegated_airdrop(granter, grantee, payments_toml.payments, Some(tx_metadata))
+        self.execute_delegated_airdrop(&granter, &grantee, payments_toml.payments, Some(tx_metadata))
             .await
     }
 
     pub async fn execute_airdrop(
         &mut self,
-        sender: AccountInfo,
+        sender: &AccountInfo,
         payments: Vec<Payment>,
         tx_metadata: Option<TxMetadata>,
     ) -> Result<Response, ChainClientError> {
@@ -173,7 +173,7 @@ impl ChainClient {
     ) -> Result<Response, ChainClientError> {
         let payments_toml = read_payments_toml(path)?;
         let sender = self.keyring.get_account(&payments_toml.sender_key_name)?;
-        self.execute_airdrop(sender, payments_toml.payments, tx_metadata)
+        self.execute_airdrop(&sender, payments_toml.payments, tx_metadata)
             .await
     }
 }
