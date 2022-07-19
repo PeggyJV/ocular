@@ -14,8 +14,8 @@ use rand::Rng;
 use rpc::{endpoint::broadcast::tx_commit::Response, HttpClient};
 
 use crate::utils::{
-    generate_accounts, run_single_node_test, ACCOUNT_PREFIX, CHAIN_ID, DENOM, MULTISEND_BASE_GAS_APPROX,
-    PAYMENT_GAS_APPROX, RPC_PORT,
+    generate_accounts, run_single_node_test, ACCOUNT_PREFIX, CHAIN_ID, DENOM,
+    MULTISEND_BASE_GAS_APPROX, PAYMENT_GAS_APPROX, RPC_PORT,
 };
 
 mod utils;
@@ -103,16 +103,14 @@ fn airdrop_delegated_single_sender_single_denom() {
                     "/cosmos.bank.v1beta1.MsgMultiSend",
                 )
                 .await
-                .is_err()
-            );
-            assert!(
-                chain_client.verify_multi_send_grant(
+                .is_err());
+            assert!(chain_client
+                .verify_multi_send_grant(
                     &sender_account.id(ACCOUNT_PREFIX).unwrap(),
                     &delegate_account.id(ACCOUNT_PREFIX).unwrap()
                 )
                 .await
-                .is_err()
-            );
+                .is_err());
             assert!(chain_client
                 .execute_delegated_airdrop(
                     &sender_account,
@@ -121,8 +119,7 @@ fn airdrop_delegated_single_sender_single_denom() {
                     Some(txm.clone()),
                 )
                 .await
-                .is_err()
-            );
+                .is_err());
             assert_eq!(
                 chain_client
                     .query_all_balances(&sender_address)
@@ -131,7 +128,7 @@ fn airdrop_delegated_single_sender_single_denom() {
                     .amount
                     .parse::<u64>()
                     .unwrap(),
-                    100000000000
+                100000000000
             );
 
             // authorize MultiSend
@@ -162,10 +159,13 @@ fn airdrop_delegated_single_sender_single_denom() {
                 .await
                 .unwrap();
 
-            chain_client.verify_multi_send_grant(
-                &sender_account.id(ACCOUNT_PREFIX).unwrap(),
-                &delegate_account.id(ACCOUNT_PREFIX).unwrap()
-            ).await.unwrap();
+            chain_client
+                .verify_multi_send_grant(
+                    &sender_account.id(ACCOUNT_PREFIX).unwrap(),
+                    &delegate_account.id(ACCOUNT_PREFIX).unwrap(),
+                )
+                .await
+                .unwrap();
 
             // fund delegate address
             let response = chain_client
@@ -192,10 +192,7 @@ fn airdrop_delegated_single_sender_single_denom() {
                 .parse()
                 .unwrap();
 
-            println!(
-                "Sender starting balance: {}",
-                sender_starting_balance
-            );
+            println!("Sender starting balance: {}", sender_starting_balance);
             println!("Executing delegated airdrop on behalf of sender");
             let response = chain_client
                 .execute_delegated_airdrop(

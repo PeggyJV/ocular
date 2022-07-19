@@ -92,8 +92,8 @@ mod tests {
     #[test]
     fn converts_coin() {
         let coin = Coin {
-          amount: 100,
-          denom: "utest".to_string(),
+            amount: 100,
+            denom: "utest".to_string(),
         };
 
         cosmrs::Coin::try_from(&coin).unwrap();

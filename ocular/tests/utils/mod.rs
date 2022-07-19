@@ -137,7 +137,6 @@ where
     docker_cleanup(container_name);
 }
 
-
 pub fn generate_accounts(n: u64) -> Vec<AccountInfo> {
     let mut accounts = Vec::<AccountInfo>::new();
 
