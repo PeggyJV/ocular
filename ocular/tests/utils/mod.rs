@@ -134,7 +134,7 @@ where
 
     docker_run(&docker_args);
     test(sender_account).await;
-    docker_kill(&[container_name]);
+    docker_cleanup(container_name);
 }
 
 

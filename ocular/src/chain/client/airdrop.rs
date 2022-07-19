@@ -34,8 +34,8 @@ const GENERIC_AUTHORIZATION_URL: &str = "/cosmos.authz.v1beta1.GenericAuthorizat
 impl ChainClient {
     pub async fn verify_multi_send_grant(
         &mut self,
-        granter: AccountId,
-        grantee: AccountId,
+        granter: &AccountId,
+        grantee: &AccountId,
     ) -> Result<(), ChainClientError> {
         // Verify grant exists for grantee from granter for MsgSend
         let res = self
@@ -92,13 +92,13 @@ impl ChainClient {
         tx_metadata: Option<TxMetadata>,
     ) -> Result<Response, ChainClientError> {
         self.verify_multi_send_grant(
-            granter.id(&self.config.account_prefix)?,
-            grantee.id(&self.config.account_prefix)?,
+            &granter.id(&self.config.account_prefix)?,
+            &grantee.id(&self.config.account_prefix)?,
         )
         .await?;
 
         let (inputs, outputs) =
-            multi_send_args_from_payments(granter.address(&self.config.account_prefix)?, payments);
+            multi_send_args_from_payments(&granter.address(&self.config.account_prefix)?, payments);
         let msgs: Vec<prost_types::Any> = vec![MsgMultiSend {
             inputs: inputs
                 .iter()
@@ -167,7 +167,7 @@ impl ChainClient {
         tx_metadata: Option<TxMetadata>,
     ) -> Result<Response, ChainClientError> {
         let (inputs, outputs) =
-            multi_send_args_from_payments(sender.address(&self.config.account_prefix)?, payments);
+            multi_send_args_from_payments(&sender.address(&self.config.account_prefix)?, payments);
         self.multi_send(sender, inputs, outputs, tx_metadata).await
     }
 
@@ -187,7 +187,7 @@ impl ChainClient {
 /// `Input` because, for Authz transactions, the tx will be considered to have multiple signers if
 /// there are multiple `Input`s, which is not allowed by the authz msg `MsgExec`.
 pub fn multi_send_args_from_payments(
-    sender_addr: String,
+    sender_addr: &str,
     payments: Vec<Payment>,
 ) -> (Vec<MultiSendIo>, Vec<MultiSendIo>) {
     let mut outputs = Vec::<MultiSendIo>::new();
@@ -210,10 +210,16 @@ pub fn multi_send_args_from_payments(
         });
     });
 
-    let coins_input = coins_total.iter().map(|kv| Coin { denom: kv.0.to_owned(), amount: *kv.1 }).collect();
-    let input = vec![MultiSendIo{
-        address: sender_addr,
-        coins: coins_input
+    let coins_input = coins_total
+        .iter()
+        .map(|kv| Coin {
+            denom: kv.0.to_owned(),
+            amount: *kv.1,
+        })
+        .collect();
+    let input = vec![MultiSendIo {
+        address: sender_addr.to_string(),
+        coins: coins_input,
     }];
     (input, outputs)
 }
@@ -251,6 +257,7 @@ mod tests {
 
     use super::*;
     use assay::assay;
+    use rand::Rng;
 
     #[assay]
     fn writes_and_reads_payments_toml() {
@@ -327,5 +334,72 @@ mod tests {
         // Assert deleted
         let result = std::panic::catch_unwind(|| std::fs::metadata(path_string).unwrap());
         assert!(result.is_err());
+    }
+
+    #[assay]
+    fn builds_multisend_args() {
+        let prefix = "test";
+        let sender = AccountInfo::new("");
+        let sender_address = sender.address(prefix).unwrap();
+        let mut rng = rand::thread_rng();
+        let num_outputs = rng.gen_range(1..25);
+        let accounts = generate_accounts(num_outputs);
+        let payments = generate_payments_single_denom(prefix, "utest", &accounts);
+        let args = multi_send_args_from_payments(&sender_address.clone(), payments);
+        let input_total: u64 = args
+            .0
+            .iter()
+            .map(|io: &MultiSendIo| io.coins[0].amount)
+            .sum();
+        let output_total: u64 = args
+            .1
+            .iter()
+            .map(|io: &MultiSendIo| io.coins[0].amount)
+            .sum();
+
+        assert_eq!(args.0.len(), 1);
+        assert_eq!(args.1.len() as u64, num_outputs);
+
+        let mut addresses: Vec<String> = accounts
+            .iter()
+            .map(|acc| acc.address(prefix).unwrap())
+            .collect();
+        addresses.sort();
+        let mut args_out_addresses: Vec<String> = args
+            .1
+            .iter()
+            .map(|io: &MultiSendIo| io.address.clone())
+            .collect();
+        args_out_addresses.sort();
+
+        assert_eq!(addresses, args_out_addresses);
+        assert_eq!(args.0[0].address, sender_address);
+        assert_eq!(input_total, output_total);
+    }
+
+    fn generate_accounts(n: u64) -> Vec<AccountInfo> {
+        let mut accounts = Vec::<AccountInfo>::new();
+
+        for _ in 0..n {
+            accounts.push(AccountInfo::new(""));
+        }
+
+        accounts
+    }
+
+    fn generate_payments_single_denom(
+        prefix: &str,
+        denom: &str,
+        accounts: &Vec<AccountInfo>,
+    ) -> Vec<Payment> {
+        let mut rng = rand::thread_rng();
+        accounts
+            .iter()
+            .map(|a| Payment {
+                recipient: a.address(prefix).unwrap(),
+                amount: rng.gen_range(1..99999),
+                denom: denom.to_string(),
+            })
+            .collect()
     }
 }

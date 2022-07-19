@@ -46,6 +46,9 @@ fn airdrop_single_sender_single_denom() {
 
             println!("Sender starting balance: {}", sender_starting_balance);
 
+            // control
+            assert_eq!(sender_starting_balance, 100000000000);
+
             let response = chain_client
                 .execute_airdrop(&sender_account, payments.clone(), Some(txm))
                 .await
@@ -92,6 +95,45 @@ fn airdrop_delegated_single_sender_single_denom() {
             txm.gas_limit =
                 MULTISEND_BASE_GAS_APPROX + (PAYMENT_GAS_APPROX * payments.len() as u64);
 
+            // sanity checks
+            assert!(chain_client
+                .query_authz_grant(
+                    &sender_account.address(ACCOUNT_PREFIX).unwrap(),
+                    &delegate_account.address(ACCOUNT_PREFIX).unwrap(),
+                    "/cosmos.bank.v1beta1.MsgMultiSend",
+                )
+                .await
+                .is_err()
+            );
+            assert!(
+                chain_client.verify_multi_send_grant(
+                    &sender_account.id(ACCOUNT_PREFIX).unwrap(),
+                    &delegate_account.id(ACCOUNT_PREFIX).unwrap()
+                )
+                .await
+                .is_err()
+            );
+            assert!(chain_client
+                .execute_delegated_airdrop(
+                    &sender_account,
+                    &delegate_account,
+                    payments.clone(),
+                    Some(txm.clone()),
+                )
+                .await
+                .is_err()
+            );
+            assert_eq!(
+                chain_client
+                    .query_all_balances(&sender_address)
+                    .await
+                    .unwrap()[0]
+                    .amount
+                    .parse::<u64>()
+                    .unwrap(),
+                    100000000000
+            );
+
             // authorize MultiSend
             println!("Granting MultiSend authorization to delegate");
             let response = chain_client
@@ -110,6 +152,7 @@ fn airdrop_delegated_single_sender_single_denom() {
 
             wait_for_tx(&chain_client.rpc_client, &response, 10).await;
 
+            // query *and* verify methods, just so both get exercised
             let _response = chain_client
                 .query_authz_grant(
                     &sender_account.address(ACCOUNT_PREFIX).unwrap(),
@@ -118,6 +161,11 @@ fn airdrop_delegated_single_sender_single_denom() {
                 )
                 .await
                 .unwrap();
+
+            chain_client.verify_multi_send_grant(
+                &sender_account.id(ACCOUNT_PREFIX).unwrap(),
+                &delegate_account.id(ACCOUNT_PREFIX).unwrap()
+            ).await.unwrap();
 
             // fund delegate address
             let response = chain_client
