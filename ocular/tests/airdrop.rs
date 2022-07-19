@@ -14,7 +14,7 @@ use rand::Rng;
 use rpc::{endpoint::broadcast::tx_commit::Response, HttpClient};
 
 use crate::utils::{
-    run_single_node_test, ACCOUNT_PREFIX, CHAIN_ID, DENOM, MULTISEND_BASE_GAS_APPROX,
+    generate_accounts, run_single_node_test, ACCOUNT_PREFIX, CHAIN_ID, DENOM, MULTISEND_BASE_GAS_APPROX,
     PAYMENT_GAS_APPROX, RPC_PORT,
 };
 
@@ -98,12 +98,12 @@ fn airdrop_delegated_single_sender_single_denom() {
                 .grant_generic_authorization(
                     &sender_account,
                     delegate_account.id(ACCOUNT_PREFIX).unwrap(),
-                    "/cosmos.bank.v1beta1.MsgMultiSend".to_string(),
+                    "/cosmos.bank.v1beta1.MsgMultiSend",
                     Some(prost_types::Timestamp {
                         seconds: 4110314268,
                         nanos: 0,
                     }),
-                    None
+                    None,
                 )
                 .await
                 .unwrap();
@@ -145,13 +145,13 @@ fn airdrop_delegated_single_sender_single_denom() {
                 .unwrap();
 
             println!(
-                "Delegated sender starting balance: {}",
+                "Sender starting balance: {}",
                 sender_starting_balance
             );
-            println!("Executing delegated airdrop");
+            println!("Executing delegated airdrop on behalf of sender");
             let response = chain_client
                 .execute_delegated_airdrop(
-                    &sender_account.address(ACCOUNT_PREFIX).unwrap(),
+                    &sender_account,
                     &delegate_account,
                     payments.clone(),
                     Some(txm),
@@ -170,10 +170,7 @@ fn airdrop_delegated_single_sender_single_denom() {
                 .parse()
                 .unwrap();
 
-            println!(
-                "Delegate sender ending balance: {}",
-                sender_ending_balance
-            );
+            println!("Sender ending balance: {}", sender_ending_balance);
 
             assert_eq!(
                 sender_starting_balance - sender_ending_balance,
@@ -181,16 +178,6 @@ fn airdrop_delegated_single_sender_single_denom() {
             );
         }
     });
-}
-
-fn generate_accounts(n: u64) -> Vec<AccountInfo> {
-    let mut accounts = Vec::<AccountInfo>::new();
-
-    for _ in 0..n {
-        accounts.push(AccountInfo::new(""));
-    }
-
-    accounts
 }
 
 fn generate_payments(accounts: &Vec<AccountInfo>) -> Vec<Payment> {
