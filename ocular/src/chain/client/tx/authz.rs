@@ -31,7 +31,7 @@ impl ChainClient {
             None => {
                 // defaults to 24 hour expiration
                 let timestamp = SystemTime::now()
-                    .checked_add(Duration::from_secs(86400))
+                    .checked_add(Duration::from_secs(31536000))
                     .unwrap();
                 prost_types::Timestamp::from(timestamp)
             }
