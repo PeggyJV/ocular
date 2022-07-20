@@ -51,6 +51,8 @@ async fn chain_client_builder_path() {
 }
 
 #[assay]
+// the rpc endpoints are unreliable so only run this when explicity requested
+#[ignore]
 async fn query_latest_block_height() {
     let client = ChainClient::create(chain::COSMOSHUB).expect("failed to get test client");
     dbg!("rpc address:", &client.config.rpc_address);
