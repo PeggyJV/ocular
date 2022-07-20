@@ -29,13 +29,13 @@ jobs:
       - name: Run Ocular acceptance tests
         run: cargo test --verbose
       - name: Test direct airdrop
-        run: cargo test --verbode -- airdrop_direct
+        run: cargo test --verbose -- airdrop_direct
       - name: Test delegated airdrop
-        run: cargo test --verbode -- airdrop_delegated
+        run: cargo test --verbose -- airdrop_delegated
       - name: Test direct airdrop from TOML
-        run: cargo test --verbode -- airdrop_toml_direct
+        run: cargo test --verbose -- airdrop_toml_direct
       - name: Test delegated airdrop from TOML
-        run: cargo test --verbode -- airdrop_toml_delegated
+        run: cargo test --verbose -- airdrop_toml_delegated
 
   fmt:
     name: Rustfmt
