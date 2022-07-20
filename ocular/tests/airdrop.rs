@@ -4,7 +4,7 @@ use cosmrs::{dev, rpc, Tx};
 use ocular::{
     account::AccountInfo,
     chain::{
-        client::{cache::Cache, ChainClient},
+        client::{airdrop::write_payments_toml, cache::Cache, ChainClient},
         config::ChainClientConfig,
     },
     keyring::Keyring,
@@ -173,7 +173,7 @@ fn airdrop_delegated_single_sender_single_denom() {
                     &sender_account,
                     &delegate_address,
                     Coin {
-                        amount: 10000000000,
+                        amount: 1,
                         denom: DENOM.to_string(),
                     },
                     None,
@@ -201,6 +201,281 @@ fn airdrop_delegated_single_sender_single_denom() {
                     payments.clone(),
                     Some(txm),
                 )
+                .await
+                .unwrap();
+
+            // wait 1 minute for the tx to be included in a block
+            wait_for_tx(&chain_client.rpc_client, &response, 10).await;
+
+            let sender_ending_balance: u64 = chain_client
+                .query_all_balances(&sender_address)
+                .await
+                .unwrap()[0]
+                .amount
+                .parse()
+                .unwrap();
+
+            println!("Sender ending balance: {}", sender_ending_balance);
+
+            assert_eq!(
+                sender_starting_balance - sender_ending_balance,
+                total_to_distribute
+            );
+        }
+    });
+}
+
+#[test]
+fn airdrop_with_toml_single_sender_single_denom() {
+    let container_name = "toml_delegated_airdrop_test";
+
+    run_single_node_test(container_name, |genesis_account: AccountInfo| {
+        async move {
+            let mut keyring = Keyring::new_file_store(None).unwrap();
+            let sender_key_name = "sender";
+            keyring
+                .create_cosmos_key(sender_key_name, "", false)
+                .unwrap();
+
+            let grantee_key_name = "grantee";
+            keyring
+                .create_cosmos_key(grantee_key_name, "", false)
+                .unwrap();
+
+            let sender_account = keyring.get_account(sender_key_name).unwrap();
+            let sender_address = sender_account.address(ACCOUNT_PREFIX).unwrap();
+            let delegate_account = keyring.get_account(grantee_key_name).unwrap();
+            let delegate_address = delegate_account.address(ACCOUNT_PREFIX).unwrap();
+
+            println!("Delegate sender address {}", delegate_address);
+
+            let recipients = generate_accounts(3);
+            let payments = generate_payments(&recipients);
+            let total_to_distribute: u64 = payments.iter().map(|p| p.amount).sum();
+            let mut chain_client = init_test_chain_client().await;
+            let mut txm = chain_client.get_basic_tx_metadata().await.unwrap();
+
+            txm.gas_limit =
+                MULTISEND_BASE_GAS_APPROX + (PAYMENT_GAS_APPROX * payments.len() as u64);
+
+            println!("Writing toml");
+            let path = "./payments.toml";
+            write_payments_toml(path, sender_key_name, None, None, None, payments).unwrap();
+
+            println!("Funding sender from genesis account");
+            let balance = 10000000000;
+            let amount = Coin {
+                amount: 10000000000,
+                denom: DENOM.to_string(),
+            };
+
+            chain_client
+                .send(&genesis_account, &sender_address, amount, Some(txm.clone()))
+                .await
+                .unwrap();
+            let sender_starting_balance: u64 = chain_client
+                .query_all_balances(&sender_address)
+                .await
+                .unwrap()[0]
+                .amount
+                .parse()
+                .unwrap();
+
+            println!("Sender starting balance: {}", sender_starting_balance);
+
+            // control
+            assert_eq!(sender_starting_balance, balance);
+
+            println!("Executing airdrop from TOML");
+            let response = chain_client
+                .execute_airdrop_from_toml(path, Some(txm))
+                .await
+                .unwrap();
+
+            // wait 1 minute for the tx to be included in a block
+            wait_for_tx(&chain_client.rpc_client, &response, 10).await;
+
+            let sender_ending_balance: u64 = chain_client
+                .query_all_balances(&sender_address)
+                .await
+                .unwrap()[0]
+                .amount
+                .parse()
+                .unwrap();
+
+            println!("Sender ending balance: {}", sender_ending_balance);
+
+            assert_eq!(
+                sender_starting_balance - sender_ending_balance,
+                total_to_distribute
+            );
+        }
+    });
+}
+
+#[test]
+fn airdrop_delegated_with_toml_single_sender_single_denom() {
+    let container_name = "toml_delegated_airdrop_test";
+
+    run_single_node_test(container_name, |genesis_account: AccountInfo| {
+        async move {
+            let mut keyring = Keyring::new_file_store(None).unwrap();
+            let sender_key_name = "sender";
+            keyring
+                .create_cosmos_key(sender_key_name, "", true)
+                .unwrap();
+
+            let grantee_key_name = "grantee";
+            keyring
+                .create_cosmos_key(grantee_key_name, "", true)
+                .unwrap();
+
+            let sender_account = keyring.get_account(sender_key_name).unwrap();
+            let sender_address = sender_account.address(ACCOUNT_PREFIX).unwrap();
+            let delegate_account = keyring.get_account(grantee_key_name).unwrap();
+            let delegate_address = delegate_account.address(ACCOUNT_PREFIX).unwrap();
+
+            println!("Delegate sender address {}", delegate_address);
+
+            let recipients = generate_accounts(3);
+            let payments = generate_payments(&recipients);
+            let total_to_distribute: u64 = payments.iter().map(|p| p.amount).sum();
+            let mut chain_client = init_test_chain_client().await;
+            let mut txm = chain_client.get_basic_tx_metadata().await.unwrap();
+
+            txm.gas_limit =
+                MULTISEND_BASE_GAS_APPROX + (PAYMENT_GAS_APPROX * payments.len() as u64);
+
+            // sanity checks
+            assert!(chain_client
+                .query_authz_grant(
+                    &sender_account.address(ACCOUNT_PREFIX).unwrap(),
+                    &delegate_account.address(ACCOUNT_PREFIX).unwrap(),
+                    "/cosmos.bank.v1beta1.MsgMultiSend",
+                )
+                .await
+                .is_err());
+            assert!(chain_client
+                .verify_multi_send_grant(
+                    &sender_account.id(ACCOUNT_PREFIX).unwrap(),
+                    &delegate_account.id(ACCOUNT_PREFIX).unwrap()
+                )
+                .await
+                .is_err());
+            assert!(chain_client
+                .execute_delegated_airdrop(
+                    &sender_account,
+                    &delegate_account,
+                    payments.clone(),
+                    Some(txm.clone()),
+                )
+                .await
+                .is_err());
+            assert_eq!(
+                chain_client
+                    .query_all_balances(&sender_address)
+                    .await
+                    .unwrap()
+                    .len(),
+                    0
+            );
+
+            println!("Writing toml");
+            let path = "./payments.toml";
+            write_payments_toml(
+                path,
+                sender_key_name,
+                Some(grantee_key_name),
+                None,
+                None,
+                payments,
+            )
+            .unwrap();
+
+            println!("Funding sender from genesis account");
+            let balance = 10000000000;
+            let amount = Coin {
+                amount: 10000000000,
+                denom: DENOM.to_string(),
+            };
+
+            chain_client
+                .send(&genesis_account, &sender_address, amount, Some(txm.clone()))
+                .await
+                .unwrap();
+
+
+            // fund delegate address
+            println!("Ensuring delegate account exists by sending coins");
+            let response = chain_client
+            .send(
+                &genesis_account,
+                &delegate_address,
+                Coin {
+                    amount: 1,
+                    denom: DENOM.to_string(),
+                },
+                None,
+            )
+            .await
+            .unwrap();
+
+            wait_for_tx(&chain_client.rpc_client, &response, 10).await;
+
+            let sender_starting_balance: u64 = chain_client
+                .query_all_balances(&sender_address)
+                .await
+                .unwrap()[0]
+                .amount
+                .parse()
+                .unwrap();
+
+            println!("Sender starting balance: {}", sender_starting_balance);
+
+            // println!("Ensuring delegate account e")
+
+            // control
+            assert_eq!(sender_starting_balance, balance);
+
+            // authorize MultiSend
+            println!("Granting MultiSend authorization to delegate");
+            let response = chain_client
+                .grant_generic_authorization(
+                    &sender_account,
+                    delegate_account.id(ACCOUNT_PREFIX).unwrap(),
+                    "/cosmos.bank.v1beta1.MsgMultiSend",
+                    Some(prost_types::Timestamp {
+                        seconds: 4110314268,
+                        nanos: 0,
+                    }),
+                    None,
+                )
+                .await
+                .unwrap();
+
+            wait_for_tx(&chain_client.rpc_client, &response, 10).await;
+
+            // query *and* verify methods, just so both get exercised
+            let _response = chain_client
+                .query_authz_grant(
+                    &sender_account.address(ACCOUNT_PREFIX).unwrap(),
+                    &delegate_account.address(ACCOUNT_PREFIX).unwrap(),
+                    "/cosmos.bank.v1beta1.MsgMultiSend",
+                )
+                .await
+                .unwrap();
+
+            chain_client
+                .verify_multi_send_grant(
+                    &sender_account.id(ACCOUNT_PREFIX).unwrap(),
+                    &delegate_account.id(ACCOUNT_PREFIX).unwrap(),
+                )
+                .await
+                .unwrap();
+
+            println!("Executing airdrop from TOML");
+            let response = chain_client
+                .execute_delegated_airdrop_from_toml(path, Some(txm))
                 .await
                 .unwrap();
 

@@ -120,7 +120,7 @@ impl ChainClient {
 
     pub async fn execute_delegated_airdrop_from_toml(
         &mut self,
-        path: String,
+        path: &str,
         tx_metadata: Option<TxMetadata>,
     ) -> Result<Response, ChainClientError> {
         let payments_toml = read_payments_toml(path)?;
@@ -177,11 +177,12 @@ impl ChainClient {
 
     pub async fn execute_airdrop_from_toml(
         &mut self,
-        path: String,
+        path: &str,
         tx_metadata: Option<TxMetadata>,
     ) -> Result<Response, ChainClientError> {
         let payments_toml = read_payments_toml(path)?;
         let sender = self.keyring.get_account(&payments_toml.sender_key_name)?;
+        // TO-DO user the metadata from the toml
         self.execute_airdrop(&sender, payments_toml.payments, tx_metadata)
             .await
     }
@@ -229,23 +230,24 @@ pub fn multi_send_args_from_payments(
 }
 
 // TO-DO different error type.
-pub fn read_payments_toml(path: String) -> Result<PaymentsToml, ChainClientError> {
+pub fn read_payments_toml(path: &str) -> Result<PaymentsToml, ChainClientError> {
     let toml_string = fs::read_to_string(path)?;
     Ok(toml::from_str(toml_string.as_str())?)
 }
 
 pub fn write_payments_toml(
-    path: String,
-    sender_key_name: String,
-    grantee_key_name: Option<String>,
+    path: &str,
+    sender_key_name: &str,
+    grantee_key_name: Option<&str>,
     fee_payer: Option<AccountId>,
     fee_granter: Option<AccountId>,
     payments: Vec<Payment>,
 ) -> Result<(), ChainClientError> {
     let fee_payer = fee_payer.map(|fp| fp.as_ref().to_string());
     let fee_granter = fee_granter.map(|fg| fg.as_ref().to_string());
+    let grantee_key_name = grantee_key_name.map(|v| v.to_string());
     let toml_obj = PaymentsToml {
-        sender_key_name,
+        sender_key_name: sender_key_name.to_string(),
         grantee_key_name,
         fee_granter,
         fee_payer,
@@ -300,14 +302,14 @@ mod tests {
         assert!(st.permissions().mode() & 0o777 == 0o700);
 
         let sender_key = "sender_key".to_string();
-        let grantee_key = Some("grantee_key".to_string());
+        let grantee_key = Some("grantee_key");
         let fee_granter =
             Some(AccountId::from_str("cosmos142nrqssptljjajdkav8djftp87lvg0ghvm0m9c").unwrap());
         let fee_payer =
             Some(AccountId::from_str("cosmos1svs56wmqsezpjqgmvaf78rx3ut94pw6s7mxl05").unwrap());
         let expected_result = PaymentsToml {
             sender_key_name: sender_key.clone(),
-            grantee_key_name: grantee_key.clone(),
+            grantee_key_name: grantee_key.map(|v| v.to_string()),
             fee_granter: Some(fee_granter.clone().unwrap().as_ref().to_string()),
             fee_payer: Some(fee_payer.clone().unwrap().as_ref().to_string()),
             payments: payments.clone(),
@@ -316,8 +318,8 @@ mod tests {
         // Write and read payments toml
         let file_path = path_string.clone() + "payments.toml";
         write_payments_toml(
-            file_path.clone(),
-            sender_key,
+            &file_path.clone(),
+            &sender_key,
             grantee_key,
             fee_payer,
             fee_granter,
@@ -325,7 +327,7 @@ mod tests {
         )
         .expect("failed to write payments toml");
 
-        let result = read_payments_toml(file_path).expect("failed to read payments toml");
+        let result = read_payments_toml(&file_path).expect("failed to read payments toml");
 
         assert_eq!(result, expected_result);
 
