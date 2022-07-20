@@ -377,7 +377,7 @@ fn airdrop_delegated_with_toml_single_sender_single_denom() {
                     .await
                     .unwrap()
                     .len(),
-                    0
+                0
             );
 
             println!("Writing toml");
@@ -404,21 +404,20 @@ fn airdrop_delegated_with_toml_single_sender_single_denom() {
                 .await
                 .unwrap();
 
-
             // fund delegate address
             println!("Ensuring delegate account exists by sending coins");
             let response = chain_client
-            .send(
-                &genesis_account,
-                &delegate_address,
-                Coin {
-                    amount: 1,
-                    denom: DENOM.to_string(),
-                },
-                None,
-            )
-            .await
-            .unwrap();
+                .send(
+                    &genesis_account,
+                    &delegate_address,
+                    Coin {
+                        amount: 1,
+                        denom: DENOM.to_string(),
+                    },
+                    None,
+                )
+                .await
+                .unwrap();
 
             wait_for_tx(&chain_client.rpc_client, &response, 10).await;
 
