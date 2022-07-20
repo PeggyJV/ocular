@@ -43,23 +43,27 @@ impl ChainClient {
             .await?;
 
         // If any grants meet the following criteria we can be confident the transaction is authorized:
-        // 1. The grant either has no expiration, or an expiration with more than 60 seconds remaining.
-        // 2. The grant contains a generic authorization
+        // 1. The grant has an expiration with more than 60 seconds remaining.
+        // 2. The grant contains a generic authorization (may not need this check?)
         let grant_found = res.grants.iter().any(|g| {
-            if g.expiration.is_some() {
-                let expiration = g.expiration.clone().unwrap();
-                let cutoff = i64::try_from(
-                    SystemTime::now()
-                        .duration_since(SystemTime::UNIX_EPOCH)
-                        .unwrap()
-                        .as_secs()
-                        + 60,
-                )
-                .expect("failed to derive time from system clock");
+            // There is a quirk where even though you can create a grant with no expiration on chain,
+            // it will not be seen as a valid grant when attempting to execute a `MsgExec` with it.
+            // Therefore, we ignore grants that have an empty expiration.
+            if g.expiration.is_none() {
+                return false;
+            }
 
-                if expiration.seconds <= cutoff {
-                    return false;
-                }
+            let expiration = g.expiration.clone().unwrap();
+            let cutoff = i64::try_from(
+                SystemTime::now()
+                    .duration_since(SystemTime::UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+                    + 60,
+            )
+            .expect("failed to derive time from system clock");
+            if expiration.seconds <= cutoff {
+                return false;
             }
             if g.authorization.is_none() {
                 return false;
