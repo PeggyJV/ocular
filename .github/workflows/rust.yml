@@ -28,6 +28,11 @@ jobs:
           key: ${{ runner.os }}-cargo-${{ hashFiles('Cargo.lock') }}
       - name: Run Ocular acceptance tests
         run: cargo test --verbose
+      - name: Run Airdrop tests
+        run: cargo test --verbode -- airdrop_direct
+        run: cargo test --verbode -- airdrop_delegated
+        run: cargo test --verbode -- airdrop_toml_direct
+        run: cargo test --verbode -- airdrop_toml_delegated
 
   fmt:
     name: Rustfmt

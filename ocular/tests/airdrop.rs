@@ -21,7 +21,8 @@ use crate::utils::{
 mod utils;
 
 #[test]
-fn airdrop_single_sender_single_denom() {
+#[ignore]
+fn airdrop_direct_single_sender_single_denom() {
     let container_name = "airdrop_test";
 
     run_single_node_test(container_name, |sender_account: AccountInfo| {
@@ -76,6 +77,7 @@ fn airdrop_single_sender_single_denom() {
 }
 
 #[test]
+#[ignore]
 fn airdrop_delegated_single_sender_single_denom() {
     let container_name = "delegated_airdrop_test";
 
@@ -226,7 +228,8 @@ fn airdrop_delegated_single_sender_single_denom() {
 }
 
 #[test]
-fn airdrop_with_toml_single_sender_single_denom() {
+#[ignore]
+fn airdrop_toml_direct_single_sender_single_denom() {
     let container_name = "toml_delegated_airdrop_test";
 
     run_single_node_test(container_name, |genesis_account: AccountInfo| {
@@ -314,7 +317,8 @@ fn airdrop_with_toml_single_sender_single_denom() {
 }
 
 #[test]
-fn airdrop_delegated_with_toml_single_sender_single_denom() {
+#[ignore]
+fn airdrop_toml_delegated_single_sender_single_denom() {
     let container_name = "toml_delegated_airdrop_test";
 
     run_single_node_test(container_name, |genesis_account: AccountInfo| {
