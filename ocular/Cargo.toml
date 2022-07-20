@@ -49,3 +49,6 @@ async-trait = "0.1.56"
 [features]
 default = ["registry-cache"]
 registry-cache = []
+
+[dev-dependencies]
+rand = "0.8.5"

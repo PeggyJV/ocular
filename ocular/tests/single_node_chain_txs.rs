@@ -2,6 +2,7 @@
 
 // Requies docker
 use ocular::{
+    account::AccountInfo,
     chain::{client::cache::Cache, config::ChainClientConfig},
     cosmos_modules::*,
     keyring::Keyring,
@@ -14,7 +15,8 @@ use cosmos_sdk_proto::cosmos::authz::v1beta1::{
 use cosmrs::{
     bank::{MsgMultiSend, MsgSend},
     dev, rpc,
-    tx::{self, AccountNumber, Fee, Msg, SignDoc, SignerInfo},
+    tendermint::chain::Id,
+    tx::{self, Fee, Msg, SignDoc, SignerInfo},
     Coin,
 };
 use ocular::chain::client::ChainClient;
@@ -22,75 +24,25 @@ use prost::Message;
 
 use std::{panic, str};
 
-/// Chain ID to use for tests
-const CHAIN_ID: &str = "cosmrs-test";
+mod utils;
 
-/// RPC port
-const RPC_PORT: u16 = 26657;
+use crate::utils::{
+    generate_accounts, run_single_node_test, ACCOUNT_PREFIX, CHAIN_ID, DENOM, RPC_PORT,
+};
 
-/// Expected account numbers
-const SENDER_ACCOUNT_NUMBER: AccountNumber = 1;
-const RECIPIENT_ACCOUNT_NUMBER: AccountNumber = 9;
-
-/// Bech32 prefix for an account
-const ACCOUNT_PREFIX: &str = "cosmos";
-
-/// Denom name
-const DENOM: &str = "samoleans";
-
-/// Example memo
-const MEMO: &str = "test memo";
-
-// Gaia node test image built and uploaded from https://github.com/cosmos/relayer/tree/main/docker/gaiad;
-// note some adaptations to file strucutre needed to build successfully (moving scripts and making directories)
-// Disclaimer: Upon cosmos sdk (and other) updates, this image may need to be rebuilt and reuploaded.
-const DOCKER_HUB_GAIA_SINGLE_NODE_TEST_IMAGE: &str = "philipjames11/gaia-test";
+const SENDER_ACCOUNT_NUMBER: u64 = 0;
+const RECIPIENT_ACCOUNT_NUMBER: u64 = 9;
+const MEMO: &str = "";
 
 #[test]
 fn local_single_node_chain_test() {
-    let chain_id = CHAIN_ID.parse().expect("Could not parse chain id");
-    let sequence_number = 0;
-    let gas = 100_000;
-    let timeout_height = 9001u16;
+    let container_name = "local_single_node_test";
 
-    let mut temp_ring = Keyring::new_file_store(None).expect("Could not create keyring.");
-    let _sender_mnemonic = temp_ring
-        .create_cosmos_key("test_only_key_override_safe", "", true)
-        .expect("Could not create key");
-    let sender_account = temp_ring
-        .get_account("test_only_key_override_safe")
-        .expect("Couldn't retrieve AccountInfo");
-
-    let docker_args = [
-        "-d",
-        "-p",
-        &format!("{}:{}", RPC_PORT, RPC_PORT),
-        "-p",
-        &format!("{}:{}", 9090, 9090),
-        DOCKER_HUB_GAIA_SINGLE_NODE_TEST_IMAGE,
-        CHAIN_ID,
-        &sender_account.address(ACCOUNT_PREFIX).unwrap(),
-    ];
-
-    dev::docker_run(&docker_args, || {
-        init_tokio_runtime().block_on(async {
-            let mut temp_ring = Keyring::new_file_store(None).expect("Could not create keyring.");
-            let sender_account = temp_ring
-                .get_account("test_only_key_override_safe")
-                .expect("Couldn't retrieve AccountInfo");
-            let _recipient_mnemonic = temp_ring
-                .create_cosmos_key("test_only_key_number_2_override_safe", "", true)
-                .expect("Could not create key");
-            let recipient_account = temp_ring
-                .get_account("test_only_key_number_2_override_safe")
-                .expect("Couldn't retrieve AccountInfo");
-
-            let _delegate_mnemonic = temp_ring
-                .create_cosmos_key("test_only_delegate_key_override_safe", "", true)
-                .expect("Could not create key");
-            let ad_hoc_account = temp_ring
-                .get_account("test_only_delegate_key_override_safe")
-                .expect("Could not get public key info.");
+    run_single_node_test(container_name, |sender_account: AccountInfo| {
+        async move {
+            let mut accounts = generate_accounts(2);
+            let (recipient_account, ad_hoc_account) =
+                (accounts.pop().unwrap(), accounts.pop().unwrap());
 
             let amount = Coin {
                 amount: 1u8.into(),
@@ -101,7 +53,11 @@ fn local_single_node_chain_test() {
                 amount: default_fee_amount.into(),
                 denom: DENOM.parse().expect("Could not parse denom"),
             };
+            let gas = 200000;
             let fee = Fee::from_amount_and_gas(default_fee.clone(), gas);
+            let sequence_number = 0;
+            let timeout_height = 9001u16;
+            let chain_id = Id::try_from(CHAIN_ID.to_string()).unwrap();
 
             // Expected MsgSend
             let msg_send = MsgSend {
@@ -112,16 +68,13 @@ fn local_single_node_chain_test() {
             .to_any()
             .expect("Could not serlialize msg.");
 
-            let expected_tx_body = tx::Body::new(vec![msg_send], MEMO, timeout_height);
+            let expected_tx_body = tx::Body::new(vec![msg_send], "", timeout_height);
             let expected_auth_info =
-                SignerInfo::single_direct(Some(sender_account.public_key()), sequence_number).auth_info(fee.clone());
-            let expected_sign_doc = SignDoc::new(
-                &expected_tx_body,
-                &expected_auth_info,
-                &chain_id,
-                SENDER_ACCOUNT_NUMBER,
-            )
-            .expect("Could not parse sign doc.");
+                SignerInfo::single_direct(Some(sender_account.public_key()), sequence_number)
+                    .auth_info(fee.clone());
+            let expected_sign_doc =
+                SignDoc::new(&expected_tx_body, &expected_auth_info, &chain_id, 1)
+                    .expect("Could not parse sign doc.");
             let _expected_tx_raw = expected_sign_doc
                 .sign(sender_account.private_key())
                 .expect("Could not parse tx.");
@@ -150,7 +103,7 @@ fn local_single_node_chain_test() {
                 value: msg_grant.encode_to_vec(),
             };
 
-            let expected_msg_grant_body = tx::Body::new(vec![msg_grant], MEMO, timeout_height);
+            let expected_msg_grant_body = tx::Body::new(vec![msg_grant], "", timeout_height);
             let expected_msg_grant_auth_info =
                 SignerInfo::single_direct(Some(sender_account.public_key()), sequence_number + 1)
                     .auth_info(fee.clone());
@@ -161,7 +114,8 @@ fn local_single_node_chain_test() {
                 SENDER_ACCOUNT_NUMBER,
             )
             .expect("Could not parse sign doc.");
-            let _expected_msg_grant_raw = expected_msg_grant_sign_doc.sign(sender_account.private_key());
+            let _expected_msg_grant_raw =
+                expected_msg_grant_sign_doc.sign(sender_account.private_key());
 
             // Expected MsgRevoke
             let msg_revoke = MsgRevoke {
@@ -186,7 +140,8 @@ fn local_single_node_chain_test() {
                 SENDER_ACCOUNT_NUMBER,
             )
             .expect("Could not parse sign doc.");
-            let _expected_msg_revoke_raw = expected_msg_revoke_sign_doc.sign(sender_account.private_key());
+            let _expected_msg_revoke_raw =
+                expected_msg_revoke_sign_doc.sign(sender_account.private_key());
 
             // Expected MsgExec
             let mut msgs_to_execute: Vec<::prost_types::Any> = Vec::new();
@@ -221,7 +176,8 @@ fn local_single_node_chain_test() {
                 RECIPIENT_ACCOUNT_NUMBER,
             )
             .expect("Could not parse sign doc.");
-            let _expected_msg_exec_raw = expected_msg_exec_sign_doc.sign(sender_account.private_key());
+            let _expected_msg_exec_raw =
+                expected_msg_exec_sign_doc.sign(sender_account.private_key());
 
             // expected MsgMultiSend
             let input_a = MultiSendIo {
@@ -277,17 +233,21 @@ fn local_single_node_chain_test() {
             }
             .to_any()
             .expect("could not serialize multi send msg");
-            let expected_multisend_tx_body = tx::Body::new(vec![msg_multi_send], MEMO, timeout_height);
+            let expected_multisend_tx_body =
+                tx::Body::new(vec![msg_multi_send], MEMO, timeout_height);
             let expected_multisend_auth_info =
                 SignerInfo::single_direct(Some(sender_account.public_key()), sequence_number + 3)
                     .auth_info(fee.clone());
 
             let rpc_address = format!("http://localhost:{}", RPC_PORT);
             let rpc_client =
-            rpc::HttpClient::new(rpc_address.as_str()).expect("Could not create RPC");
+                rpc::HttpClient::new(rpc_address.as_str()).expect("Could not create RPC");
             let grpc_address = format!("http://localhost:9090");
             let mut cache = Cache::create_memory_cache(None, 10).unwrap();
-            let _res = cache.grpc_endpoint_cache.add_item(grpc_address.clone(), 0).unwrap();
+            let _res = cache
+                .grpc_endpoint_cache
+                .add_item(grpc_address.clone(), 0)
+                .unwrap();
             let mut chain_client = ChainClient {
                 config: ChainClientConfig {
                     chain_name: "cosmrs".to_string(),
@@ -296,7 +256,10 @@ fn local_single_node_chain_test() {
                     grpc_address,
                     account_prefix: ACCOUNT_PREFIX.to_string(),
                     gas_adjustment: 1.2,
-                    default_fee: ocular::tx::Coin { amount: default_fee_amount.into(), denom: DENOM.to_string() }
+                    default_fee: ocular::tx::Coin {
+                        amount: default_fee_amount.into(),
+                        denom: DENOM.to_string(),
+                    },
                 },
                 keyring: Keyring::new_file_store(None).expect("Could not create keyring."),
                 rpc_client: rpc_client.clone(),
@@ -318,18 +281,18 @@ fn local_single_node_chain_test() {
             // Test MsgSend functionality
             let actual_tx_commit_response = chain_client
                 .send(
-                    sender_account.clone(),
+                    &sender_account,
                     recipient_account.id(ACCOUNT_PREFIX).unwrap().as_ref(),
-                    amount.clone(),
+                    ocular::tx::Coin {
+                        amount: 1,
+                        denom: DENOM.to_string(),
+                    },
                     Some(tx_metadata.clone()),
                 )
                 .await;
 
             if let Err(err) = &actual_tx_commit_response {
-                println!(
-                    "msgsend failed: {:?}",
-                    err
-                );
+                println!("msgsend failed: {:?}", err);
             }
 
             let actual_tx_commit_response = actual_tx_commit_response.unwrap();
@@ -339,14 +302,15 @@ fn local_single_node_chain_test() {
 
             // Test MsgGrant functionality
             let actual_msg_grant_commit_response = chain_client
-                .grant_send_authorization(
-                    sender_account.clone(),
+                .grant_generic_authorization(
+                    &sender_account,
                     recipient_account.id(ACCOUNT_PREFIX).unwrap(),
+                    "/cosmos.bank.v1beta1.MsgSend",
                     Some(prost_types::Timestamp {
                         seconds: 4110314268,
                         nanos: 0,
                     }),
-                    tx_metadata.clone(),
+                    Some(tx_metadata.clone()),
                 )
                 .await
                 .expect("Could not broadcast msg.");
@@ -385,11 +349,7 @@ fn local_single_node_chain_test() {
             );
 
             let actual_msg_exec_commit_response = chain_client
-                .execute_authorized_tx(
-                    grantee_account.clone(),
-                    msgs_to_send,
-                    Some(tx_metadata.clone()),
-                )
+                .execute_authorized_tx(&grantee_account, msgs_to_send, Some(tx_metadata.clone()))
                 .await
                 .expect("Could not broadcast msg.");
 
@@ -416,9 +376,9 @@ fn local_single_node_chain_test() {
             // Test MsgRevoke functionality
             let actual_msg_revoke_commit_response = chain_client
                 .revoke_send_authorization(
-                    sender_account.clone(),
+                    &sender_account,
                     grantee_account.id(ACCOUNT_PREFIX).unwrap(),
-                    tx_metadata.clone(),
+                    Some(tx_metadata.clone()),
                 )
                 .await
                 .expect("Could not broadcast msg.");
@@ -458,18 +418,14 @@ fn local_single_node_chain_test() {
             );
 
             let actual_msg_exec_commit_response = chain_client
-                .execute_authorized_tx(
-                    grantee_account.clone(),
-                    msgs_to_send,
-                    Some(tx_metadata_memoed),
-                )
+                .execute_authorized_tx(&grantee_account, msgs_to_send, Some(tx_metadata_memoed))
                 .await
                 .expect("Could not broadcast msg.");
 
             if actual_msg_exec_commit_response.check_tx.code.is_err() {
                 panic!(
                     "check_tx for msg_exec failed: {:?}",
-                    actual_msg_exec_commit_response. check_tx
+                    actual_msg_exec_commit_response.check_tx
                 );
             }
 
@@ -478,12 +434,7 @@ fn local_single_node_chain_test() {
 
             // Test MsgMultiSend functionality
             let actual_tx_commit_response = chain_client
-                .multi_send(
-                    sender_account.clone(),
-                    inputs,
-                    outputs,
-                    Some(tx_metadata),
-                )
+                .multi_send(&sender_account, inputs, outputs, Some(tx_metadata))
                 .await
                 .expect("Could not broadcast msg");
 
@@ -502,14 +453,6 @@ fn local_single_node_chain_test() {
             let actual_tx = dev::poll_for_tx(&rpc_client, actual_tx_commit_response.hash).await;
             assert_eq!(&expected_multisend_tx_body, &actual_tx.body);
             assert_eq!(&expected_multisend_auth_info, &actual_tx.auth_info);
-        });
+        }
     });
-}
-
-/// Initialize Tokio runtime
-fn init_tokio_runtime() -> tokio::runtime::Runtime {
-    tokio::runtime::Builder::new_current_thread()
-        .enable_all()
-        .build()
-        .expect("Could not build tokio runtime")
 }

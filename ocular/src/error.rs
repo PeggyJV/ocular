@@ -37,6 +37,8 @@ pub enum ChainClientError {
     UnauthorizedTx(String),
     #[error("{0}")]
     ChainId(#[from] cosmrs::tendermint::Error),
+    #[error("{0}")]
+    Math(String),
 }
 
 #[derive(Debug, Error)]

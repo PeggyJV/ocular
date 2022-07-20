@@ -40,12 +40,12 @@ impl ChainClient {
     /// Helper method for signing and broadcasting messages.
     pub async fn sign_and_send_msg(
         &mut self,
-        sender: AccountInfo,
+        sender: &AccountInfo,
         tx_body: tx::Body,
         tx_metadata: TxMetadata,
     ) -> Result<Response, ChainClientError> {
         let account = self
-            .query_account(sender.address(&self.config.account_prefix)?)
+            .query_account(&sender.address(&self.config.account_prefix)?)
             .await?;
 
         // Create signer info.

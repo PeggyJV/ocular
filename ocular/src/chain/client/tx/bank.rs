@@ -3,14 +3,14 @@ use std::str::FromStr;
 use cosmrs::{
     bank::{MsgMultiSend, MsgSend},
     tx::{self, Msg},
-    AccountId, Coin,
+    AccountId,
 };
 use tendermint_rpc::endpoint::broadcast::tx_commit::Response;
 
 use crate::{
     account::AccountInfo,
     error::{ChainClientError, TxError},
-    tx::{MultiSendIo, TxMetadata},
+    tx::{Coin, MultiSendIo, TxMetadata},
 };
 
 use super::ChainClient;
@@ -20,7 +20,7 @@ impl ChainClient {
     /// Signs and sends a simple transaction message.
     pub async fn send(
         &mut self,
-        sender: AccountInfo,
+        sender: &AccountInfo,
         recipient: &str,
         amount: Coin,
         tx_metadata: Option<TxMetadata>,
@@ -48,7 +48,7 @@ impl ChainClient {
         let msg = MsgSend {
             from_address: sender.id(&self.config.account_prefix)?,
             to_address: recipient,
-            amount: vec![amount.clone()],
+            amount: vec![cosmrs::Coin::try_from(amount)?],
         };
         let tx_metadata = match tx_metadata {
             Some(tm) => tm,
@@ -65,7 +65,7 @@ impl ChainClient {
     /// Send coins in a MIMO fashion. If any coin transfers are invalid the entire transaction will fail.
     pub async fn multi_send(
         &mut self,
-        sender: AccountInfo,
+        sender: &AccountInfo,
         inputs: Vec<MultiSendIo>,
         outputs: Vec<MultiSendIo>,
         tx_metadata: Option<TxMetadata>,
