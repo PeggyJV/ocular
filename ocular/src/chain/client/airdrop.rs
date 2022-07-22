@@ -8,7 +8,7 @@ use crate::{
     cosmos_modules,
     error::{AirdropError, ChainClientError},
     keyring::Keyring,
-    tx::{Coin, MultiSendIo, Payment, PaymentsToml, TxMetadata},
+    tx::{Any, Coin, MultiSendIo, Payment, PaymentsToml, TxMetadata},
 };
 use bip32::Mnemonic;
 use cosmos_sdk_proto::cosmos::authz::v1beta1::Grant;
@@ -103,7 +103,7 @@ impl ChainClient {
 
         let (inputs, outputs) =
             multi_send_args_from_payments(&granter.address(&self.config.account_prefix)?, payments);
-        let msgs: Vec<prost_types::Any> = vec![MsgMultiSend {
+        let msgs: Vec<Any> = vec![MsgMultiSend {
             inputs: inputs
                 .iter()
                 .map(TryInto::try_into)

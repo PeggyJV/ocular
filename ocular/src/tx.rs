@@ -3,6 +3,8 @@ use serde::{Deserialize, Serialize};
 
 use crate::error::TxError;
 
+pub use prost_types::Any;
+
 /// Metadata wrapper for transactions
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct TxMetadata {
