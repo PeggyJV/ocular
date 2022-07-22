@@ -7,6 +7,7 @@ use crate::{
         feegrant::{BasicAllowance, MsgGrantAllowance},
     },
     error::ChainClientError,
+    Timestamp,
     tx::{Any, TxMetadata},
 };
 use cosmrs::{tx, AccountId};
@@ -22,17 +23,17 @@ impl ChainClient {
         granter: &AccountInfo,
         grantee: AccountId,
         message: &str,
-        expiration_timestamp: Option<prost_types::Timestamp>,
+        expiration_timestamp: Option<Timestamp>,
         tx_metadata: Option<TxMetadata>,
     ) -> Result<BroadcastCommitResponse, ChainClientError> {
-        let expiration: prost_types::Timestamp = match expiration_timestamp {
+        let expiration: Timestamp = match expiration_timestamp {
             Some(exp) => exp,
             None => {
                 // defaults to 24 hour expiration
                 let timestamp = SystemTime::now()
                     .checked_add(Duration::from_secs(31536000))
                     .unwrap();
-                prost_types::Timestamp::from(timestamp)
+                Timestamp::from(timestamp)
             }
         };
 
@@ -118,7 +119,7 @@ impl ChainClient {
         &mut self,
         granter: &AccountInfo,
         grantee: AccountId,
-        expiration: Option<prost_types::Timestamp>,
+        expiration: Option<Timestamp>,
         // TODO: Standardize below Coin type to common cosmrs coin type once FeeGrants get looped in.
         spend_limit: cosmos_sdk_proto::cosmos::base::v1beta1::Coin,
         tx_metadata: TxMetadata,

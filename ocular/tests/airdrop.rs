@@ -8,7 +8,7 @@ use ocular::{
         config::ChainClientConfig,
     },
     keyring::Keyring,
-    tx::{Coin, Payment},
+    tx::{Coin, Payment}, Timestamp,
 };
 use rand::Rng;
 use rpc::HttpClient;
@@ -134,7 +134,7 @@ fn airdrop_delegated_single_sender_single_denom() {
                     &sender_account,
                     delegate_account.id(ACCOUNT_PREFIX).unwrap(),
                     "/cosmos.bank.v1beta1.MsgMultiSend",
-                    Some(prost_types::Timestamp {
+                    Some(Timestamp {
                         seconds: 4110314268,
                         nanos: 0,
                     }),

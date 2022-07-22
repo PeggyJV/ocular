@@ -6,7 +6,7 @@ use ocular::{
     chain::{client::cache::Cache, config::ChainClientConfig},
     cosmos_modules::*,
     keyring::Keyring,
-    tx::{Any, MultiSendIo, TxMetadata},
+    tx::{Any, MultiSendIo, TxMetadata}, Timestamp,
 };
 
 use cosmos_sdk_proto::cosmos::authz::v1beta1::{
@@ -91,7 +91,7 @@ fn local_single_node_chain_test() {
                         }
                         .encode_to_vec(),
                     }),
-                    expiration: Some(prost_types::Timestamp {
+                    expiration: Some(Timestamp {
                         seconds: 4110314268,
                         nanos: 0,
                     }),
@@ -306,7 +306,7 @@ fn local_single_node_chain_test() {
                     &sender_account,
                     recipient_account.id(ACCOUNT_PREFIX).unwrap(),
                     "/cosmos.bank.v1beta1.MsgSend",
-                    Some(prost_types::Timestamp {
+                    Some(Timestamp {
                         seconds: 4110314268,
                         nanos: 0,
                     }),
