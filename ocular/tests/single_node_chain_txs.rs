@@ -6,7 +6,8 @@ use ocular::{
     chain::{client::cache::Cache, config::ChainClientConfig},
     cosmos_modules::*,
     keyring::Keyring,
-    tx::{Any, MultiSendIo, TxMetadata}, Timestamp,
+    tx::{Any, MultiSendIo, TxMetadata},
+    Timestamp,
 };
 
 use cosmos_sdk_proto::cosmos::authz::v1beta1::{

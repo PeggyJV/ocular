@@ -12,7 +12,7 @@ use crate::{
     tx::{Coin, MultiSendIo, TxMetadata},
 };
 
-use super::{ChainClient, BroadcastCommitResponse};
+use super::{BroadcastCommitResponse, ChainClient};
 
 impl ChainClient {
     // TODO: Make this extensible to multisig and multicoin (or add new methods for that)

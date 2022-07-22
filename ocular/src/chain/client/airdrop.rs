@@ -25,7 +25,7 @@ use std::{collections::HashMap, time::SystemTime};
 use std::{fs, path::Path, str::FromStr};
 use uuid::Uuid;
 
-use super::{ChainClient, tx::BroadcastCommitResponse};
+use super::{tx::BroadcastCommitResponse, ChainClient};
 
 const MSG_MULTI_SEND_URL: &str = "/cosmos.bank.v1beta1.MsgMultiSend";
 const GENERIC_AUTHORIZATION_URL: &str = "/cosmos.authz.v1beta1.GenericAuthorization";

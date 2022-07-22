@@ -111,7 +111,7 @@ pub enum KeyStoreError {
     #[error("error during account retrieval")]
     RetrievingAccount(#[from] AccountError),
     #[error("{0}")]
-    Signatory(#[from] signatory::Error)
+    Signatory(#[from] signatory::Error),
 }
 
 #[derive(Debug, Error)]
@@ -131,7 +131,7 @@ pub enum TxError {
     #[error("error logging response: {0}")]
     Logging(String),
     #[error("error parsing amount")]
-    AmountParse(#[from] ParseIntError)
+    AmountParse(#[from] ParseIntError),
 }
 
 impl From<bech32::Error> for TxError {

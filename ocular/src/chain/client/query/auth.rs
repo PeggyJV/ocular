@@ -26,10 +26,7 @@ impl QueryClient for AuthQueryClient {
 
 impl ChainClient {
     /// Gets the account on chain with the specified address
-    pub async fn query_account(
-        &mut self,
-        address: &str,
-    ) -> Result<BaseAccount, ChainClientError> {
+    pub async fn query_account(&mut self, address: &str) -> Result<BaseAccount, ChainClientError> {
         let mut query_client = self.get_query_client::<AuthQueryClient>().await?;
         let request = auth::QueryAccountRequest {
             address: address.to_string(),
@@ -62,8 +59,6 @@ impl ChainClient {
             .iter()
             .map(|any| {
                 auth::BaseAccount::decode(&any.value as &[u8])
-                    .unwrap()
-                    .try_into()
                     .unwrap()
             })
             .collect::<Vec<auth::BaseAccount>>();

@@ -4,11 +4,14 @@ use cosmrs::{dev, rpc, Tx};
 use ocular::{
     account::AccountInfo,
     chain::{
-        client::{airdrop::write_payments_toml, cache::Cache, ChainClient, tx::BroadcastCommitResponse},
+        client::{
+            airdrop::write_payments_toml, cache::Cache, tx::BroadcastCommitResponse, ChainClient,
+        },
         config::ChainClientConfig,
     },
     keyring::Keyring,
-    tx::{Coin, Payment}, Timestamp,
+    tx::{Coin, Payment},
+    Timestamp,
 };
 use rand::Rng;
 use rpc::HttpClient;

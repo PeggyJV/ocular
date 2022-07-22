@@ -4,10 +4,11 @@ use tonic::transport::Channel;
 
 use crate::{
     cosmos_modules::bank,
-    error::{ChainClientError, GrpcError}, Coin,
+    error::{ChainClientError, GrpcError},
+    Coin,
 };
 
-use super::{ChainClient, QueryClient, PageRequest};
+use super::{ChainClient, PageRequest, QueryClient};
 
 /// The bank module's query client proto definition
 pub type BankQueryClient = bank::query_client::QueryClient<Channel>;
@@ -83,7 +84,10 @@ impl ChainClient {
     }
 
     /// Gets the metadata for all coin denominations defined in the bank module.
-    pub async fn query_denoms_metadata(&mut self, pagination: Option<PageRequest>) -> Result<Vec<bank::Metadata>, ChainClientError> {
+    pub async fn query_denoms_metadata(
+        &mut self,
+        pagination: Option<PageRequest>,
+    ) -> Result<Vec<bank::Metadata>, ChainClientError> {
         let mut query_client = self.get_query_client::<BankQueryClient>().await?;
         let request = bank::QueryDenomsMetadataRequest { pagination };
         let response = query_client
@@ -116,7 +120,10 @@ impl ChainClient {
     }
 
     /// Gets the supply of all coin denominations with optional pagination
-    pub async fn query_total_supply(&mut self, pagination: Option<PageRequest>) -> Result<Vec<Coin>, ChainClientError> {
+    pub async fn query_total_supply(
+        &mut self,
+        pagination: Option<PageRequest>,
+    ) -> Result<Vec<Coin>, ChainClientError> {
         let mut query_client = self.get_query_client::<BankQueryClient>().await?;
         let request = bank::QueryTotalSupplyRequest { pagination };
         let response = query_client

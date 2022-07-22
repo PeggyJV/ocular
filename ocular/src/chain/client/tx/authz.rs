@@ -7,13 +7,13 @@ use crate::{
         feegrant::{BasicAllowance, MsgGrantAllowance},
     },
     error::ChainClientError,
-    Timestamp,
     tx::{Any, TxMetadata},
+    Timestamp,
 };
 use cosmrs::{tx, AccountId};
 use prost::Message;
 
-use super::{ChainClient, BroadcastCommitResponse};
+use super::{BroadcastCommitResponse, ChainClient};
 
 impl ChainClient {
     // Grant Authorization

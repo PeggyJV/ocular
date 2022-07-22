@@ -9,8 +9,8 @@ use std::path::Path;
 use crate::account::{AccountInfo, SigningKey};
 use crate::error::KeyStoreError;
 
-pub use pkcs8::PrivateKeyDocument;
 pub use bip32::{Mnemonic, PrivateKey};
+pub use pkcs8::PrivateKeyDocument;
 
 // Constants
 // TODO: Move to independant constants file if reused elsewhere
@@ -29,11 +29,8 @@ pub trait KeyStore {
     fn key_exists(&self, keyname: &str) -> Result<bool, KeyStoreError>;
 
     /// Add a private key document associated with a key name into the keystore.
-    fn add_key(
-        &self,
-        key_name: &str,
-        encoded_key: PrivateKeyDocument,
-    ) -> Result<(), KeyStoreError>;
+    fn add_key(&self, key_name: &str, encoded_key: PrivateKeyDocument)
+        -> Result<(), KeyStoreError>;
 
     /// Delete key with a given name. If no key exists under name specified an error will be thrown.
     fn delete_key(&self, key_name: &str) -> Result<(), KeyStoreError>;
