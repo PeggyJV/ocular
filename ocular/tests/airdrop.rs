@@ -4,14 +4,14 @@ use cosmrs::{dev, rpc, Tx};
 use ocular::{
     account::AccountInfo,
     chain::{
-        client::{airdrop::write_payments_toml, cache::Cache, ChainClient},
+        client::{airdrop::write_payments_toml, cache::Cache, ChainClient, tx::BroadcastCommitResponse},
         config::ChainClientConfig,
     },
     keyring::Keyring,
     tx::{Coin, Payment},
 };
 use rand::Rng;
-use rpc::{endpoint::broadcast::tx_commit::Response, HttpClient};
+use rpc::HttpClient;
 
 use crate::utils::{
     generate_accounts, run_single_node_test, ACCOUNT_PREFIX, CHAIN_ID, DENOM,
@@ -220,19 +220,19 @@ fn airdrop_delegated_single_sender_single_denom() {
 #[test]
 #[ignore]
 fn airdrop_toml_direct_single_sender_single_denom() {
-    let container_name = "toml_delegated_airdrop_test";
+    let container_name = "toml_direct_airdrop_test";
 
     run_single_node_test(container_name, |genesis_account: AccountInfo| {
         async move {
             let mut keyring = Keyring::new_file_store(None).unwrap();
             let sender_key_name = "sender";
             keyring
-                .create_cosmos_key(sender_key_name, "", false)
+                .create_cosmos_key(sender_key_name, "", true)
                 .unwrap();
 
             let grantee_key_name = "grantee";
             keyring
-                .create_cosmos_key(grantee_key_name, "", false)
+                .create_cosmos_key(grantee_key_name, "", true)
                 .unwrap();
 
             let sender_account = keyring.get_account(sender_key_name).unwrap();
@@ -530,7 +530,7 @@ async fn init_test_chain_client() -> ChainClient {
     }
 }
 
-async fn wait_for_tx(client: &HttpClient, res: &Response, retries: u64) {
+async fn wait_for_tx(client: &HttpClient, res: &BroadcastCommitResponse, retries: u64) {
     if res.check_tx.code.is_err() {
         panic!("CheckTx error: {:?}", res);
     }
