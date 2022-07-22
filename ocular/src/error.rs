@@ -110,6 +110,8 @@ pub enum KeyStoreError {
     DerivingAccountId(#[from] ErrorReport),
     #[error("error during account retrieval")]
     RetrievingAccount(#[from] AccountError),
+    #[error("{0}")]
+    Signatory(#[from] signatory::Error)
 }
 
 #[derive(Debug, Error)]
