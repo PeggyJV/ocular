@@ -7,11 +7,11 @@ use cosmrs::tx::{self, Fee, SignDoc, SignerInfo};
 use std::fs::File;
 use std::io::prelude::*;
 use std::os::unix::fs::PermissionsExt;
-use tendermint_rpc::endpoint::broadcast::tx_commit::Response;
 
 use super::ChainClient;
 
 pub use self::{authz::*, bank::*};
+pub type BroadcastCommitResponse = tendermint_rpc::endpoint::broadcast::tx_commit::Response;
 
 pub mod authz;
 pub mod bank;
@@ -43,7 +43,7 @@ impl ChainClient {
         sender: &AccountInfo,
         tx_body: tx::Body,
         tx_metadata: TxMetadata,
-    ) -> Result<Response, ChainClientError> {
+    ) -> Result<BroadcastCommitResponse, ChainClientError> {
         let account = self
             .query_account(&sender.address(&self.config.account_prefix)?)
             .await?;

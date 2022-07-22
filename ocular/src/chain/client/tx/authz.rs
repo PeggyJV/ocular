@@ -7,13 +7,12 @@ use crate::{
         feegrant::{BasicAllowance, MsgGrantAllowance},
     },
     error::ChainClientError,
-    tx::{Any, TxMetadata}, Coin,
+    tx::{Any, TxMetadata},
 };
 use cosmrs::{tx, AccountId};
 use prost::Message;
-use tendermint_rpc::endpoint::broadcast::tx_commit::Response;
 
-use super::ChainClient;
+use super::{ChainClient, BroadcastCommitResponse};
 
 impl ChainClient {
     // Grant Authorization
@@ -25,7 +24,7 @@ impl ChainClient {
         message: &str,
         expiration_timestamp: Option<prost_types::Timestamp>,
         tx_metadata: Option<TxMetadata>,
-    ) -> Result<Response, ChainClientError> {
+    ) -> Result<BroadcastCommitResponse, ChainClientError> {
         let expiration: prost_types::Timestamp = match expiration_timestamp {
             Some(exp) => exp,
             None => {
@@ -71,7 +70,7 @@ impl ChainClient {
         granter: &AccountInfo,
         grantee: AccountId,
         tx_metadata: Option<TxMetadata>,
-    ) -> Result<Response, ChainClientError> {
+    ) -> Result<BroadcastCommitResponse, ChainClientError> {
         let msg = MsgRevoke {
             granter: granter.address(&self.config.account_prefix)?,
             grantee: grantee.to_string(),
@@ -96,7 +95,7 @@ impl ChainClient {
         grantee: &AccountInfo,
         msgs: Vec<Any>,
         tx_metadata: Option<TxMetadata>,
-    ) -> Result<Response, ChainClientError> {
+    ) -> Result<BroadcastCommitResponse, ChainClientError> {
         let msg = MsgExec {
             grantee: grantee.address(&self.config.account_prefix)?,
             msgs,
@@ -123,7 +122,7 @@ impl ChainClient {
         // TODO: Standardize below Coin type to common cosmrs coin type once FeeGrants get looped in.
         spend_limit: cosmos_sdk_proto::cosmos::base::v1beta1::Coin,
         tx_metadata: TxMetadata,
-    ) -> Result<Response, ChainClientError> {
+    ) -> Result<BroadcastCommitResponse, ChainClientError> {
         let allowance = BasicAllowance {
             spend_limit: vec![spend_limit],
             expiration,

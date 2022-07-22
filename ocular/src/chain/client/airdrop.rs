@@ -23,10 +23,9 @@ use prost::Message;
 use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, time::SystemTime};
 use std::{fs, path::Path, str::FromStr};
-use tendermint_rpc::endpoint::broadcast::tx_commit::Response;
 use uuid::Uuid;
 
-use super::ChainClient;
+use super::{ChainClient, tx::BroadcastCommitResponse};
 
 const MSG_MULTI_SEND_URL: &str = "/cosmos.bank.v1beta1.MsgMultiSend";
 const GENERIC_AUTHORIZATION_URL: &str = "/cosmos.authz.v1beta1.GenericAuthorization";
@@ -94,7 +93,7 @@ impl ChainClient {
         grantee: &AccountInfo,
         payments: Vec<Payment>,
         tx_metadata: Option<TxMetadata>,
-    ) -> Result<Response, ChainClientError> {
+    ) -> Result<BroadcastCommitResponse, ChainClientError> {
         self.verify_multi_send_grant(
             &granter.id(&self.config.account_prefix)?,
             &grantee.id(&self.config.account_prefix)?,
@@ -122,7 +121,7 @@ impl ChainClient {
         &mut self,
         path: &str,
         tx_metadata: Option<TxMetadata>,
-    ) -> Result<Response, ChainClientError> {
+    ) -> Result<BroadcastCommitResponse, ChainClientError> {
         let payments_toml = read_payments_toml(path)?;
         let grantee = match payments_toml.grantee_key_name {
             Some(g) => self.keyring.get_account(&g),
@@ -169,7 +168,7 @@ impl ChainClient {
         sender: &AccountInfo,
         payments: Vec<Payment>,
         tx_metadata: Option<TxMetadata>,
-    ) -> Result<Response, ChainClientError> {
+    ) -> Result<BroadcastCommitResponse, ChainClientError> {
         let (inputs, outputs) =
             multi_send_args_from_payments(&sender.address(&self.config.account_prefix)?, payments);
         self.multi_send(sender, inputs, outputs, tx_metadata).await
@@ -179,7 +178,7 @@ impl ChainClient {
         &mut self,
         path: &str,
         tx_metadata: Option<TxMetadata>,
-    ) -> Result<Response, ChainClientError> {
+    ) -> Result<BroadcastCommitResponse, ChainClientError> {
         let payments_toml = read_payments_toml(path)?;
         let sender = self.keyring.get_account(&payments_toml.sender_key_name)?;
         // TO-DO user the metadata from the toml
