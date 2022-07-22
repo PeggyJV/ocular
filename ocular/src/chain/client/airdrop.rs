@@ -137,23 +137,7 @@ impl ChainClient {
 
         // add fee_payer and fee_granter values to metadata if present
         let basic_tx_metadata = self.get_basic_tx_metadata().await?;
-        let mut tx_metadata = tx_metadata.unwrap_or(basic_tx_metadata);
-        let tx_metadata = match (payments_toml.fee_granter, payments_toml.fee_payer) {
-            (None, Some(fp)) => {
-                tx_metadata.fee_payer = Some(AccountId::from_str(&fp)?);
-                tx_metadata
-            }
-            (Some(fg), None) => {
-                tx_metadata.fee_granter = Some(AccountId::from_str(&fg)?);
-                tx_metadata
-            }
-            (Some(fg), Some(fp)) => {
-                tx_metadata.fee_payer = Some(AccountId::from_str(&fp)?);
-                tx_metadata.fee_granter = Some(AccountId::from_str(&fg)?);
-                tx_metadata
-            }
-            _ => tx_metadata,
-        };
+        let tx_metadata = tx_metadata.unwrap_or(basic_tx_metadata);
 
         self.execute_delegated_airdrop(
             &granter,
@@ -239,18 +223,12 @@ pub fn write_payments_toml(
     path: &str,
     sender_key_name: &str,
     grantee_key_name: Option<&str>,
-    fee_payer: Option<AccountId>,
-    fee_granter: Option<AccountId>,
     payments: Vec<Payment>,
 ) -> Result<(), ChainClientError> {
-    let fee_payer = fee_payer.map(|fp| fp.as_ref().to_string());
-    let fee_granter = fee_granter.map(|fg| fg.as_ref().to_string());
     let grantee_key_name = grantee_key_name.map(|v| v.to_string());
     let toml_obj = PaymentsToml {
         sender_key_name: sender_key_name.to_string(),
         grantee_key_name,
-        fee_granter,
-        fee_payer,
         payments,
     };
     let toml_string = toml::to_string(&toml_obj)?;
@@ -303,15 +281,9 @@ mod tests {
 
         let sender_key = "sender_key".to_string();
         let grantee_key = Some("grantee_key");
-        let fee_granter =
-            Some(AccountId::from_str("cosmos142nrqssptljjajdkav8djftp87lvg0ghvm0m9c").unwrap());
-        let fee_payer =
-            Some(AccountId::from_str("cosmos1svs56wmqsezpjqgmvaf78rx3ut94pw6s7mxl05").unwrap());
         let expected_result = PaymentsToml {
             sender_key_name: sender_key.clone(),
             grantee_key_name: grantee_key.map(|v| v.to_string()),
-            fee_granter: Some(fee_granter.clone().unwrap().as_ref().to_string()),
-            fee_payer: Some(fee_payer.clone().unwrap().as_ref().to_string()),
             payments: payments.clone(),
         };
 
@@ -321,8 +293,6 @@ mod tests {
             &file_path.clone(),
             &sender_key,
             grantee_key,
-            fee_payer,
-            fee_granter,
             payments.clone(),
         )
         .expect("failed to write payments toml");
