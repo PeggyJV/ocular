@@ -57,10 +57,7 @@ impl ChainClient {
             .into_inner()
             .accounts
             .iter()
-            .map(|any| {
-                auth::BaseAccount::decode(&any.value as &[u8])
-                    .unwrap()
-            })
+            .map(|any| auth::BaseAccount::decode(&any.value as &[u8]).unwrap())
             .collect::<Vec<auth::BaseAccount>>();
         let mut accounts = Vec::<BaseAccount>::new();
 
