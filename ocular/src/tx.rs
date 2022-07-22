@@ -23,6 +23,15 @@ pub struct Coin {
     pub denom: String,
 }
 
+impl From<Coin> for cosmos_sdk_proto::cosmos::base::v1beta1::Coin {
+    fn from(coin: Coin) -> Self {
+        cosmos_sdk_proto::cosmos::base::v1beta1::Coin {
+            amount: coin.amount.to_string(),
+            denom: coin.denom,
+        }
+    }
+}
+
 impl TryFrom<Coin> for cosmrs::Coin {
     type Error = TxError;
 
@@ -38,6 +47,25 @@ impl TryFrom<&Coin> for cosmrs::Coin {
         Ok(cosmrs::Coin {
             denom: coin.denom.parse::<Denom>()?,
             amount: coin.amount.into(),
+        })
+    }
+}
+
+impl TryFrom<cosmos_sdk_proto::cosmos::base::v1beta1::Coin> for Coin {
+    type Error = TxError;
+
+    fn try_from(coin: cosmos_sdk_proto::cosmos::base::v1beta1::Coin) -> Result<Coin, Self::Error> {
+        Coin::try_from(&coin)
+    }
+}
+
+impl TryFrom<&cosmos_sdk_proto::cosmos::base::v1beta1::Coin> for Coin {
+    type Error = TxError;
+
+    fn try_from(coin: &cosmos_sdk_proto::cosmos::base::v1beta1::Coin) -> Result<Coin, Self::Error> {
+        Ok(Coin {
+            denom: coin.denom.clone(),
+            amount: coin.amount.parse()?,
         })
     }
 }

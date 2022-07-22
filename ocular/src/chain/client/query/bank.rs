@@ -1,11 +1,10 @@
 //! Queries for the [Bank module](https://github.com/cosmos/cosmos-sdk/blob/main/proto/cosmos/bank/v1beta1/query.proto). If you need a query that does not have a method wrapper here, you can use the [`BankQueryClient`] directly.
 use async_trait::async_trait;
-use cosmos_sdk_proto::cosmos::base::v1beta1::Coin;
 use tonic::transport::Channel;
 
 use crate::{
     cosmos_modules::bank,
-    error::{ChainClientError, GrpcError},
+    error::{ChainClientError, GrpcError}, Coin,
 };
 
 use super::{ChainClient, QueryClient, PageRequest};
@@ -36,8 +35,13 @@ impl ChainClient {
             .await
             .map_err(GrpcError::Request)?
             .into_inner();
+        let mut balances = Vec::<Coin>::new();
 
-        Ok(response.balances)
+        for b in response.balances {
+            balances.push(b.try_into()?)
+        }
+
+        Ok(balances)
     }
 
     pub async fn query_bank_params(&mut self) -> Result<Option<bank::Params>, ChainClientError> {
@@ -97,7 +101,7 @@ impl ChainClient {
             .map_err(GrpcError::Request)?
             .into_inner();
         return match response.amount {
-            Some(a) => Ok(a),
+            Some(a) => Ok(a.try_into()?),
             None => Err(ChainClientError::ModuleQuery(format!(
                 "empty result. denom {} is probably invalid!",
                 denom
@@ -113,7 +117,12 @@ impl ChainClient {
             .await
             .map_err(GrpcError::Request)?
             .into_inner();
+        let mut supply = Vec::<Coin>::new();
 
-        Ok(response.supply)
+        for s in response.supply {
+            supply.push(s.try_into()?)
+        }
+
+        Ok(supply)
     }
 }

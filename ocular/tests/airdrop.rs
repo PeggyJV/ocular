@@ -41,9 +41,7 @@ fn airdrop_direct_single_sender_single_denom() {
                 .query_all_balances(&sender_address)
                 .await
                 .unwrap()[0]
-                .amount
-                .parse()
-                .unwrap();
+                .amount;
 
             println!("Sender starting balance: {}", sender_starting_balance);
 
@@ -62,9 +60,7 @@ fn airdrop_direct_single_sender_single_denom() {
                 .query_all_balances(&sender_address)
                 .await
                 .unwrap()[0]
-                .amount
-                .parse()
-                .unwrap();
+                .amount;
 
             println!("Sender ending balance: {}", sender_ending_balance);
 
@@ -127,9 +123,7 @@ fn airdrop_delegated_single_sender_single_denom() {
                     .query_all_balances(&sender_address)
                     .await
                     .unwrap()[0]
-                    .amount
-                    .parse::<u64>()
-                    .unwrap(),
+                    .amount,
                 100000000000
             );
 
@@ -190,9 +184,7 @@ fn airdrop_delegated_single_sender_single_denom() {
                 .query_all_balances(&sender_address)
                 .await
                 .unwrap()[0]
-                .amount
-                .parse()
-                .unwrap();
+                .amount;
 
             println!("Sender starting balance: {}", sender_starting_balance);
             println!("Executing delegated airdrop on behalf of sender");
@@ -213,9 +205,7 @@ fn airdrop_delegated_single_sender_single_denom() {
                 .query_all_balances(&sender_address)
                 .await
                 .unwrap()[0]
-                .amount
-                .parse()
-                .unwrap();
+                .amount;
 
             println!("Sender ending balance: {}", sender_ending_balance);
 
@@ -280,9 +270,7 @@ fn airdrop_toml_direct_single_sender_single_denom() {
                 .query_all_balances(&sender_address)
                 .await
                 .unwrap()[0]
-                .amount
-                .parse()
-                .unwrap();
+                .amount;
 
             println!("Sender starting balance: {}", sender_starting_balance);
 
@@ -302,9 +290,7 @@ fn airdrop_toml_direct_single_sender_single_denom() {
                 .query_all_balances(&sender_address)
                 .await
                 .unwrap()[0]
-                .amount
-                .parse()
-                .unwrap();
+                .amount;
 
             println!("Sender ending balance: {}", sender_ending_balance);
 
@@ -429,9 +415,7 @@ fn airdrop_toml_delegated_single_sender_single_denom() {
                 .query_all_balances(&sender_address)
                 .await
                 .unwrap()[0]
-                .amount
-                .parse()
-                .unwrap();
+                .amount;
 
             println!("Sender starting balance: {}", sender_starting_balance);
 
@@ -489,9 +473,7 @@ fn airdrop_toml_delegated_single_sender_single_denom() {
                 .query_all_balances(&sender_address)
                 .await
                 .unwrap()[0]
-                .amount
-                .parse()
-                .unwrap();
+                .amount;
 
             println!("Sender ending balance: {}", sender_ending_balance);
 

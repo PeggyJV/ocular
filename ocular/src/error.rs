@@ -1,5 +1,5 @@
 use cosmrs::{self, ErrorReport};
-use std::io;
+use std::{io, num::ParseIntError};
 use thiserror::Error;
 
 // Higher level errors: ChainClientError, ChainInfoError, ChainRegistryError
@@ -130,6 +130,8 @@ pub enum TxError {
     Broadcast(String),
     #[error("error logging response: {0}")]
     Logging(String),
+    #[error("error parsing amount")]
+    AmountParse(#[from] ParseIntError)
 }
 
 impl From<bech32::Error> for TxError {

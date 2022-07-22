@@ -1,5 +1,7 @@
 #![allow(clippy::too_many_arguments)]
 
+pub use crate::tx::Coin;
+
 pub mod account;
 pub mod chain;
 pub mod cosmos_modules {
