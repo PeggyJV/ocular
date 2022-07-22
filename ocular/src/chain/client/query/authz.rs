@@ -10,6 +10,7 @@ use super::{ChainClient, QueryClient};
 
 /// The authz module's query client proto definition
 pub type AuthzQueryClient = authz::query_client::QueryClient<Channel>;
+pub type Grant = authz::Grant;
 
 #[async_trait]
 impl QueryClient for AuthzQueryClient {
@@ -27,9 +28,8 @@ impl ChainClient {
         granter: &str,
         grantee: &str,
         msg_type_url: &str,
-    ) -> Result<QueryGrantsResponse, ChainClientError> {
+    ) -> Result<Vec<Grant>, ChainClientError> {
         let mut query_client = self.get_query_client::<AuthzQueryClient>().await?;
-
         let request = QueryGrantsRequest {
             granter: granter.to_string(),
             grantee: grantee.to_string(),
@@ -38,12 +38,11 @@ impl ChainClient {
             pagination: None,
         };
 
-        let response = query_client
+        Ok(query_client
             .grants(request)
             .await
             .map_err(GrpcError::Request)?
-            .into_inner();
-
-        Ok(response)
+            .into_inner()
+            .grants)
     }
 }

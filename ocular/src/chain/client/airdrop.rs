@@ -37,17 +37,14 @@ impl ChainClient {
         grantee: &AccountId,
     ) -> Result<(), ChainClientError> {
         // Verify grant exists for grantee from granter for MsgSend
-        let res = self
+        let grants = self
             .query_authz_grant(granter.as_ref(), grantee.as_ref(), MSG_MULTI_SEND_URL)
             .await?;
 
         // If any grants meet the following criteria we can be confident the transaction is authorized:
-        // 1. The grant has an expiration with more than 60 seconds remaining.
-        // 2. The grant contains a generic authorization (may not need this check?)
-        let grant_found = res.grants.iter().any(|g| {
-            // There is a quirk where even though you can create a grant with no expiration on chain,
-            // it will not be seen as a valid grant when attempting to execute a `MsgExec` with it.
-            // Therefore, we ignore grants that have an empty expiration.
+        // 1. The grant either has no expiration, or an expiration with more than 60 seconds remaining.
+        // 2. The grant contains a generic authorization
+        let grant_found = grants.iter().any(|g| {
             if g.expiration.is_none() {
                 return false;
             }
