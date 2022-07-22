@@ -52,6 +52,8 @@ pub mod params;
 pub mod slashing;
 pub mod staking;
 
+pub type PageRequest = cosmos_sdk_proto::cosmos::base::query::v1beta1::PageRequest;
+
 #[async_trait]
 /// A marker trait for query client types in the Cosmos SDK proto
 pub trait QueryClient

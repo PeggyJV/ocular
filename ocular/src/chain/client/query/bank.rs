@@ -8,7 +8,7 @@ use crate::{
     error::{ChainClientError, GrpcError},
 };
 
-use super::{ChainClient, QueryClient};
+use super::{ChainClient, QueryClient, PageRequest};
 
 pub type BankQueryClient = bank::query_client::QueryClient<Channel>;
 
@@ -74,9 +74,9 @@ impl ChainClient {
         };
     }
 
-    pub async fn query_denoms_metadata(&mut self) -> Result<Vec<bank::Metadata>, ChainClientError> {
+    pub async fn query_denoms_metadata(&mut self, pagination: Option<PageRequest>) -> Result<Vec<bank::Metadata>, ChainClientError> {
         let mut query_client = self.get_query_client::<BankQueryClient>().await?;
-        let request = bank::QueryDenomsMetadataRequest { pagination: None };
+        let request = bank::QueryDenomsMetadataRequest { pagination };
         let response = query_client
             .denoms_metadata(request)
             .await
@@ -105,9 +105,9 @@ impl ChainClient {
         };
     }
 
-    pub async fn query_total_supply(&mut self) -> Result<Vec<Coin>, ChainClientError> {
+    pub async fn query_total_supply(&mut self, pagination: Option<PageRequest>) -> Result<Vec<Coin>, ChainClientError> {
         let mut query_client = self.get_query_client::<BankQueryClient>().await?;
-        let request = bank::QueryTotalSupplyRequest { pagination: None };
+        let request = bank::QueryTotalSupplyRequest { pagination };
         let response = query_client
             .total_supply(request)
             .await
