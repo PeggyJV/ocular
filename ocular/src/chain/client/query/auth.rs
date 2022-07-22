@@ -12,6 +12,7 @@ use crate::{
 
 use super::{ChainClient, QueryClient};
 
+/// The auth module's query client proto definition
 pub type AuthQueryClient = auth::query_client::QueryClient<Channel>;
 
 #[async_trait]
@@ -24,6 +25,7 @@ impl QueryClient for AuthQueryClient {
 }
 
 impl ChainClient {
+    /// Gets the account on chain with the specified address
     pub async fn query_account(
         &mut self,
         address: &str,

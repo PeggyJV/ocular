@@ -65,6 +65,7 @@ where
     async fn connect(endpoint: String) -> Result<Self, tonic::transport::Error>;
 }
 
+/// A generic factory for query clients defined in the Cosmos SDK proto definitions
 pub struct ClientFactory;
 
 impl ClientFactory {

@@ -9,6 +9,7 @@ use crate::{
 
 use super::{ChainClient, QueryClient, PageRequest};
 
+/// The bank module's query client proto definition
 pub type BankQueryClient = bank::query_client::QueryClient<Channel>;
 
 #[async_trait]
@@ -21,6 +22,7 @@ impl QueryClient for BankQueryClient {
 }
 
 impl ChainClient {
+    /// Gets all coin balances of the specified address with optional pagination
     pub async fn query_all_balances(
         &mut self,
         address: &str,
@@ -44,6 +46,7 @@ impl ChainClient {
         Ok(balances)
     }
 
+    /// Gets the bank module's params
     pub async fn query_bank_params(&mut self) -> Result<Option<bank::Params>, ChainClientError> {
         let mut query_client = self.get_query_client::<BankQueryClient>().await?;
         let request = bank::QueryParamsRequest {};
@@ -56,6 +59,7 @@ impl ChainClient {
         Ok(response.params)
     }
 
+    /// Gets metadata for the specified coin denomination if it exists, errors otherwise
     pub async fn query_denom_metadata(
         &mut self,
         denom: &str,
@@ -78,6 +82,7 @@ impl ChainClient {
         };
     }
 
+    /// Gets the metadata for all coin denominations defined in the bank module.
     pub async fn query_denoms_metadata(&mut self, pagination: Option<PageRequest>) -> Result<Vec<bank::Metadata>, ChainClientError> {
         let mut query_client = self.get_query_client::<BankQueryClient>().await?;
         let request = bank::QueryDenomsMetadataRequest { pagination };
@@ -90,6 +95,7 @@ impl ChainClient {
         Ok(response.metadatas)
     }
 
+    /// Gets the supply of the specified coin denomination
     pub async fn query_supply(&mut self, denom: &str) -> Result<Coin, ChainClientError> {
         let mut query_client = self.get_query_client::<BankQueryClient>().await?;
         let request = bank::QuerySupplyOfRequest {
@@ -109,6 +115,7 @@ impl ChainClient {
         };
     }
 
+    /// Gets the supply of all coin denominations with optional pagination
     pub async fn query_total_supply(&mut self, pagination: Option<PageRequest>) -> Result<Vec<Coin>, ChainClientError> {
         let mut query_client = self.get_query_client::<BankQueryClient>().await?;
         let request = bank::QueryTotalSupplyRequest { pagination };

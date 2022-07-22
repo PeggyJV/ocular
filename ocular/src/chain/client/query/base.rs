@@ -4,6 +4,7 @@ use tonic::transport::Channel;
 
 use super::{ChainClient, QueryClient};
 
+/// The base module's query client proto definition
 pub type BaseQueryClient = base::query_client::QueryClient<Channel>;
 
 impl QueryClient for BaseQueryClient {

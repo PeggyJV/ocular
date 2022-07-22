@@ -6,6 +6,7 @@ use crate::cosmos_modules::evidence;
 
 use super::QueryClient;
 
+/// The evidence module's query client proto definition
 pub type EvidenceQueryClient = evidence::query_client::QueryClient<Channel>;
 
 #[async_trait]

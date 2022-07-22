@@ -8,6 +8,7 @@ use tonic::transport::Channel;
 
 use super::{ChainClient, QueryClient};
 
+/// The authz module's query client proto definition
 pub type AuthzQueryClient = authz::query_client::QueryClient<Channel>;
 
 #[async_trait]
@@ -20,7 +21,7 @@ impl QueryClient for AuthzQueryClient {
 }
 
 impl ChainClient {
-    // Query for a specific msg grant
+    /// Gets all grants between `granter` and `grantee` for the given msg type
     pub async fn query_authz_grant(
         &mut self,
         granter: &str,

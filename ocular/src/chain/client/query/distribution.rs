@@ -6,6 +6,7 @@ use crate::cosmos_modules::distribution;
 
 use super::QueryClient;
 
+/// The distribution module's query client proto definition
 pub type DistributionQueryClient = distribution::query_client::QueryClient<Channel>;
 
 #[async_trait]
