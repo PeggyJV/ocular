@@ -6,6 +6,7 @@ use crate::cosmos_modules::mint;
 
 use super::QueryClient;
 
+/// The mint module's query client proto definition
 pub type MintQueryClient = mint::query_client::QueryClient<Channel>;
 
 #[async_trait]

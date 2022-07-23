@@ -6,6 +6,7 @@ use crate::cosmos_modules::slashing;
 
 use super::QueryClient;
 
+/// The slashing module's query client proto definition
 pub type SlashingQueryClient = slashing::query_client::QueryClient<Channel>;
 
 #[async_trait]

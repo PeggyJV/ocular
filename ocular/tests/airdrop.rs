@@ -4,14 +4,17 @@ use cosmrs::{dev, rpc, Tx};
 use ocular::{
     account::AccountInfo,
     chain::{
-        client::{airdrop::write_payments_toml, cache::Cache, ChainClient},
+        client::{
+            airdrop::write_payments_toml, cache::Cache, tx::BroadcastCommitResponse, ChainClient,
+        },
         config::ChainClientConfig,
     },
     keyring::Keyring,
     tx::{Coin, Payment},
+    Timestamp,
 };
 use rand::Rng;
-use rpc::{endpoint::broadcast::tx_commit::Response, HttpClient};
+use rpc::HttpClient;
 
 use crate::utils::{
     generate_accounts, run_single_node_test, ACCOUNT_PREFIX, CHAIN_ID, DENOM,
@@ -41,9 +44,7 @@ fn airdrop_direct_single_sender_single_denom() {
                 .query_all_balances(&sender_address)
                 .await
                 .unwrap()[0]
-                .amount
-                .parse()
-                .unwrap();
+                .amount;
 
             println!("Sender starting balance: {}", sender_starting_balance);
 
@@ -62,9 +63,7 @@ fn airdrop_direct_single_sender_single_denom() {
                 .query_all_balances(&sender_address)
                 .await
                 .unwrap()[0]
-                .amount
-                .parse()
-                .unwrap();
+                .amount;
 
             println!("Sender ending balance: {}", sender_ending_balance);
 
@@ -127,9 +126,7 @@ fn airdrop_delegated_single_sender_single_denom() {
                     .query_all_balances(&sender_address)
                     .await
                     .unwrap()[0]
-                    .amount
-                    .parse::<u64>()
-                    .unwrap(),
+                    .amount,
                 100000000000
             );
 
@@ -140,7 +137,7 @@ fn airdrop_delegated_single_sender_single_denom() {
                     &sender_account,
                     delegate_account.id(ACCOUNT_PREFIX).unwrap(),
                     "/cosmos.bank.v1beta1.MsgMultiSend",
-                    Some(prost_types::Timestamp {
+                    Some(Timestamp {
                         seconds: 4110314268,
                         nanos: 0,
                     }),
@@ -190,9 +187,7 @@ fn airdrop_delegated_single_sender_single_denom() {
                 .query_all_balances(&sender_address)
                 .await
                 .unwrap()[0]
-                .amount
-                .parse()
-                .unwrap();
+                .amount;
 
             println!("Sender starting balance: {}", sender_starting_balance);
             println!("Executing delegated airdrop on behalf of sender");
@@ -213,9 +208,7 @@ fn airdrop_delegated_single_sender_single_denom() {
                 .query_all_balances(&sender_address)
                 .await
                 .unwrap()[0]
-                .amount
-                .parse()
-                .unwrap();
+                .amount;
 
             println!("Sender ending balance: {}", sender_ending_balance);
 
@@ -230,19 +223,19 @@ fn airdrop_delegated_single_sender_single_denom() {
 #[test]
 #[ignore]
 fn airdrop_toml_direct_single_sender_single_denom() {
-    let container_name = "toml_delegated_airdrop_test";
+    let container_name = "toml_direct_airdrop_test";
 
     run_single_node_test(container_name, |genesis_account: AccountInfo| {
         async move {
             let mut keyring = Keyring::new_file_store(None).unwrap();
             let sender_key_name = "sender";
             keyring
-                .create_cosmos_key(sender_key_name, "", false)
+                .create_cosmos_key(sender_key_name, "", true)
                 .unwrap();
 
             let grantee_key_name = "grantee";
             keyring
-                .create_cosmos_key(grantee_key_name, "", false)
+                .create_cosmos_key(grantee_key_name, "", true)
                 .unwrap();
 
             let sender_account = keyring.get_account(sender_key_name).unwrap();
@@ -280,9 +273,7 @@ fn airdrop_toml_direct_single_sender_single_denom() {
                 .query_all_balances(&sender_address)
                 .await
                 .unwrap()[0]
-                .amount
-                .parse()
-                .unwrap();
+                .amount;
 
             println!("Sender starting balance: {}", sender_starting_balance);
 
@@ -302,9 +293,7 @@ fn airdrop_toml_direct_single_sender_single_denom() {
                 .query_all_balances(&sender_address)
                 .await
                 .unwrap()[0]
-                .amount
-                .parse()
-                .unwrap();
+                .amount;
 
             println!("Sender ending balance: {}", sender_ending_balance);
 
@@ -421,9 +410,7 @@ fn airdrop_toml_delegated_single_sender_single_denom() {
                 .query_all_balances(&sender_address)
                 .await
                 .unwrap()[0]
-                .amount
-                .parse()
-                .unwrap();
+                .amount;
 
             println!("Sender starting balance: {}", sender_starting_balance);
 
@@ -481,9 +468,7 @@ fn airdrop_toml_delegated_single_sender_single_denom() {
                 .query_all_balances(&sender_address)
                 .await
                 .unwrap()[0]
-                .amount
-                .parse()
-                .unwrap();
+                .amount;
 
             println!("Sender ending balance: {}", sender_ending_balance);
 
@@ -540,7 +525,7 @@ async fn init_test_chain_client() -> ChainClient {
     }
 }
 
-async fn wait_for_tx(client: &HttpClient, res: &Response, retries: u64) {
+async fn wait_for_tx(client: &HttpClient, res: &BroadcastCommitResponse, retries: u64) {
     if res.check_tx.code.is_err() {
         panic!("CheckTx error: {:?}", res);
     }

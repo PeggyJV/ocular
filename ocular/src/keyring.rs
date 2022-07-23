@@ -1,5 +1,3 @@
-use bip32::{Mnemonic, PrivateKey};
-use cosmrs::crypto::secp256k1::SigningKey;
 use k256::SecretKey;
 use rand_core::OsRng;
 use signatory::{
@@ -8,8 +6,11 @@ use signatory::{
 use std::collections::HashSet;
 use std::path::Path;
 
-use crate::account::AccountInfo;
+use crate::account::{AccountInfo, SigningKey};
 use crate::error::KeyStoreError;
+
+pub use bip32::{Mnemonic, PrivateKey};
+pub use pkcs8::PrivateKeyDocument;
 
 // Constants
 // TODO: Move to independant constants file if reused elsewhere
@@ -25,23 +26,20 @@ pub trait KeyStore {
     fn key_store_created(&self) -> bool;
 
     /// Check if key exists under specific name. Will return false if no key is found.
-    fn key_exists(&self, keyname: &KeyName) -> Result<bool, KeyStoreError>;
+    fn key_exists(&self, keyname: &str) -> Result<bool, KeyStoreError>;
 
     /// Add a private key document associated with a key name into the keystore.
-    fn add_key(
-        &self,
-        key_name: &KeyName,
-        encoded_key: pkcs8::PrivateKeyDocument,
-    ) -> Result<(), KeyStoreError>;
+    fn add_key(&self, key_name: &str, encoded_key: PrivateKeyDocument)
+        -> Result<(), KeyStoreError>;
 
     /// Delete key with a given name. If no key exists under name specified an error will be thrown.
-    fn delete_key(&self, key_name: &KeyName) -> Result<(), KeyStoreError>;
+    fn delete_key(&self, key_name: &str) -> Result<(), KeyStoreError>;
 
     /// Rename key.
-    fn rename_key(&self, current_name: &KeyName, new_name: &KeyName) -> Result<(), KeyStoreError>;
+    fn rename_key(&self, current_name: &str, new_name: &str) -> Result<(), KeyStoreError>;
 
     /// Load PrivateKeyDocumentfrom key store. Will return an error if key DNE under name.
-    fn get_key(&self, key_name: &KeyName) -> Result<pkcs8::PrivateKeyDocument, KeyStoreError>;
+    fn get_key(&self, key_name: &str) -> Result<PrivateKeyDocument, KeyStoreError>;
 }
 
 /// Keyring that needs to be initialized before being used. Initialization parameters vary depending on type of key store being used.
@@ -365,12 +363,13 @@ impl KeyStore for FileKeyStore {
         !self.key_path.is_empty() && self.key_store.is_some()
     }
 
-    fn key_exists(&self, key_name: &KeyName) -> Result<bool, KeyStoreError> {
+    fn key_exists(&self, key_name: &str) -> Result<bool, KeyStoreError> {
+        let key_name = KeyName::new(key_name)?;
         if let Ok(_info) = self
             .key_store
             .as_ref()
             .expect("Error accessing key store.")
-            .info(key_name)
+            .info(&key_name)
         {
             Ok(true)
         } else {
@@ -380,40 +379,42 @@ impl KeyStore for FileKeyStore {
 
     fn add_key(
         &self,
-        key_name: &KeyName,
+        key_name: &str,
         encoded_key: pkcs8::PrivateKeyDocument,
     ) -> Result<(), KeyStoreError> {
+        let key_name = KeyName::new(key_name)?;
         return match self
             .key_store
             .as_ref()
             .expect("Error accessing key store.")
-            .store(key_name, &encoded_key)
+            .store(&key_name, &encoded_key)
         {
             Ok(_ks) => Ok(()),
             Err(err) => Err(KeyStoreError::UnableToStoreKey(err.to_string())),
         };
     }
 
-    fn delete_key(&self, key_name: &KeyName) -> Result<(), KeyStoreError> {
+    fn delete_key(&self, key_name: &str) -> Result<(), KeyStoreError> {
+        let key_name = KeyName::new(key_name)?;
         return match self
             .key_store
             .as_ref()
             .expect("Error accessing key store.")
-            .delete(key_name)
+            .delete(&key_name)
         {
             Ok(_ks) => Ok(()),
             Err(err) => Err(KeyStoreError::UnableToDeleteKey(err.to_string())),
         };
     }
 
-    fn rename_key(&self, current_name: &KeyName, new_name: &KeyName) -> Result<(), KeyStoreError> {
+    fn rename_key(&self, current_name: &str, new_name: &str) -> Result<(), KeyStoreError> {
         let key = self.get_key(current_name).expect("Could not load key.");
-
+        let new_name = KeyName::new(new_name)?;
         // Store new key.
         self.key_store
             .as_ref()
             .expect("Error accessing key store.")
-            .store(new_name, &key)
+            .store(&new_name, &key)
             .expect("Could not create new key.");
 
         // Delete old key.
@@ -423,12 +424,13 @@ impl KeyStore for FileKeyStore {
         Ok(())
     }
 
-    fn get_key(&self, key_name: &KeyName) -> Result<pkcs8::PrivateKeyDocument, KeyStoreError> {
+    fn get_key(&self, key_name: &str) -> Result<pkcs8::PrivateKeyDocument, KeyStoreError> {
+        let key_name = KeyName::new(key_name)?;
         return match self
             .key_store
             .as_ref()
             .expect("Error accessing key store.")
-            .load(key_name)
+            .load(&key_name)
         {
             Ok(ks) => Ok(ks),
             Err(err) => Err(KeyStoreError::UnableToRetrieveKey(err.to_string())),

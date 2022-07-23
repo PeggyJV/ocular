@@ -1,15 +1,16 @@
 //! Queries for the [Bank module](https://github.com/cosmos/cosmos-sdk/blob/main/proto/cosmos/bank/v1beta1/query.proto). If you need a query that does not have a method wrapper here, you can use the [`BankQueryClient`] directly.
 use async_trait::async_trait;
-use cosmos_sdk_proto::cosmos::base::v1beta1::Coin;
 use tonic::transport::Channel;
 
 use crate::{
     cosmos_modules::bank,
     error::{ChainClientError, GrpcError},
+    Coin,
 };
 
-use super::{ChainClient, QueryClient};
+use super::{ChainClient, PageRequest, QueryClient};
 
+/// The bank module's query client proto definition
 pub type BankQueryClient = bank::query_client::QueryClient<Channel>;
 
 #[async_trait]
@@ -22,6 +23,7 @@ impl QueryClient for BankQueryClient {
 }
 
 impl ChainClient {
+    /// Gets all coin balances of the specified address with optional pagination
     pub async fn query_all_balances(
         &mut self,
         address: &str,
@@ -36,10 +38,16 @@ impl ChainClient {
             .await
             .map_err(GrpcError::Request)?
             .into_inner();
+        let mut balances = Vec::<Coin>::new();
 
-        Ok(response.balances)
+        for b in response.balances {
+            balances.push(b.try_into()?)
+        }
+
+        Ok(balances)
     }
 
+    /// Gets the bank module's params
     pub async fn query_bank_params(&mut self) -> Result<Option<bank::Params>, ChainClientError> {
         let mut query_client = self.get_query_client::<BankQueryClient>().await?;
         let request = bank::QueryParamsRequest {};
@@ -52,6 +60,7 @@ impl ChainClient {
         Ok(response.params)
     }
 
+    /// Gets metadata for the specified coin denomination if it exists, errors otherwise
     pub async fn query_denom_metadata(
         &mut self,
         denom: &str,
@@ -74,9 +83,13 @@ impl ChainClient {
         };
     }
 
-    pub async fn query_denoms_metadata(&mut self) -> Result<Vec<bank::Metadata>, ChainClientError> {
+    /// Gets the metadata for all coin denominations defined in the bank module.
+    pub async fn query_denoms_metadata(
+        &mut self,
+        pagination: Option<PageRequest>,
+    ) -> Result<Vec<bank::Metadata>, ChainClientError> {
         let mut query_client = self.get_query_client::<BankQueryClient>().await?;
-        let request = bank::QueryDenomsMetadataRequest { pagination: None };
+        let request = bank::QueryDenomsMetadataRequest { pagination };
         let response = query_client
             .denoms_metadata(request)
             .await
@@ -86,6 +99,7 @@ impl ChainClient {
         Ok(response.metadatas)
     }
 
+    /// Gets the supply of the specified coin denomination
     pub async fn query_supply(&mut self, denom: &str) -> Result<Coin, ChainClientError> {
         let mut query_client = self.get_query_client::<BankQueryClient>().await?;
         let request = bank::QuerySupplyOfRequest {
@@ -97,7 +111,7 @@ impl ChainClient {
             .map_err(GrpcError::Request)?
             .into_inner();
         return match response.amount {
-            Some(a) => Ok(a),
+            Some(a) => Ok(a.try_into()?),
             None => Err(ChainClientError::ModuleQuery(format!(
                 "empty result. denom {} is probably invalid!",
                 denom
@@ -105,15 +119,24 @@ impl ChainClient {
         };
     }
 
-    pub async fn query_total_supply(&mut self) -> Result<Vec<Coin>, ChainClientError> {
+    /// Gets the supply of all coin denominations with optional pagination
+    pub async fn query_total_supply(
+        &mut self,
+        pagination: Option<PageRequest>,
+    ) -> Result<Vec<Coin>, ChainClientError> {
         let mut query_client = self.get_query_client::<BankQueryClient>().await?;
-        let request = bank::QueryTotalSupplyRequest { pagination: None };
+        let request = bank::QueryTotalSupplyRequest { pagination };
         let response = query_client
             .total_supply(request)
             .await
             .map_err(GrpcError::Request)?
             .into_inner();
+        let mut supply = Vec::<Coin>::new();
 
-        Ok(response.supply)
+        for s in response.supply {
+            supply.push(s.try_into()?)
+        }
+
+        Ok(supply)
     }
 }

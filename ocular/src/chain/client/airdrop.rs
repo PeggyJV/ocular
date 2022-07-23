@@ -8,7 +8,7 @@ use crate::{
     cosmos_modules,
     error::{AirdropError, ChainClientError},
     keyring::Keyring,
-    tx::{Coin, MultiSendIo, Payment, PaymentsToml, TxMetadata},
+    tx::{Any, Coin, MultiSendIo, Payment, PaymentsToml, TxMetadata},
 };
 use bip32::Mnemonic;
 use cosmos_sdk_proto::cosmos::authz::v1beta1::Grant;
@@ -23,10 +23,9 @@ use prost::Message;
 use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, time::SystemTime};
 use std::{fs, path::Path, str::FromStr};
-use tendermint_rpc::endpoint::broadcast::tx_commit::Response;
 use uuid::Uuid;
 
-use super::ChainClient;
+use super::{tx::BroadcastCommitResponse, ChainClient};
 
 const MSG_MULTI_SEND_URL: &str = "/cosmos.bank.v1beta1.MsgMultiSend";
 const GENERIC_AUTHORIZATION_URL: &str = "/cosmos.authz.v1beta1.GenericAuthorization";
@@ -38,17 +37,14 @@ impl ChainClient {
         grantee: &AccountId,
     ) -> Result<(), ChainClientError> {
         // Verify grant exists for grantee from granter for MsgSend
-        let res = self
+        let grants = self
             .query_authz_grant(granter.as_ref(), grantee.as_ref(), MSG_MULTI_SEND_URL)
             .await?;
 
         // If any grants meet the following criteria we can be confident the transaction is authorized:
-        // 1. The grant has an expiration with more than 60 seconds remaining.
-        // 2. The grant contains a generic authorization (may not need this check?)
-        let grant_found = res.grants.iter().any(|g| {
-            // There is a quirk where even though you can create a grant with no expiration on chain,
-            // it will not be seen as a valid grant when attempting to execute a `MsgExec` with it.
-            // Therefore, we ignore grants that have an empty expiration.
+        // 1. The grant either has no expiration, or an expiration with more than 60 seconds remaining.
+        // 2. The grant contains a generic authorization
+        let grant_found = grants.iter().any(|g| {
             if g.expiration.is_none() {
                 return false;
             }
@@ -94,7 +90,7 @@ impl ChainClient {
         grantee: &AccountInfo,
         payments: Vec<Payment>,
         tx_metadata: Option<TxMetadata>,
-    ) -> Result<Response, ChainClientError> {
+    ) -> Result<BroadcastCommitResponse, ChainClientError> {
         self.verify_multi_send_grant(
             &granter.id(&self.config.account_prefix)?,
             &grantee.id(&self.config.account_prefix)?,
@@ -103,7 +99,7 @@ impl ChainClient {
 
         let (inputs, outputs) =
             multi_send_args_from_payments(&granter.address(&self.config.account_prefix)?, payments);
-        let msgs: Vec<prost_types::Any> = vec![MsgMultiSend {
+        let msgs: Vec<Any> = vec![MsgMultiSend {
             inputs: inputs
                 .iter()
                 .map(TryInto::try_into)
@@ -122,7 +118,7 @@ impl ChainClient {
         &mut self,
         path: &str,
         tx_metadata: Option<TxMetadata>,
-    ) -> Result<Response, ChainClientError> {
+    ) -> Result<BroadcastCommitResponse, ChainClientError> {
         let payments_toml = read_payments_toml(path)?;
         let grantee = match payments_toml.grantee_key_name {
             Some(g) => self.keyring.get_account(&g),
@@ -153,7 +149,7 @@ impl ChainClient {
         sender: &AccountInfo,
         payments: Vec<Payment>,
         tx_metadata: Option<TxMetadata>,
-    ) -> Result<Response, ChainClientError> {
+    ) -> Result<BroadcastCommitResponse, ChainClientError> {
         let (inputs, outputs) =
             multi_send_args_from_payments(&sender.address(&self.config.account_prefix)?, payments);
         self.multi_send(sender, inputs, outputs, tx_metadata).await
@@ -163,7 +159,7 @@ impl ChainClient {
         &mut self,
         path: &str,
         tx_metadata: Option<TxMetadata>,
-    ) -> Result<Response, ChainClientError> {
+    ) -> Result<BroadcastCommitResponse, ChainClientError> {
         let payments_toml = read_payments_toml(path)?;
         let sender = self.keyring.get_account(&payments_toml.sender_key_name)?;
         // TO-DO user the metadata from the toml

@@ -6,6 +6,7 @@ use crate::cosmos_modules::gov;
 
 use super::QueryClient;
 
+/// The gov module's query client proto definition
 pub type GovQueryClient = gov::query_client::QueryClient<Channel>;
 
 #[async_trait]
