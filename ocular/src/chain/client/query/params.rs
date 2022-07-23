@@ -6,6 +6,7 @@ use crate::cosmos_modules::params;
 
 use super::QueryClient;
 
+/// The params module's query client proto definition
 pub type ParamsQueryClient = params::query_client::QueryClient<Channel>;
 
 #[async_trait]

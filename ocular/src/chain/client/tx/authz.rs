@@ -7,13 +7,13 @@ use crate::{
         feegrant::{BasicAllowance, MsgGrantAllowance},
     },
     error::ChainClientError,
-    tx::TxMetadata,
+    tx::{Any, TxMetadata},
+    Timestamp,
 };
 use cosmrs::{tx, AccountId};
 use prost::Message;
-use tendermint_rpc::endpoint::broadcast::tx_commit::Response;
 
-use super::ChainClient;
+use super::{BroadcastCommitResponse, ChainClient};
 
 impl ChainClient {
     // Grant Authorization
@@ -23,17 +23,17 @@ impl ChainClient {
         granter: &AccountInfo,
         grantee: AccountId,
         message: &str,
-        expiration_timestamp: Option<prost_types::Timestamp>,
+        expiration_timestamp: Option<Timestamp>,
         tx_metadata: Option<TxMetadata>,
-    ) -> Result<Response, ChainClientError> {
-        let expiration: prost_types::Timestamp = match expiration_timestamp {
+    ) -> Result<BroadcastCommitResponse, ChainClientError> {
+        let expiration: Timestamp = match expiration_timestamp {
             Some(exp) => exp,
             None => {
                 // defaults to 24 hour expiration
                 let timestamp = SystemTime::now()
                     .checked_add(Duration::from_secs(31536000))
                     .unwrap();
-                prost_types::Timestamp::from(timestamp)
+                Timestamp::from(timestamp)
             }
         };
 
@@ -41,7 +41,7 @@ impl ChainClient {
             granter: granter.address(&self.config.account_prefix)?,
             grantee: grantee.to_string(),
             grant: Some(Grant {
-                authorization: Some(prost_types::Any {
+                authorization: Some(Any {
                     type_url: String::from("/cosmos.authz.v1beta1.GenericAuthorization"),
                     value: GenericAuthorization {
                         msg: String::from(message),
@@ -51,7 +51,7 @@ impl ChainClient {
                 expiration: Some(expiration),
             }),
         };
-        let msg_any = prost_types::Any {
+        let msg_any = Any {
             type_url: String::from("/cosmos.authz.v1beta1.MsgGrant"),
             value: msg.encode_to_vec(),
         };
@@ -71,13 +71,13 @@ impl ChainClient {
         granter: &AccountInfo,
         grantee: AccountId,
         tx_metadata: Option<TxMetadata>,
-    ) -> Result<Response, ChainClientError> {
+    ) -> Result<BroadcastCommitResponse, ChainClientError> {
         let msg = MsgRevoke {
             granter: granter.address(&self.config.account_prefix)?,
             grantee: grantee.to_string(),
             msg_type_url: String::from("/cosmos.bank.v1beta1.MsgSend"),
         };
-        let msg_any = prost_types::Any {
+        let msg_any = Any {
             type_url: String::from("/cosmos.authz.v1beta1.MsgRevoke"),
             value: msg.encode_to_vec(),
         };
@@ -94,14 +94,14 @@ impl ChainClient {
     pub async fn execute_authorized_tx(
         &mut self,
         grantee: &AccountInfo,
-        msgs: Vec<::prost_types::Any>,
+        msgs: Vec<Any>,
         tx_metadata: Option<TxMetadata>,
-    ) -> Result<Response, ChainClientError> {
+    ) -> Result<BroadcastCommitResponse, ChainClientError> {
         let msg = MsgExec {
             grantee: grantee.address(&self.config.account_prefix)?,
             msgs,
         };
-        let msg_any = prost_types::Any {
+        let msg_any = Any {
             type_url: String::from("/cosmos.authz.v1beta1.MsgExec"),
             value: msg.encode_to_vec(),
         };
@@ -119,11 +119,11 @@ impl ChainClient {
         &mut self,
         granter: &AccountInfo,
         grantee: AccountId,
-        expiration: Option<prost_types::Timestamp>,
+        expiration: Option<Timestamp>,
         // TODO: Standardize below Coin type to common cosmrs coin type once FeeGrants get looped in.
         spend_limit: cosmos_sdk_proto::cosmos::base::v1beta1::Coin,
         tx_metadata: TxMetadata,
-    ) -> Result<Response, ChainClientError> {
+    ) -> Result<BroadcastCommitResponse, ChainClientError> {
         let allowance = BasicAllowance {
             spend_limit: vec![spend_limit],
             expiration,
@@ -131,12 +131,12 @@ impl ChainClient {
         let msg = MsgGrantAllowance {
             granter: granter.address(&self.config.account_prefix)?,
             grantee: grantee.to_string(),
-            allowance: Some(prost_types::Any {
+            allowance: Some(Any {
                 type_url: String::from("/cosmos.feegrant.v1beta1.BasicAllowance"),
                 value: allowance.encode_to_vec(),
             }),
         };
-        let msg_any = prost_types::Any {
+        let msg_any = Any {
             type_url: String::from("/cosmos.feegrant.v1beta1.MsgGrantAllowance"),
             value: msg.encode_to_vec(),
         };

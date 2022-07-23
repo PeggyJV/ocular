@@ -52,6 +52,8 @@ pub mod params;
 pub mod slashing;
 pub mod staking;
 
+pub type PageRequest = cosmos_sdk_proto::cosmos::base::query::v1beta1::PageRequest;
+
 #[async_trait]
 /// A marker trait for query client types in the Cosmos SDK proto
 pub trait QueryClient
@@ -63,6 +65,7 @@ where
     async fn connect(endpoint: String) -> Result<Self, tonic::transport::Error>;
 }
 
+/// A generic factory for query clients defined in the Cosmos SDK proto definitions
 pub struct ClientFactory;
 
 impl ClientFactory {

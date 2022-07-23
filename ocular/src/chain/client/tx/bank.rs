@@ -5,7 +5,6 @@ use cosmrs::{
     tx::{self, Msg},
     AccountId,
 };
-use tendermint_rpc::endpoint::broadcast::tx_commit::Response;
 
 use crate::{
     account::AccountInfo,
@@ -13,7 +12,7 @@ use crate::{
     tx::{Coin, MultiSendIo, TxMetadata},
 };
 
-use super::ChainClient;
+use super::{BroadcastCommitResponse, ChainClient};
 
 impl ChainClient {
     // TODO: Make this extensible to multisig and multicoin (or add new methods for that)
@@ -24,7 +23,7 @@ impl ChainClient {
         recipient: &str,
         amount: Coin,
         tx_metadata: Option<TxMetadata>,
-    ) -> Result<Response, ChainClientError> {
+    ) -> Result<BroadcastCommitResponse, ChainClientError> {
         let recipient = match AccountId::from_str(recipient) {
             Ok(r) => r,
             Err(err) => {
@@ -69,7 +68,7 @@ impl ChainClient {
         inputs: Vec<MultiSendIo>,
         outputs: Vec<MultiSendIo>,
         tx_metadata: Option<TxMetadata>,
-    ) -> Result<Response, ChainClientError> {
+    ) -> Result<BroadcastCommitResponse, ChainClientError> {
         let msg = MsgMultiSend {
             inputs: inputs
                 .iter()

@@ -6,6 +6,7 @@ use crate::cosmos_modules::staking;
 
 use super::QueryClient;
 
+/// The staking module's query client proto definition
 pub type StakingQueryClient = staking::query_client::QueryClient<Channel>;
 
 #[async_trait]

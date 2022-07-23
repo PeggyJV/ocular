@@ -6,7 +6,8 @@ use ocular::{
     chain::{client::cache::Cache, config::ChainClientConfig},
     cosmos_modules::*,
     keyring::Keyring,
-    tx::{MultiSendIo, TxMetadata},
+    tx::{Any, MultiSendIo, TxMetadata},
+    Timestamp,
 };
 
 use cosmos_sdk_proto::cosmos::authz::v1beta1::{
@@ -84,21 +85,21 @@ fn local_single_node_chain_test() {
                 granter: sender_account.address(ACCOUNT_PREFIX).unwrap(),
                 grantee: recipient_account.address(ACCOUNT_PREFIX).unwrap(),
                 grant: Some(authz::Grant {
-                    authorization: Some(prost_types::Any {
+                    authorization: Some(Any {
                         type_url: String::from("/cosmos.authz.v1beta1.GenericAuthorization"),
                         value: GenericAuthorization {
                             msg: String::from("/cosmos.bank.v1beta1.MsgSend"),
                         }
                         .encode_to_vec(),
                     }),
-                    expiration: Some(prost_types::Timestamp {
+                    expiration: Some(Timestamp {
                         seconds: 4110314268,
                         nanos: 0,
                     }),
                 }),
             };
 
-            let msg_grant = prost_types::Any {
+            let msg_grant = Any {
                 type_url: String::from("/cosmos.authz.v1beta1.MsgGrant"),
                 value: msg_grant.encode_to_vec(),
             };
@@ -124,7 +125,7 @@ fn local_single_node_chain_test() {
                 msg_type_url: String::from("/cosmos.bank.v1beta1.MsgSend"),
             };
 
-            let msg_revoke = prost_types::Any {
+            let msg_revoke = Any {
                 type_url: String::from("/cosmos.authz.v1beta1.MsgRevoke"),
                 value: msg_revoke.encode_to_vec(),
             };
@@ -144,7 +145,7 @@ fn local_single_node_chain_test() {
                 expected_msg_revoke_sign_doc.sign(sender_account.private_key());
 
             // Expected MsgExec
-            let mut msgs_to_execute: Vec<::prost_types::Any> = Vec::new();
+            let mut msgs_to_execute: Vec<Any> = Vec::new();
             msgs_to_execute.push(
                 MsgSend {
                     from_address: sender_account.id(ACCOUNT_PREFIX).unwrap(),
@@ -160,7 +161,7 @@ fn local_single_node_chain_test() {
                 msgs: msgs_to_execute,
             };
 
-            let msg_exec = prost_types::Any {
+            let msg_exec = Any {
                 type_url: String::from("/cosmos.authz.v1beta1.MsgExec"),
                 value: msg_exec.encode_to_vec(),
             };
@@ -306,7 +307,7 @@ fn local_single_node_chain_test() {
                     &sender_account,
                     recipient_account.id(ACCOUNT_PREFIX).unwrap(),
                     "/cosmos.bank.v1beta1.MsgSend",
-                    Some(prost_types::Timestamp {
+                    Some(Timestamp {
                         seconds: 4110314268,
                         nanos: 0,
                     }),
@@ -337,7 +338,7 @@ fn local_single_node_chain_test() {
             // Test MsgExec functionality
             let grantee_account = recipient_account;
 
-            let mut msgs_to_send: Vec<::prost_types::Any> = Vec::new();
+            let mut msgs_to_send: Vec<Any> = Vec::new();
             msgs_to_send.push(
                 MsgSend {
                     from_address: sender_account.id(ACCOUNT_PREFIX).unwrap(),
@@ -406,7 +407,7 @@ fn local_single_node_chain_test() {
             let mut tx_metadata_memoed = tx_metadata.clone();
             tx_metadata_memoed.memo = String::from("Exec tx #2");
 
-            let mut msgs_to_send: Vec<::prost_types::Any> = Vec::new();
+            let mut msgs_to_send: Vec<Any> = Vec::new();
             msgs_to_send.push(
                 MsgSend {
                     from_address: sender_account.id(ACCOUNT_PREFIX).unwrap(),

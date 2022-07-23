@@ -1,12 +1,15 @@
 use std::sync::Arc;
 
 use bip32::{Mnemonic, PrivateKey};
-use cosmrs::{crypto::secp256k1::SigningKey, crypto::PublicKey, AccountId};
 use k256::SecretKey;
 use pkcs8::{DecodePrivateKey, EncodePrivateKey};
 use rand_core::OsRng;
 
 use crate::{error::AccountError, keyring::COSMOS_BASE_DERIVATION_PATH};
+
+pub use cosmrs::crypto::{secp256k1::SigningKey, PublicKey};
+/// Represents a bech32 account identifier
+pub use cosmrs::AccountId;
 
 /// Represents a local account derived from a [`SigningKey`].
 ///
