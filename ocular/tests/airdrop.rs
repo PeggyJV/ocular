@@ -256,7 +256,7 @@ fn airdrop_toml_direct_single_sender_single_denom() {
 
             println!("Writing toml");
             let path = "./payments.toml";
-            write_payments_toml(path, sender_key_name, None, None, None, payments).unwrap();
+            write_payments_toml(path, sender_key_name, None, payments).unwrap();
 
             println!("Funding sender from genesis account");
             let balance = 10000000000;
@@ -375,15 +375,7 @@ fn airdrop_toml_delegated_single_sender_single_denom() {
 
             println!("Writing toml");
             let path = "./payments.toml";
-            write_payments_toml(
-                path,
-                sender_key_name,
-                Some(grantee_key_name),
-                None,
-                None,
-                payments,
-            )
-            .unwrap();
+            write_payments_toml(path, sender_key_name, Some(grantee_key_name), payments).unwrap();
 
             println!("Funding sender from genesis account");
             let balance = 10000000000;

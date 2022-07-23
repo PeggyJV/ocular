@@ -81,8 +81,6 @@ pub struct Payment {
 pub struct PaymentsToml {
     pub sender_key_name: String,
     pub grantee_key_name: Option<String>,
-    pub fee_granter: Option<String>,
-    pub fee_payer: Option<String>,
     pub payments: Vec<Payment>,
 }
 
