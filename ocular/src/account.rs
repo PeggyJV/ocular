@@ -2,7 +2,8 @@ use std::sync::Arc;
 
 use bip32::{Mnemonic, PrivateKey};
 use k256::SecretKey;
-use pkcs8::{DecodePrivateKey, EncodePrivateKey};
+use k256::pkcs8::EncodePrivateKey;
+use pkcs8::DecodePrivateKey;
 use rand_core::OsRng;
 
 use crate::{error::AccountError, keyring::COSMOS_BASE_DERIVATION_PATH};
@@ -36,7 +37,7 @@ impl AccountInfo {
         let encoded_key = signing_key
             .to_pkcs8_der()
             .expect("Could not PKCS8 encode private key");
-        let decoded_private_key: SecretKey = DecodePrivateKey::from_pkcs8_doc(&encoded_key)
+        let decoded_private_key: SecretKey = DecodePrivateKey::from_pkcs8_der(&encoded_key.as_bytes())
             .expect("Could not decode private key document.");
         let private_key = SigningKey::from_bytes(&decoded_private_key.to_bytes())
             .expect("Could not create signing key.");

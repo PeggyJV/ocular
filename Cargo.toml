@@ -1,6 +1,5 @@
 [workspace]
 
 members = [
-    "ocular_cli",
     "ocular"
 ]

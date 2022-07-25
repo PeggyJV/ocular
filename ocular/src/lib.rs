@@ -10,6 +10,7 @@ pub mod cosmos_modules {
     pub use cosmrs::proto::cosmos::authz::v1beta1 as authz;
     pub use cosmrs::proto::cosmos::bank::v1beta1 as bank;
     pub use cosmrs::proto::cosmos::base::v1beta1 as base;
+    pub use cosmrs::proto::cosmos::base::query::v1beta1 as base_query;
     pub use cosmrs::proto::cosmos::crisis::v1beta1 as crisis;
     pub use cosmrs::proto::cosmos::distribution::v1beta1 as distribution;
     pub use cosmrs::proto::cosmos::evidence::v1beta1 as evidence;

@@ -1,7 +1,8 @@
 use k256::SecretKey;
+use pkcs8::EncodePrivateKey;
 use rand_core::OsRng;
 use signatory::{
-    pkcs8::der::Document, pkcs8::DecodePrivateKey, pkcs8::EncodePrivateKey, FsKeyStore, KeyName,
+    pkcs8::DecodePrivateKey, FsKeyStore, KeyName,
 };
 use std::collections::HashSet;
 use std::path::Path;
@@ -10,7 +11,7 @@ use crate::account::{AccountInfo, SigningKey};
 use crate::error::KeyStoreError;
 
 pub use bip32::{Mnemonic, PrivateKey};
-pub use pkcs8::PrivateKeyDocument;
+pub use pkcs8::SecretDocument;
 
 // Constants
 // TODO: Move to independant constants file if reused elsewhere
@@ -29,7 +30,7 @@ pub trait KeyStore {
     fn key_exists(&self, keyname: &str) -> Result<bool, KeyStoreError>;
 
     /// Add a private key document associated with a key name into the keystore.
-    fn add_key(&self, key_name: &str, encoded_key: PrivateKeyDocument)
+    fn add_key(&self, key_name: &str, encoded_key: SecretDocument)
         -> Result<(), KeyStoreError>;
 
     /// Delete key with a given name. If no key exists under name specified an error will be thrown.
@@ -38,8 +39,8 @@ pub trait KeyStore {
     /// Rename key.
     fn rename_key(&self, current_name: &str, new_name: &str) -> Result<(), KeyStoreError>;
 
-    /// Load PrivateKeyDocumentfrom key store. Will return an error if key DNE under name.
-    fn get_key(&self, key_name: &str) -> Result<PrivateKeyDocument, KeyStoreError>;
+    /// Load SecretDocumentfrom key store. Will return an error if key DNE under name.
+    fn get_key(&self, key_name: &str) -> Result<SecretDocument, KeyStoreError>;
 }
 
 /// Keyring that needs to be initialized before being used. Initialization parameters vary depending on type of key store being used.
@@ -191,7 +192,7 @@ impl Keyring {
         let pem = self.key_store.get_key(key_name)?;
 
         let decoded_private_key: SecretKey =
-            DecodePrivateKey::from_pkcs8_doc(&pem).expect("Could not decode private key document.");
+            DecodePrivateKey::from_pkcs8_der(&pem.as_bytes()).expect("Could not decode private key document.");
 
         Ok(SigningKey::from_bytes(&decoded_private_key.to_bytes())
             .expect("Could not create signing key."))
@@ -322,7 +323,7 @@ impl Keyring {
             return Err(KeyStoreError::Exists(name.to_string()));
         }
 
-        let pem = match pkcs8::PrivateKeyDocument::read_pem_file(file_path) {
+        let pem = match pkcs8::SecretDocument::from_pem(file_path) {
             Ok(res) => res,
             Err(err) => return Err(KeyStoreError::FileIO(err.to_string())),
         };
@@ -331,7 +332,7 @@ impl Keyring {
             .unwrap_or_else(|_| panic!("Could not create KeyName for '{}'.", name));
 
         // Store the key
-        self.key_store.add_key(key_name, pem)?;
+        self.key_store.add_key(key_name, pem.1)?;
 
         self.records.insert(String::from(name));
 
@@ -380,7 +381,7 @@ impl KeyStore for FileKeyStore {
     fn add_key(
         &self,
         key_name: &str,
-        encoded_key: pkcs8::PrivateKeyDocument,
+        encoded_key: pkcs8::SecretDocument,
     ) -> Result<(), KeyStoreError> {
         let key_name = KeyName::new(key_name)?;
         return match self
@@ -424,7 +425,7 @@ impl KeyStore for FileKeyStore {
         Ok(())
     }
 
-    fn get_key(&self, key_name: &str) -> Result<pkcs8::PrivateKeyDocument, KeyStoreError> {
+    fn get_key(&self, key_name: &str) -> Result<pkcs8::SecretDocument, KeyStoreError> {
         let key_name = KeyName::new(key_name)?;
         return match self
             .key_store
