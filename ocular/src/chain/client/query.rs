@@ -131,11 +131,13 @@ impl ChainClient {
 
     /// RPC query for latest block height
     pub async fn query_latest_height(&self) -> Result<u64, ChainClientError> {
+        println!("ABOUT TO DO STATUS");
         let status = self
             .rpc_client
             .status()
-            .await
-            .map_err(RpcError::TendermintStatus)?;
+            .await;
+        println!("RESULT: {:?}", status);
+        let status = status.map_err(RpcError::TendermintStatus)?;
         Ok(status.sync_info.latest_block_height.value())
     }
 }
