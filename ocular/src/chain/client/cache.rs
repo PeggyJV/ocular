@@ -1,3 +1,4 @@
+//! A cache used by the [`super::ChainClient`] to track its healthy gRPC endoints
 use crate::error::CacheError;
 
 use serde::{Deserialize, Serialize};

@@ -1,3 +1,4 @@
+//! This module defines common types used in transactions by ocular
 use cosmrs::{AccountId, Denom};
 use serde::{Deserialize, Serialize};
 

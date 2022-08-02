@@ -1,3 +1,5 @@
+//! Defines the [`KeyStore`] trait, an disk-backed implementation [`FileKeyStore`], and the [`Keyring`]
+//! type used for managing the keys in a given store.
 use k256::SecretKey;
 use rand_core::OsRng;
 use signatory::{

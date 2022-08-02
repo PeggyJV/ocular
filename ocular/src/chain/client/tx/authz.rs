@@ -1,3 +1,4 @@
+//! Defines methods for Authz module Msgs
 use std::time::{Duration, SystemTime};
 
 use crate::{
@@ -16,7 +17,7 @@ use prost::Message;
 use super::{BroadcastCommitResponse, ChainClient};
 
 impl ChainClient {
-    // Grant Authorization
+    /// Grant a generic authorization for the provided Msg and expiration
     // TODO: support other types of authorization grants other than GenericAuthorization for send messages.
     pub async fn grant_generic_authorization(
         &mut self,
@@ -64,7 +65,7 @@ impl ChainClient {
         self.sign_and_send_msg(granter, tx_body, tx_metadata).await
     }
 
-    // Revoke Authorization
+    /// Revoke authorization for `MsgSend`
     // TODO: support other types of authorization revokes other than send messages.
     pub async fn revoke_send_authorization(
         &mut self,
@@ -90,7 +91,7 @@ impl ChainClient {
         self.sign_and_send_msg(granter, tx_body, tx_metadata).await
     }
 
-    // Execute a transaction previously authorized by another account on its behalf
+    /// Execute a transaction previously authorized by another account on its behalf
     pub async fn execute_authorized_tx(
         &mut self,
         grantee: &AccountInfo,
@@ -114,7 +115,7 @@ impl ChainClient {
         self.sign_and_send_msg(grantee, tx_body, tx_metadata).await
     }
 
-    // Basic fee allowance
+    /// Basic fee allowance
     pub async fn perform_basic_allowance_fee_grant(
         &mut self,
         granter: &AccountInfo,

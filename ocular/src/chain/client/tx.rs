@@ -1,3 +1,4 @@
+//! The [`tx`] module and its submodules define methods on the [`ChainClient`] for sending Cosmos transactions
 use crate::{
     account::AccountInfo,
     error::{ChainClientError, TxError},
@@ -22,6 +23,7 @@ const TX_LOGGING_DIR: &str = "/.ocular/logs/txs";
 const TX_LOGGING_DIR_PERMISSIONS: u32 = 0o700;
 
 impl ChainClient {
+    /// Helper method for getting a [`TxMetadata`] with sensible defaults
     pub async fn get_basic_tx_metadata(&self) -> Result<TxMetadata, ChainClientError> {
         let current_height = self.query_latest_height().await?;
         let timeout_height: u32 = (current_height + 30) as u32;

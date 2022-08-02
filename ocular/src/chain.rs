@@ -1,3 +1,5 @@
+//! Contains `const` definitions for referring to specific chains in the registry when
+//! creating a [`client::ChainClient`]
 use tendermint_pre;
 
 pub mod client;

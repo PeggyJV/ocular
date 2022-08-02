@@ -1,3 +1,4 @@
+//! Defines methods for Bank module Msgs
 use std::str::FromStr;
 
 use cosmrs::{
