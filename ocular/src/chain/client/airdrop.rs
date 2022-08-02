@@ -1,5 +1,7 @@
 #![warn(unused_qualifications)]
 #![allow(unused_imports)]
+//! Defines helper methods for executing airdrops
+
 // Clippy broken; doesn't recognize certain imports are used and sees them as unused
 
 use crate::{
@@ -31,6 +33,7 @@ const MSG_MULTI_SEND_URL: &str = "/cosmos.bank.v1beta1.MsgMultiSend";
 const GENERIC_AUTHORIZATION_URL: &str = "/cosmos.authz.v1beta1.GenericAuthorization";
 
 impl ChainClient {
+    /// Verifies that a grant exists for the msg `MsgMultiSend` on chain between the two provided accounts
     pub async fn verify_multi_send_grant(
         &mut self,
         granter: &AccountId,
@@ -84,6 +87,7 @@ impl ChainClient {
         Ok(())
     }
 
+    /// Executes a multisend transaction using Authz
     pub async fn execute_delegated_airdrop(
         &mut self,
         granter: &AccountInfo,
@@ -114,6 +118,7 @@ impl ChainClient {
         self.execute_authorized_tx(grantee, msgs, tx_metadata).await
     }
 
+    /// Reads in a TOMl file as a [`PaymentsToml`] and executes a multisend using Authz
     pub async fn execute_delegated_airdrop_from_toml(
         &mut self,
         path: &str,
@@ -144,6 +149,7 @@ impl ChainClient {
         .await
     }
 
+    /// Executes a multisend from the sender's balance
     pub async fn execute_airdrop(
         &mut self,
         sender: &AccountInfo,
@@ -155,6 +161,7 @@ impl ChainClient {
         self.multi_send(sender, inputs, outputs, tx_metadata).await
     }
 
+    /// Executes a multisend from the sender's balance by reading in the payments from the provided TOML file
     pub async fn execute_airdrop_from_toml(
         &mut self,
         path: &str,
@@ -209,12 +216,14 @@ pub fn multi_send_args_from_payments(
     (input, outputs)
 }
 
+/// Read in payments from a TOML file
 // TO-DO different error type.
 pub fn read_payments_toml(path: &str) -> Result<PaymentsToml, ChainClientError> {
     let toml_string = fs::read_to_string(path)?;
     Ok(toml::from_str(toml_string.as_str())?)
 }
 
+/// Writes payments to a TOML file. Can be used to define an airdrop list to be executed later.
 pub fn write_payments_toml(
     path: &str,
     sender_key_name: &str,

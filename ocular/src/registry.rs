@@ -1,3 +1,5 @@
+//! This module provides methods for retreiving chain and IBC path data from the chain registry
+
 use crate::{error::ChainRegistryError, github::Content};
 use http::Method;
 use serde::de::DeserializeOwned;

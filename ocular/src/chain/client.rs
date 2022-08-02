@@ -1,5 +1,5 @@
 #![warn(unused_qualifications)]
-
+//! This module defines the [`ChainClient`], it's constructors, and submodules that define all of its capabilities
 use crate::{
     chain::{client::cache::Cache, config::ChainClientConfig},
     error::{ChainClientError, ChainRegistryError, RpcError},
@@ -19,6 +19,8 @@ pub mod tx;
 
 type RpcHttpClient = tendermint_rpc::HttpClient;
 
+/// The core client type capable of configuring itself from the chain registry and managing its own
+/// set of healthy gRPC endpoints
 pub struct ChainClient {
     pub config: ChainClientConfig,
     pub keyring: Keyring,
@@ -28,10 +30,14 @@ pub struct ChainClient {
 }
 
 impl ChainClient {
+    /// Constructor for an automatically configured [`ChainClient`] via the chain registry. Be aware that the
+    /// endpoint health checks are currently not very thorough; you can manually set your desired RPC and/or
+    /// gRPC endpoint for the client to use by setting them in the client's [`ChainClientConfig`].
     pub fn create(chain_name: ChainName) -> Result<Self, ChainClientError> {
         get_client(chain_name.as_str())
     }
 
+    /// Constructor for manual composition
     pub fn new(
         config: ChainClientConfig,
         keyring: Keyring,
@@ -50,6 +56,10 @@ impl ChainClient {
     }
 }
 
+/// A basic builder that can be used to construct a [`ChainClient`] with a combination of automatic
+/// and manual configuration. A [`Keyring`], [`Cache`], and gRPC/RPC endpoint selection can be set
+/// via the builder's setters, while the rest of the chain's context will be retrieved from the
+/// registry when the `build()` is called.
 pub struct ChainClientBuilder {
     chain_name: ChainName,
     grpc_endpoint: Option<String>,
@@ -60,6 +70,7 @@ pub struct ChainClientBuilder {
 }
 
 impl ChainClientBuilder {
+    /// Builder constructor
     pub fn new(chain_name: ChainName) -> ChainClientBuilder {
         ChainClientBuilder {
             chain_name,
@@ -71,6 +82,8 @@ impl ChainClientBuilder {
         }
     }
 
+    /// Retrieve the chain's context from the registry and construct the [`ChainClient`] using whatever
+    /// values were manually provided.
     pub async fn build(self) -> Result<ChainClient, ChainClientError> {
         let info = match get_chain(self.chain_name.as_str()).await? {
             Some(c) => c,
@@ -107,21 +120,25 @@ impl ChainClientBuilder {
         })
     }
 
+    /// Set a [`Keyring`] to be used by the client
     pub fn with_keyring(mut self, keyring: Keyring) -> ChainClientBuilder {
         self.keyring = Some(keyring);
         self
     }
 
+    /// Set a default gRPC endpoint to be used by the client
     pub fn with_grpc_endpoint(mut self, endpoint: &str) -> ChainClientBuilder {
         self.grpc_endpoint = Some(endpoint.to_string());
         self
     }
 
+    /// Set a default RPC endpoint to be used by the client
     pub fn with_rpc_endpoint(mut self, endpoint: &str) -> ChainClientBuilder {
         self.rpc_endpoint = Some(endpoint.to_string());
         self
     }
 
+    /// Set a [`Cache`] to be used by the client
     pub fn with_cache(mut self, cache: Cache) -> ChainClientBuilder {
         self.cache = Some(cache);
         self
@@ -155,10 +172,12 @@ fn get_client(chain_name: &str) -> Result<ChainClient, ChainClientError> {
     })
 }
 
+/// Construct a new Tendermint RPC HTTP client
 pub fn new_rpc_http_client(address: &str) -> Result<RpcHttpClient, RpcError> {
     RpcHttpClient::new(address).map_err(|e| e.into())
 }
 
+/// Constructs a new Tendermint RPC Websocket client
 pub async fn new_rpc_ws_client(
     address: &str,
 ) -> Result<(WebSocketClient, WebSocketClientDriver), RpcError> {

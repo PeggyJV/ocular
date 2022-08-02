@@ -1,3 +1,4 @@
+//! Defines methods for managing gRPC endpoints
 use crate::{
     chain::client::{query::BankQueryClient, ChainClient},
     error::{ChainInfoError, GrpcError, RpcError},
@@ -7,6 +8,7 @@ use rand::prelude::SliceRandom;
 use rand::thread_rng;
 
 impl ChainClient {
+    /// Selects a random, healhty gRPC endpoint from either the client's cache or the chain registry
     pub async fn get_random_grpc_endpoint(&mut self) -> Result<String, ChainInfoError> {
         let endpoints = self.get_grpc_endpoints().await?;
         if let Some(endpoint) = endpoints.choose(&mut thread_rng()) {
@@ -16,6 +18,8 @@ impl ChainClient {
         }
     }
 
+    /// Retreives the gRPC endpoints in the client's cache or all gRPC endpoints in the chain registry if the
+    /// client doesn't have a cache.
     pub async fn get_grpc_endpoints(&mut self) -> Result<Vec<String>, ChainInfoError> {
         let mut endpoints: Vec<String> = Vec::new();
         let mut refresh_cache = false;
@@ -97,6 +101,7 @@ impl ChainClient {
             .collect()
     }
 
+    /// Attempts to connect to the provided endpoint to evaluate its health
     pub async fn is_healthy_grpc(&self, endpoint: &str) -> Result<(), ChainInfoError> {
         if BankQueryClient::connect(endpoint.to_string())
             .await
