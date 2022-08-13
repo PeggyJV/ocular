@@ -77,7 +77,7 @@ fn local_single_node_chain_test() {
                 SignDoc::new(&expected_tx_body, &expected_auth_info, &chain_id, 1)
                     .expect("Could not parse sign doc.");
             let _expected_tx_raw = expected_sign_doc
-                .sign(sender_account.private_key())
+                .sign(sender_account.private_key().unwrap())
                 .expect("Could not parse tx.");
 
             // Expected MsgGrant
@@ -116,7 +116,7 @@ fn local_single_node_chain_test() {
             )
             .expect("Could not parse sign doc.");
             let _expected_msg_grant_raw =
-                expected_msg_grant_sign_doc.sign(sender_account.private_key());
+                expected_msg_grant_sign_doc.sign(sender_account.private_key().unwrap());
 
             // Expected MsgRevoke
             let msg_revoke = MsgRevoke {
@@ -142,7 +142,7 @@ fn local_single_node_chain_test() {
             )
             .expect("Could not parse sign doc.");
             let _expected_msg_revoke_raw =
-                expected_msg_revoke_sign_doc.sign(sender_account.private_key());
+                expected_msg_revoke_sign_doc.sign(sender_account.private_key().unwrap());
 
             // Expected MsgExec
             let mut msgs_to_execute: Vec<Any> = Vec::new();
@@ -178,7 +178,7 @@ fn local_single_node_chain_test() {
             )
             .expect("Could not parse sign doc.");
             let _expected_msg_exec_raw =
-                expected_msg_exec_sign_doc.sign(sender_account.private_key());
+                expected_msg_exec_sign_doc.sign(sender_account.private_key().unwrap());
 
             // expected MsgMultiSend
             let input_a = MultiSendIo {

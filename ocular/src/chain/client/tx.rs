@@ -67,7 +67,7 @@ impl ChainClient {
         };
 
         // Create raw signed transaction.
-        let tx_signed = match sign_doc.sign(sender.private_key()) {
+        let tx_signed = match sign_doc.sign(sender.private_key().unwrap()) {
             Ok(raw) => raw,
             Err(err) => return Err(TxError::Signing(err.to_string()).into()),
         };

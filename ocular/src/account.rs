@@ -18,7 +18,7 @@ pub use cosmrs::AccountId;
 #[derive(Clone)]
 pub struct AccountInfo {
     public_key: PublicKey,
-    private_key: Arc<SigningKey>,
+    private_key: Option<Arc<SigningKey>>,
 }
 
 impl AccountInfo {
@@ -56,8 +56,11 @@ impl AccountInfo {
         self.public_key
     }
 
-    pub fn private_key(&self) -> &SigningKey {
-        self.private_key.as_ref()
+    pub fn private_key(&self) -> Option<&SigningKey> {
+       match self.private_key{
+           Some(ref key) => Some(key),
+           None => None,
+       }
     }
 }
 
@@ -73,7 +76,7 @@ impl From<Arc<SigningKey>> for AccountInfo {
         let public_key = private_key.public_key();
 
         AccountInfo {
-            private_key,
+            private_key:Some(private_key),
             public_key,
         }
     }
