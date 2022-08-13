@@ -57,10 +57,10 @@ impl AccountInfo {
     }
 
     pub fn private_key(&self) -> Option<&SigningKey> {
-       match self.private_key{
-           Some(ref key) => Some(key),
-           None => None,
-       }
+        match self.private_key {
+            Some(ref key) => Some(key),
+            None => None,
+        }
     }
 }
 
@@ -76,7 +76,7 @@ impl From<Arc<SigningKey>> for AccountInfo {
         let public_key = private_key.public_key();
 
         AccountInfo {
-            private_key:Some(private_key),
+            private_key: Some(private_key),
             public_key,
         }
     }
