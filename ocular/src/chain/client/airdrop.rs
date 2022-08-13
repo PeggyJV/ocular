@@ -86,19 +86,15 @@ impl ChainClient {
 
     pub async fn execute_delegated_airdrop(
         &mut self,
-        granter: &AccountInfo,
+        granter: &AccountId,
         grantee: &AccountInfo,
         payments: Vec<Payment>,
         tx_metadata: Option<TxMetadata>,
     ) -> Result<BroadcastCommitResponse, ChainClientError> {
-        self.verify_multi_send_grant(
-            &granter.id(&self.config.account_prefix)?,
-            &grantee.id(&self.config.account_prefix)?,
-        )
-        .await?;
+        self.verify_multi_send_grant(granter, &grantee.id(&self.config.account_prefix)?)
+            .await?;
 
-        let (inputs, outputs) =
-            multi_send_args_from_payments(&granter.address(&self.config.account_prefix)?, payments);
+        let (inputs, outputs) = multi_send_args_from_payments(&granter.to_string(), payments);
         let msgs: Vec<Any> = vec![MsgMultiSend {
             inputs: inputs
                 .iter()
@@ -136,7 +132,7 @@ impl ChainClient {
         let tx_metadata = tx_metadata.unwrap_or(basic_tx_metadata);
 
         self.execute_delegated_airdrop(
-            &granter,
+            &granter.id(&self.config.account_prefix)?,
             &grantee,
             payments_toml.payments,
             Some(tx_metadata),

@@ -114,7 +114,7 @@ fn airdrop_delegated_single_sender_single_denom() {
                 .is_err());
             assert!(chain_client
                 .execute_delegated_airdrop(
-                    &sender_account,
+                    &sender_account.id(ACCOUNT_PREFIX).unwrap(),
                     &delegate_account,
                     payments.clone(),
                     Some(txm.clone()),
@@ -193,7 +193,7 @@ fn airdrop_delegated_single_sender_single_denom() {
             println!("Executing delegated airdrop on behalf of sender");
             let response = chain_client
                 .execute_delegated_airdrop(
-                    &sender_account,
+                    &sender_account.id(ACCOUNT_PREFIX).unwrap(),
                     &delegate_account,
                     payments.clone(),
                     Some(txm),
@@ -357,7 +357,7 @@ fn airdrop_toml_delegated_single_sender_single_denom() {
                 .is_err());
             assert!(chain_client
                 .execute_delegated_airdrop(
-                    &sender_account,
+                    &sender_account.id(ACCOUNT_PREFIX).unwrap(),
                     &delegate_account,
                     payments.clone(),
                     Some(txm.clone()),
