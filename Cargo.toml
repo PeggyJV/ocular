@@ -20,7 +20,6 @@ bip32 = "0.3"
 # cosmrs without this.
 cosmos-sdk-proto = "0.12.0"
 cosmrs = {version = "0.7.0", features = ["dev"] }
-eyre = "0.6.8"
 futures = { version = "0.3.19", features = ["executor"] }
 k256 = { version = "0.10.2", features = ["pem"] }
 http = "0.2"
@@ -42,6 +41,7 @@ prost = "0.10.4"
 toml = "0.5.8"
 uuid = { version = "0.8.2", features = ["serde", "v4"] }
 async-trait = "0.1.56"
+eyre = "0.6.8"
 
 [features]
 

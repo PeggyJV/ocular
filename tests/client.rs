@@ -1,35 +1,39 @@
+use crate::common::*;
+
 use assay::assay;
-use ocular::{
-    client::QueryClient,
-};
+use ocular::query::{PageRequest, new_grpc_query_client, AuthQueryClient};
+
+mod common;
 
 #[assay]
 async fn chain_client_construction() {
-    QueryClient::new(
-        "https://cosmoshub.strange.love:9090",
-        "https://cosmoshub-4.technofractal.com:443",
-    )
-    .unwrap();
+    new_cosmos_client();
 }
 
 // the rpc endpoints are unreliable so only run this when explicity requested
 #[assay]
 async fn query_latest_block_height() {
-    let client = QueryClient::create(chain::COSMOSHUB).expect("failed to get test client");
-    dbg!("rpc address:", &client.config.rpc_address);
+    let client = new_cosmos_client();
+
     client
-        .query_latest_height()
+        .latest_height()
         .await
         .expect("failed to query latest height");
 }
 
-#[cfg(skip)]
+#[assay]
+async fn connect_grpc_query_client() {
+    new_grpc_query_client::<AuthQueryClient>("http://cosmoshub.strange.love:9090")
+        .await
+        .expect("failed to connect grpc client");
+}
+
 #[assay]
 async fn auth_queries() {
-    let client = QueryClient::create(chain::COSMOSHUB).unwrap();
+    let mut client = new_cosmos_client();
 
     client
-        .query_account("cosmos1j5f60735tg604tjd0ts7z22hsmva6nznz8na6q".to_string())
+        .account("cosmos1j5f60735tg604tjd0ts7z22hsmva6nznz8na6q")
         .await
         .expect("failed to query account");
     let pagination = PageRequest {
@@ -40,31 +44,30 @@ async fn auth_queries() {
         reverse: false,
     };
     client
-        .query_accounts(Some(pagination))
+        .all_accounts(Some(pagination))
         .await
         .expect("failed to query account");
 }
 
-#[cfg(skip)]
 #[assay]
 async fn bank_queries() {
-    let client = QueryClient::create(chain::COSMOSHUB).expect("failed to get test client");
+    let mut client = new_cosmos_client();
 
     // TO-DO need an address for testing balance query. Maybe include test-specific keys?
     let _denom_metadata = client
-        .query_denom_metadata("uatom")
+        .denom_metadata("uatom")
         .await
         .expect("failed to query denom metadata");
     let denoms_metadata = client
-        .query_denoms_metadata()
+        .all_denoms_metadata(None)
         .await
         .expect("failed to query denoms metadata");
     let _params = client
-        .query_bank_params()
+        .bank_params()
         .await
         .expect("failed to query bank params");
     let total_supply = client
-        .query_total_supply()
+        .total_supply(None)
         .await
         .expect("failed to query total supply");
 

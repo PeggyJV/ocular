@@ -1,5 +1,6 @@
 //! Queries for the [Bank module](https://github.com/cosmos/cosmos-sdk/blob/main/proto/cosmos/bank/v1beta1/query.proto). If you need a query that does not have a method wrapper here, you can use the [`BankQueryClient`] directly.
-use eyre::{eyre, Result};
+use async_trait::async_trait;
+use eyre::{eyre, Result, Context};
 use tonic::transport::Channel;
 
 use crate::{
@@ -7,14 +8,22 @@ use crate::{
     Coin,
 };
 
-use super::{QueryClient, PageRequest, GrpcClient};
+use super::{Client, PageRequest, GrpcClient};
 
 /// The bank module's query client proto definition
 pub type BankQueryClient = bank::query_client::QueryClient<Channel>;
 
-impl GrpcClient for BankQueryClient {}
+#[async_trait]
+impl GrpcClient for BankQueryClient {
+    type ClientType = Self;
 
-impl QueryClient {
+    async fn make_client(endpoint: String) -> Result<Self::ClientType> {
+        BankQueryClient::connect(endpoint).await
+            .wrap_err("Failed to make gRPC connection")
+    }
+}
+
+impl Client {
     /// Gets all coin balances of the specified address with optional pagination
     pub async fn all_balances(
         &mut self,

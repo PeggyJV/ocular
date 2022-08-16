@@ -1,5 +1,6 @@
 //! Query methods for the [Auth module](https://github.com/cosmos/cosmos-sdk/blob/main/proto/cosmos/auth/v1beta1/query.proto). If you need a query that does not have a method wrapper here, you can use the [`AuthQueryClient`] directly.
-use eyre::Result;
+use async_trait::async_trait;
+use eyre::{Result, Context};
 use prost::Message;
 use tonic::transport::Channel;
 
@@ -8,14 +9,22 @@ use crate::{
     cosmos_modules::auth,
 };
 
-use super::{GrpcClient, QueryClient, PageRequest};
+use super::{GrpcClient, Client, PageRequest};
 
 /// The auth module's query client proto definition
 pub type AuthQueryClient = auth::query_client::QueryClient<Channel>;
 
-impl GrpcClient for AuthQueryClient {}
+#[async_trait]
+impl GrpcClient for AuthQueryClient {
+    type ClientType = Self;
 
-impl QueryClient {
+    async fn make_client(endpoint: String) -> Result<Self::ClientType> {
+        AuthQueryClient::connect(endpoint).await
+            .wrap_err("Failed to make gRPC connection")
+    }
+}
+
+impl Client {
     /// Gets the account on chain with the specified address
     pub async fn account(&mut self, address: &str) -> Result<BaseAccount> {
         let query_client = self.get_grpc_query_client::<AuthQueryClient>().await?;

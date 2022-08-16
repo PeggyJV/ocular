@@ -33,11 +33,13 @@ use std::{any::{TypeId, Any}, collections::HashMap};
 
 use async_trait::async_trait;
 use eyre::Result;
+
+pub use crate::rpc::RpcHttpClient;
+use crate::rpc::new_http_client;
 pub use self::{
     auth::*, authz::*, bank::*, distribution::*, evidence::*, gov::*, mint::*, params::*,
     slashing::*, staking::*,
 };
-use tendermint_rpc::{self, Client};
 
 pub mod auth;
 pub mod authz;
@@ -49,25 +51,24 @@ pub mod mint;
 pub mod params;
 pub mod slashing;
 pub mod staking;
+pub mod rpc;
 
 pub type PageRequest = cosmos_sdk_proto::cosmos::base::query::v1beta1::PageRequest;
 
-type RpcHttpClient = tendermint_rpc::HttpClient;
-
-pub struct QueryClient {
+pub struct Client {
     grpc_endpoint: String,
     grpc_pool: HashMap<TypeId, Box<dyn Any>>,
     rpc_client: RpcHttpClient,
 }
 
-impl QueryClient {
+impl Client {
     pub fn new(
         rpc_endpoint: &str,
         grpc_endpoint: &str,
-    ) -> Result<QueryClient> {
-        let rpc_client = new_rpc_http_client(rpc_endpoint)?;
+    ) -> Result<Client> {
+        let rpc_client = new_http_client(rpc_endpoint)?;
 
-        Ok(QueryClient {
+        Ok(Client {
             grpc_endpoint: String::from(grpc_endpoint),
             grpc_pool: HashMap::new(),
             rpc_client,
@@ -94,59 +95,19 @@ impl QueryClient {
     }
 }
 
-pub fn new_rpc_http_client(address: &str) -> Result<RpcHttpClient> {
-    RpcHttpClient::new(address).map_err(|e| e.into())
-}
-
 #[async_trait]
 /// A marker trait for query client types in the Cosmos SDK proto
 pub trait GrpcClient
 {
-}
+    type ClientType;
 
-#[async_trait]
-pub trait Connect
-where
-    Self: Sized
-{
-    async fn connect(endpoint: String) -> Result<Self>;
-}
-
-#[async_trait]
-impl<T> Connect for T
-where
-    T: GrpcClient
-{
-    async fn connect(endpoint: String) -> Result<Self> {
-        T::connect(endpoint).await
-    }
-}
-
-/// A generic factory for query clients defined in the Cosmos SDK proto definitions
-pub struct GrpcClientFactory;
-
-impl GrpcClientFactory {
-    pub async fn connect<T>(endpoint: String) -> Result<T>
-    where
-        T: GrpcClient + Connect,
-    {
-        T::connect(endpoint).await
-    }
+    async fn make_client(endpoint: String) -> Result<Self::ClientType>;
 }
 
 /// Constructor for query clients.
-pub async fn new_grpc_query_client<T>(endpoint: &str) -> Result<T>
+pub async fn new_grpc_query_client<T>(endpoint: &str) -> Result<T::ClientType>
 where
     T: GrpcClient,
 {
-    Ok(GrpcClientFactory::connect::<T>(endpoint.to_string()).await?)
+    Ok(T::make_client(endpoint.to_string()).await?)
 }
-
-/// RPC query for latest block height
-pub async fn latest_height(rpc_client: &RpcHttpClient) -> Result<u64> {
-    let status = rpc_client
-        .status()
-        .await?;
-    Ok(status.sync_info.latest_block_height.value())
-}
-
