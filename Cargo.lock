@@ -978,7 +978,6 @@ dependencies = [
  "cosmrs",
  "eyre",
  "prost",
- "prost-types",
  "rand",
  "serde",
  "tendermint-rpc",

@@ -1,7 +1,6 @@
 #![allow(clippy::too_many_arguments)]
 
 pub use crate::tx::Coin;
-pub use prost_types::Timestamp;
 
 pub mod account;
 pub mod cosmos_modules {
