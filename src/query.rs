@@ -97,11 +97,14 @@ impl QueryClient {
     async fn get_grpc_query_client<T: 'static + Any + GrpcClient>(&mut self) -> Result<&mut T> {
         let key = TypeId::of::<T>();
 
-        Ok(self.grpc_cache.entry(key).or_insert(
-            Box::new(new_grpc_query_client::<T>(&self.grpc_endpoint).await?),
-        )
-        .downcast_mut::<T>()
-        .unwrap())
+        Ok(self
+            .grpc_cache
+            .entry(key)
+            .or_insert(Box::new(
+                new_grpc_query_client::<T>(&self.grpc_endpoint).await?,
+            ))
+            .downcast_mut::<T>()
+            .unwrap())
     }
 }
 

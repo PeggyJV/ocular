@@ -1,7 +1,7 @@
 use crate::common::*;
 
 use assay::assay;
-use ocular::query::{new_grpc_query_client, AuthQueryClient, PageRequest, BankQueryClient};
+use ocular::query::{new_grpc_query_client, AuthQueryClient, BankQueryClient, PageRequest};
 
 mod common;
 
