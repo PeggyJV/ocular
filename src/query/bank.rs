@@ -1,25 +1,25 @@
 //! Queries for the [Bank module](https://github.com/cosmos/cosmos-sdk/blob/main/proto/cosmos/bank/v1beta1/query.proto). If you need a query that does not have a method wrapper here, you can use the [`BankQueryClient`] directly.
+use eyre::{eyre, Result};
 use tonic::transport::Channel;
 
 use crate::{
     cosmos_modules::bank,
-    error::{ChainClientError, GrpcError},
     Coin,
 };
 
-use super::{ChainClient, PageRequest, GrpcClient};
+use super::{QueryClient, PageRequest, GrpcClient};
 
 /// The bank module's query client proto definition
 pub type BankQueryClient = bank::query_client::QueryClient<Channel>;
 
 impl GrpcClient for BankQueryClient {}
 
-impl ChainClient {
+impl QueryClient {
     /// Gets all coin balances of the specified address with optional pagination
-    pub async fn query_all_balances(
+    pub async fn all_balances(
         &mut self,
         address: &str,
-    ) -> Result<Vec<Coin>, ChainClientError> {
+    ) -> Result<Vec<Coin>> {
         let query_client = self.get_grpc_query_client::<BankQueryClient>().await?;
         let request = bank::QueryAllBalancesRequest {
             address: address.to_string(),
@@ -27,8 +27,7 @@ impl ChainClient {
         };
         let response = query_client
             .all_balances(request)
-            .await
-            .map_err(GrpcError::Request)?
+            .await?
             .into_inner();
         let mut balances = Vec::<Coin>::new();
 
@@ -40,88 +39,77 @@ impl ChainClient {
     }
 
     /// Gets the bank module's params
-    pub async fn query_bank_params(&mut self) -> Result<Option<bank::Params>, ChainClientError> {
+    pub async fn bank_params(&mut self) -> Result<Option<bank::Params>> {
         let query_client = self.get_grpc_query_client::<BankQueryClient>().await?;
         let request = bank::QueryParamsRequest {};
         let response = query_client
             .params(request)
-            .await
-            .map_err(GrpcError::Request)?
+            .await?
             .into_inner();
 
         Ok(response.params)
     }
 
     /// Gets metadata for the specified coin denomination if it exists, errors otherwise
-    pub async fn query_denom_metadata(
+    pub async fn denom_metadata(
         &mut self,
         denom: &str,
-    ) -> Result<bank::Metadata, ChainClientError> {
+    ) -> Result<bank::Metadata> {
         let query_client = self.get_grpc_query_client::<BankQueryClient>().await?;
         let request = bank::QueryDenomMetadataRequest {
             denom: denom.to_string(),
         };
         let response = query_client
             .denom_metadata(request)
-            .await
-            .map_err(GrpcError::Request)?
+            .await?
             .into_inner();
         return match response.metadata {
             Some(md) => Ok(md),
-            None => Err(ChainClientError::ModuleQuery(format!(
-                "empty result. denom {} is probably invalid!",
-                denom
-            ))),
+            None => Err(eyre!("Empty denom metadata result. Denom {denom} is probably invalid!")),
         };
     }
 
     /// Gets the metadata for all coin denominations defined in the bank module.
-    pub async fn query_denoms_metadata(
+    pub async fn all_denoms_metadata(
         &mut self,
         pagination: Option<PageRequest>,
-    ) -> Result<Vec<bank::Metadata>, ChainClientError> {
+    ) -> Result<Vec<bank::Metadata>> {
         let query_client = self.get_grpc_query_client::<BankQueryClient>().await?;
         let request = bank::QueryDenomsMetadataRequest { pagination };
         let response = query_client
             .denoms_metadata(request)
-            .await
-            .map_err(GrpcError::Request)?
+            .await?
             .into_inner();
 
         Ok(response.metadatas)
     }
 
     /// Gets the supply of the specified coin denomination
-    pub async fn query_supply(&mut self, denom: &str) -> Result<Coin, ChainClientError> {
+    pub async fn supply(&mut self, denom: &str) -> Result<Coin> {
         let query_client = self.get_grpc_query_client::<BankQueryClient>().await?;
         let request = bank::QuerySupplyOfRequest {
             denom: denom.to_string(),
         };
         let response = query_client
             .supply_of(request)
-            .await
-            .map_err(GrpcError::Request)?
+            .await?
             .into_inner();
         return match response.amount {
             Some(a) => Ok(a.try_into()?),
-            None => Err(ChainClientError::ModuleQuery(format!(
-                "empty result. denom {} is probably invalid!",
-                denom
-            ))),
+            None => Err(eyre!("Empty denom supply result. Denom {denom} is probably invalid!")),
         };
     }
 
     /// Gets the supply of all coin denominations with optional pagination
-    pub async fn query_total_supply(
+    pub async fn total_supply(
         &mut self,
         pagination: Option<PageRequest>,
-    ) -> Result<Vec<Coin>, ChainClientError> {
+    ) -> Result<Vec<Coin>> {
         let query_client = self.get_grpc_query_client::<BankQueryClient>().await?;
         let request = bank::QueryTotalSupplyRequest { pagination };
         let response = query_client
             .total_supply(request)
-            .await
-            .map_err(GrpcError::Request)?
+            .await?
             .into_inner();
         let mut supply = Vec::<Coin>::new();
 

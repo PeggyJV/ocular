@@ -1,7 +1,6 @@
 use cosmrs::{AccountId, Denom};
+use eyre::{Report, Result};
 use serde::{Deserialize, Serialize};
-
-use crate::error::TxError;
 
 pub use prost_types::Any;
 
@@ -33,7 +32,7 @@ impl From<Coin> for cosmos_sdk_proto::cosmos::base::v1beta1::Coin {
 }
 
 impl TryFrom<Coin> for cosmrs::Coin {
-    type Error = TxError;
+    type Error = Report;
 
     fn try_from(coin: Coin) -> Result<cosmrs::Coin, Self::Error> {
         cosmrs::Coin::try_from(&coin)
@@ -41,7 +40,7 @@ impl TryFrom<Coin> for cosmrs::Coin {
 }
 
 impl TryFrom<&Coin> for cosmrs::Coin {
-    type Error = TxError;
+    type Error = Report;
 
     fn try_from(coin: &Coin) -> Result<cosmrs::Coin, Self::Error> {
         Ok(cosmrs::Coin {
@@ -52,7 +51,7 @@ impl TryFrom<&Coin> for cosmrs::Coin {
 }
 
 impl TryFrom<cosmos_sdk_proto::cosmos::base::v1beta1::Coin> for Coin {
-    type Error = TxError;
+    type Error = Report;
 
     fn try_from(coin: cosmos_sdk_proto::cosmos::base::v1beta1::Coin) -> Result<Coin, Self::Error> {
         Coin::try_from(&coin)
@@ -60,7 +59,7 @@ impl TryFrom<cosmos_sdk_proto::cosmos::base::v1beta1::Coin> for Coin {
 }
 
 impl TryFrom<&cosmos_sdk_proto::cosmos::base::v1beta1::Coin> for Coin {
-    type Error = TxError;
+    type Error = Report;
 
     fn try_from(coin: &cosmos_sdk_proto::cosmos::base::v1beta1::Coin) -> Result<Coin, Self::Error> {
         Ok(Coin {
@@ -91,7 +90,7 @@ pub struct MultiSendIo {
 }
 
 impl TryFrom<MultiSendIo> for cosmrs::bank::MultiSendIo {
-    type Error = TxError;
+    type Error = Report;
 
     fn try_from(value: MultiSendIo) -> Result<cosmrs::bank::MultiSendIo, Self::Error> {
         cosmrs::bank::MultiSendIo::try_from(&value)
@@ -99,7 +98,7 @@ impl TryFrom<MultiSendIo> for cosmrs::bank::MultiSendIo {
 }
 
 impl TryFrom<&MultiSendIo> for cosmrs::bank::MultiSendIo {
-    type Error = TxError;
+    type Error = Report;
 
     fn try_from(value: &MultiSendIo) -> Result<cosmrs::bank::MultiSendIo, Self::Error> {
         Ok(cosmrs::bank::MultiSendIo {

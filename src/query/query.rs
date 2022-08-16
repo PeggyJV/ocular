@@ -31,16 +31,15 @@
 use std::any::{TypeId, Any};
 
 use async_trait::async_trait;
+use eyre::Result;
 use tendermint_rpc::{Client as RpcClient, HttpClient};
-
-use crate::error::{ChainClientError, GrpcError, RpcError};
 
 pub use self::{
     auth::*, authz::*, bank::*, distribution::*, evidence::*, gov::*, mint::*, params::*,
     slashing::*, staking::*,
 };
 
-use super::ChainClient;
+use super::QueryClient;
 
 pub mod auth;
 pub mod authz;
@@ -55,8 +54,8 @@ pub mod staking;
 
 pub type PageRequest = cosmos_sdk_proto::cosmos::base::query::v1beta1::PageRequest;
 
-impl ChainClient {
-    async fn get_grpc_query_client<T: 'static + Any + GrpcClient>(&mut self) -> Result<&mut T, ChainClientError>
+impl QueryClient {
+    async fn get_grpc_query_client<T: 'static + Any + GrpcClient>(&mut self) -> Result<&mut T>
     {
         let key = TypeId::of::<T>();
         if !self.grpc_pool.contains_key(&key) {
@@ -82,7 +81,7 @@ pub trait Connect
 where
     Self: Sized
 {
-    async fn connect(endpoint: String) -> Result<Self, tonic::transport::Error>;
+    async fn connect(endpoint: String) -> Result<Self>;
 }
 
 #[async_trait]
@@ -90,7 +89,7 @@ impl<T> Connect for T
 where
     T: GrpcClient
 {
-    async fn connect(endpoint: String) -> Result<Self, tonic::transport::Error> {
+    async fn connect(endpoint: String) -> Result<Self> {
         T::connect(endpoint).await
     }
 }
@@ -99,7 +98,7 @@ where
 pub struct GrpcClientFactory;
 
 impl GrpcClientFactory {
-    pub async fn connect<T>(endpoint: String) -> Result<T, tonic::transport::Error>
+    pub async fn connect<T>(endpoint: String) -> Result<T>
     where
         T: GrpcClient + Connect,
     {
@@ -108,20 +107,17 @@ impl GrpcClientFactory {
 }
 
 /// Constructor for query clients.
-pub async fn new_grpc_query_client<T>(endpoint: &str) -> Result<T, ChainClientError>
+pub async fn new_grpc_query_client<T>(endpoint: &str) -> Result<T>
 where
     T: GrpcClient,
 {
-    GrpcClientFactory::connect::<T>(endpoint.to_string())
-        .await
-        .map_err(|e| GrpcError::Connection(e).into())
+    Ok(GrpcClientFactory::connect::<T>(endpoint.to_string()).await?)
 }
 
 /// RPC query for latest block height
-pub async fn query_latest_height(rpc_client: &HttpClient) -> Result<u64, ChainClientError> {
+pub async fn latest_height(rpc_client: &HttpClient) -> Result<u64> {
     let status = rpc_client
         .status()
-        .await
-        .map_err(RpcError::TendermintStatus)?;
+        .await?;
     Ok(status.sync_info.latest_block_height.value())
 }

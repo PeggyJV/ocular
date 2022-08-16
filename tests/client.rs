@@ -1,11 +1,11 @@
 use assay::assay;
 use ocular::{
-    client::ChainClient,
+    client::QueryClient,
 };
 
 #[assay]
 async fn chain_client_construction() {
-    ChainClient::new(
+    QueryClient::new(
         "https://cosmoshub.strange.love:9090",
         "https://cosmoshub-4.technofractal.com:443",
     )
@@ -13,10 +13,9 @@ async fn chain_client_construction() {
 }
 
 // the rpc endpoints are unreliable so only run this when explicity requested
-#[cfg(skip)]
 #[assay]
 async fn query_latest_block_height() {
-    let client = ChainClient::create(chain::COSMOSHUB).expect("failed to get test client");
+    let client = QueryClient::create(chain::COSMOSHUB).expect("failed to get test client");
     dbg!("rpc address:", &client.config.rpc_address);
     client
         .query_latest_height()
@@ -27,7 +26,7 @@ async fn query_latest_block_height() {
 #[cfg(skip)]
 #[assay]
 async fn auth_queries() {
-    let client = ChainClient::create(chain::COSMOSHUB).unwrap();
+    let client = QueryClient::create(chain::COSMOSHUB).unwrap();
 
     client
         .query_account("cosmos1j5f60735tg604tjd0ts7z22hsmva6nznz8na6q".to_string())
@@ -49,7 +48,7 @@ async fn auth_queries() {
 #[cfg(skip)]
 #[assay]
 async fn bank_queries() {
-    let client = ChainClient::create(chain::COSMOSHUB).expect("failed to get test client");
+    let client = QueryClient::create(chain::COSMOSHUB).expect("failed to get test client");
 
     // TO-DO need an address for testing balance query. Maybe include test-specific keys?
     let _denom_metadata = client
