@@ -1,7 +1,7 @@
 use crate::common::*;
 
 use assay::assay;
-use ocular::query::{PageRequest, new_grpc_query_client, AuthQueryClient};
+use ocular::query::{new_grpc_query_client, AuthQueryClient, PageRequest};
 
 mod common;
 
@@ -26,6 +26,16 @@ async fn connect_grpc_query_client() {
     new_grpc_query_client::<AuthQueryClient>("http://cosmoshub.strange.love:9090")
         .await
         .expect("failed to connect grpc client");
+}
+
+#[assay]
+async fn rpc_queries() {
+    let client = new_cosmos_client();
+
+    client
+        .latest_height()
+        .await
+        .expect("failed to query latest block height");
 }
 
 #[assay]
