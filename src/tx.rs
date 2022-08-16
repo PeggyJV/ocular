@@ -11,14 +11,14 @@ pub struct TxMetadata {
     pub fee_payer: Option<AccountId>,
     pub fee_granter: Option<AccountId>,
     pub gas_limit: u64,
-    pub timeout_height: u32,
+    pub timeout_height: u64,
     #[serde(default)]
     pub memo: String,
 }
 
 #[derive(Clone, Debug, Default, Deserialize, Serialize)]
 pub struct Coin {
-    pub amount: u64,
+    pub amount: u128,
     pub denom: String,
 }
 
@@ -45,7 +45,7 @@ impl TryFrom<&Coin> for cosmrs::Coin {
     fn try_from(coin: &Coin) -> Result<cosmrs::Coin, Self::Error> {
         Ok(cosmrs::Coin {
             denom: coin.denom.parse::<Denom>()?,
-            amount: coin.amount.into(),
+            amount: (coin.amount as u64).into(),
         })
     }
 }
@@ -72,7 +72,7 @@ impl TryFrom<&cosmos_sdk_proto::cosmos::base::v1beta1::Coin> for Coin {
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
 pub struct Payment {
     pub recipient: String,
-    pub amount: u64,
+    pub amount: u128,
     pub denom: String,
 }
 

@@ -5,20 +5,20 @@
 //!
 //! ```no_run
 //! use cosmos_sdk_proto::cosmos::auth::v1beta1::{BaseAccount, QueryAccountsRequest};
-//! use ocular::{chain::{COSMOSHUB, client::{ChainClient, query::*}}, error::ChainClientError};
+//! use ocular::{query::auth::AuthQueryClient, QueryClient};
 //! use prost::Message;
 //!
 //! async fn get_accounts_example() {
-//!     // with ocular's `ChainClient`
-//!     let mut client = ChainClient::new("", "http://some.grpc:9090").unwrap();
-//!     let accounts = client.query_accounts(None).await;
+//!     // with ocular's `QueryClient`
+//!     let mut qclient = QueryClient::new("", "http://some.grpc:9090").unwrap();
+//!     let accounts = qclient.all_accounts(None).await;
 //!
 //!     //or
 //!
 //!     // with proto query client
-//!     let mut client = AuthQueryClient::connect("http://some.grpc:9090").await.unwrap();
+//!     let mut auth_qclient = AuthQueryClient::connect("http://some.grpc:9090").await.unwrap();
 //!     let request = QueryAccountsRequest { pagination: None };
-//!     let accounts: Vec<BaseAccount> = client
+//!     let accounts: Vec<BaseAccount> = auth_qclient
 //!         .accounts(request)
 //!         .await
 //!         .unwrap()
@@ -55,20 +55,20 @@ pub mod rpc;
 
 pub type PageRequest = cosmos_sdk_proto::cosmos::base::query::v1beta1::PageRequest;
 
-pub struct Client {
+pub struct QueryClient {
     grpc_endpoint: String,
     grpc_pool: HashMap<TypeId, Box<dyn Any>>,
     rpc_client: RpcHttpClient,
 }
 
-impl Client {
+impl QueryClient {
     pub fn new(
         rpc_endpoint: &str,
         grpc_endpoint: &str,
-    ) -> Result<Client> {
+    ) -> Result<QueryClient> {
         let rpc_client = new_http_client(rpc_endpoint)?;
 
-        Ok(Client {
+        Ok(QueryClient {
             grpc_endpoint: String::from(grpc_endpoint),
             grpc_pool: HashMap::new(),
             rpc_client,

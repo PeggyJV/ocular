@@ -1,9 +1,9 @@
 use eyre::Result;
 use tendermint_rpc::Client as TendermintClient;
 
-use super::Client;
+use super::QueryClient;
 
-impl Client {
+impl QueryClient {
     /// RPC query for latest block height
     pub async fn latest_height(&self) -> Result<u64> {
         let status = self

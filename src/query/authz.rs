@@ -5,7 +5,7 @@ use tonic::transport::Channel;
 
 use crate::cosmos_modules::authz::{self, *};
 
-use super::{GrpcClient, Client};
+use super::{GrpcClient, QueryClient};
 
 /// The authz module's query client proto definition
 pub type AuthzQueryClient = authz::query_client::QueryClient<Channel>;
@@ -21,7 +21,7 @@ impl GrpcClient for AuthzQueryClient {
     }
 }
 
-impl Client {
+impl QueryClient {
     /// Gets all grants between `granter` and `grantee` for the given msg type
     pub async fn grants(
         &mut self,

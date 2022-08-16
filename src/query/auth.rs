@@ -2,14 +2,14 @@
 use async_trait::async_trait;
 use eyre::{Result, Context};
 use prost::Message;
-use tonic::transport::Channel;
+use tonic::transport::channel::Channel;
 
 use crate::{
     account::BaseAccount,
     cosmos_modules::auth,
 };
 
-use super::{GrpcClient, Client, PageRequest};
+use super::{GrpcClient, QueryClient, PageRequest};
 
 /// The auth module's query client proto definition
 pub type AuthQueryClient = auth::query_client::QueryClient<Channel>;
@@ -24,7 +24,7 @@ impl GrpcClient for AuthQueryClient {
     }
 }
 
-impl Client {
+impl QueryClient {
     /// Gets the account on chain with the specified address
     pub async fn account(&mut self, address: &str) -> Result<BaseAccount> {
         let query_client = self.get_grpc_query_client::<AuthQueryClient>().await?;

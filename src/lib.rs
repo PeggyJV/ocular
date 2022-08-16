@@ -20,6 +20,6 @@ pub mod cosmos_modules {
     pub use cosmrs::proto::cosmos::staking::v1beta1 as staking;
 }
 pub mod query;
-pub use query::Client as QueryClient;
+pub use query::QueryClient as QueryClient;
 pub mod rpc;
 pub mod tx;

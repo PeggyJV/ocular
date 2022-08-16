@@ -8,7 +8,7 @@ use crate::{
     Coin,
 };
 
-use super::{Client, PageRequest, GrpcClient};
+use super::{QueryClient, PageRequest, GrpcClient};
 
 /// The bank module's query client proto definition
 pub type BankQueryClient = bank::query_client::QueryClient<Channel>;
@@ -23,7 +23,7 @@ impl GrpcClient for BankQueryClient {
     }
 }
 
-impl Client {
+impl QueryClient {
     /// Gets all coin balances of the specified address with optional pagination
     pub async fn all_balances(
         &mut self,
