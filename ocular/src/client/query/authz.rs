@@ -1,25 +1,17 @@
 //! Query methods for the [Authz module](https://github.com/cosmos/cosmos-sdk/blob/main/proto/cosmos/authz/v1beta1/query.proto). If you need a query that does not have a method wrapper here, you can use the [`AuthzQueryClient`] directly.
 use crate::{
     cosmos_modules::authz::{self, *},
-    error::{ChainClientError, GrpcError},
+    error::{ChainClientError, GrpcError}, client::ChainClient,
 };
-use async_trait::async_trait;
 use tonic::transport::Channel;
 
-use super::{ChainClient, QueryClient};
+use super::GrpcClient;
 
 /// The authz module's query client proto definition
 pub type AuthzQueryClient = authz::query_client::QueryClient<Channel>;
 pub type Grant = authz::Grant;
 
-#[async_trait]
-impl QueryClient for AuthzQueryClient {
-    type Transport = Channel;
-
-    async fn connect(endpoint: String) -> Result<Self, tonic::transport::Error> {
-        Self::connect(endpoint).await
-    }
-}
+impl GrpcClient for AuthzQueryClient {}
 
 impl ChainClient {
     /// Gets all grants between `granter` and `grantee` for the given msg type
@@ -29,7 +21,7 @@ impl ChainClient {
         grantee: &str,
         msg_type_url: &str,
     ) -> Result<Vec<Grant>, ChainClientError> {
-        let mut query_client = self.get_query_client::<AuthzQueryClient>().await?;
+        let query_client = self.get_grpc_query_client::<AuthzQueryClient>().await?;
         let request = QueryGrantsRequest {
             granter: granter.to_string(),
             grantee: grantee.to_string(),

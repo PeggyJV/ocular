@@ -5,6 +5,7 @@ pub use prost_types::Timestamp;
 
 pub mod account;
 pub mod chain;
+pub mod client;
 pub mod cosmos_modules {
     pub use cosmrs::proto::cosmos::auth::v1beta1 as auth;
     pub use cosmrs::proto::cosmos::authz::v1beta1 as authz;
@@ -21,8 +22,4 @@ pub mod cosmos_modules {
     pub use cosmrs::proto::cosmos::staking::v1beta1 as staking;
 }
 pub mod error;
-pub(crate) mod github;
-pub mod keyring;
-pub mod registry;
 pub mod tx;
-pub mod utils;

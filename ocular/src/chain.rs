@@ -1,8 +1,5 @@
 use tendermint_pre;
 
-pub mod client;
-pub mod config;
-
 pub type ChainName = tendermint_pre::chain::Id;
 
 pub const AGORIC: ChainName = ChainName::new("agoric");

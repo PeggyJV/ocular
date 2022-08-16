@@ -1,7 +1,7 @@
 [package]
 name = "ocular"
-description = "A client library Cosmos SDK chains with chain registry interaction"
-authors = ["Collin Brittain"]
+description = "A client library for Cosmos SDK chains"
+authors = ["Collin Brittain", "Phil Bal"]
 version = "0.1.0"
 edition = "2021"
 license = "Apache-2.0"

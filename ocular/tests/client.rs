@@ -1,53 +1,15 @@
 use assay::assay;
 use ocular::{
-    chain::{
-        self,
-        client::{cache::Cache, ChainClient, ChainClientBuilder},
-        config::ChainClientConfig,
-        SOMMELIER,
-    },
-    keyring::Keyring,
-    tx::Coin,
+    client::ChainClient,
 };
 
 #[assay]
-async fn create_chain_client() {
-    ChainClient::create(chain::COSMOSHUB).expect("failed to create client");
-}
-
-#[assay]
-async fn manual_chain_client_path() {
-    let config = ChainClientConfig {
-        account_prefix: "cosmos".to_string(),
-        chain_name: "cosmoshub".to_string(),
-        chain_id: "cosmoshub-4".to_string(),
-        gas_adjustment: 1.0,
-        grpc_address: "https://cosmoshub.strange.love:9090".to_string(),
-        rpc_address: "https://cosmoshub-4.technofractal.com:443".to_string(),
-        default_fee: Coin {
-            amount: 0,
-            denom: "uatom".to_string(),
-        },
-    };
-    let keyring = Keyring::try_default().unwrap();
-    let cache = Some(Cache::create_memory_cache(None, 5).unwrap());
-
-    ChainClient::new(config, keyring, cache, 5).expect("failed to create client");
-}
-
-#[assay]
-async fn chain_client_builder_path() {
-    let grpc_endpoint = "whatever";
-    let rpc_endpoint = "http://sommelier.strange.love:26657";
-    let client = ChainClientBuilder::new(SOMMELIER)
-        .with_grpc_endpoint(grpc_endpoint)
-        .with_rpc_endpoint(rpc_endpoint)
-        .build()
-        .await
-        .expect("failed to build client");
-
-    assert_eq!(client.config.grpc_address, grpc_endpoint);
-    assert_eq!(client.config.rpc_address, rpc_endpoint);
+async fn chain_client_construction() {
+    ChainClient::new(
+        "https://cosmoshub.strange.love:9090",
+        "https://cosmoshub-4.technofractal.com:443",
+    )
+    .unwrap();
 }
 
 // the rpc endpoints are unreliable so only run this when explicity requested
