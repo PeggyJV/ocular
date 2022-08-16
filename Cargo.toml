@@ -1,6 +1,28 @@
-[workspace]
+[package]
+name = "ocular"
+description = "A client library for Cosmos SDK chains with a focus on pleasant UX"
+authors = ["Collin Brittain", "Phil Bal"]
+version = "1.0.0-alpha"
+edition = "2021"
+license = "Apache-2.0"
+repository = "https://github.com/PeggyJV/ocular"
+readme = "README.md"
 
-members = [
-    "ocular_cli",
-    "ocular"
-]
+[package.metadata.cargo-udeps.ignore]
+normal = ["assay"]
+
+[dependencies]
+assay = "0.1"
+async-trait = "0.1.56"
+eyre = "0.6.8"
+cosmos-sdk-proto = "0.14.0"
+cosmrs = {version = "0.9.0", features = ["dev"] }
+serde = "1.0.133"
+tendermint-rpc = "0.23.7"
+tonic = { version = "0.8", features = ["transport"] }
+prost = "0.11"
+
+[features]
+
+[dev-dependencies]
+rand = "0.8.5"
