@@ -22,7 +22,7 @@ impl GrpcClient for BankQueryClient {
 }
 
 impl QueryClient {
-    /// Gets a balance at the specified address
+    /// Gets a balance at the specified address. If the balance doesn't exist, returns a [`Coin`] with an amount of zero.
     pub async fn balance(&mut self, address: &str, denom: &str) -> Result<Coin> {
         let query_client = self.get_grpc_query_client::<BankQueryClient>().await?;
         let request = bank::QueryBalanceRequest {

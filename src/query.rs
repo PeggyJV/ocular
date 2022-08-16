@@ -70,6 +70,12 @@ pub struct QueryClient {
 
 impl QueryClient {
     /// Constructor
+    ///
+    /// ```
+    /// // Note that because of how prost generates the proto definitions,
+    /// // it is necessary to bind the client as mutable in order to use it.
+    /// let mut client = QueryClient::new(rpc, grpc)?;
+    /// ```
     pub fn new(rpc_endpoint: &str, grpc_endpoint: &str) -> Result<QueryClient> {
         let rpc_client = new_http_client(rpc_endpoint)?;
 
