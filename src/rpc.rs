@@ -1,3 +1,4 @@
+//! Types and functions pertaining to Tendermint RPC
 use eyre::{Context, Result};
 
 pub type RpcHttpClient = tendermint_rpc::HttpClient;

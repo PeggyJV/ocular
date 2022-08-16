@@ -1,3 +1,4 @@
+//! Types pertaining to auth accounts
 pub use cosmrs::crypto::{secp256k1::SigningKey, PublicKey};
 /// Represents a bech32 account identifier
 pub use cosmrs::AccountId;

@@ -1,5 +1,5 @@
 #![warn(unused_qualifications)]
-//! This module contains RPC and gRPC queries, and query clients from each Cosmos SDK modules' respective proto definitions. Convenience methods are provided for some queries. For others, you can use the query client definition directly.
+//! Defines the [`QueryClient`] and convenience methods for SDK module queries
 //!
 //! # Examples
 //!
@@ -56,34 +56,42 @@ pub mod rpc;
 pub mod slashing;
 pub mod staking;
 
+/// For paging large query responses
 pub type PageRequest = cosmos_sdk_proto::cosmos::base::query::v1beta1::PageRequest;
 
+/// A convencience wrapper for querying both Tendermint RPC and Cosmos SDK module endpoints. It creates a Tendermint RPC client
+/// at construction time. gRPC clients are created on demand because each module has it's own query client proto definition.
+/// [`QueryClient`] keeps a cache of these gRPC clients, and will reuse them for subsequent queries to the same SDK module.
 pub struct QueryClient {
     grpc_endpoint: String,
-    grpc_pool: HashMap<TypeId, Box<dyn Any>>,
+    grpc_cache: HashMap<TypeId, Box<dyn Any>>,
     rpc_client: RpcHttpClient,
 }
 
 impl QueryClient {
+    /// Constructor
     pub fn new(rpc_endpoint: &str, grpc_endpoint: &str) -> Result<QueryClient> {
         let rpc_client = new_http_client(rpc_endpoint)?;
 
         Ok(QueryClient {
             grpc_endpoint: String::from(grpc_endpoint),
-            grpc_pool: HashMap::new(),
+            grpc_cache: HashMap::new(),
             rpc_client,
         })
     }
 
+    /// Checks if the internal gRPC pool contains a client of the given module type. Primarily used for testing.
     pub fn has_grpc_client<T: 'static>(&self) -> bool {
         let key = TypeId::of::<T>();
-        self.grpc_pool.contains_key(&key)
+        self.grpc_cache.contains_key(&key)
     }
 
+    /// Retrieves a gRPC query client of the given type. If one exists in the pool it is used, otherwise one is added
+    /// and returned.
     async fn get_grpc_query_client<T: 'static + Any + GrpcClient>(&mut self) -> Result<&mut T> {
         let key = TypeId::of::<T>();
 
-        Ok(self.grpc_pool.entry(key).or_insert(
+        Ok(self.grpc_cache.entry(key).or_insert(
             Box::new(new_grpc_query_client::<T>(&self.grpc_endpoint).await?),
         )
         .downcast_mut::<T>()
@@ -99,7 +107,7 @@ pub trait GrpcClient {
     async fn make_client(endpoint: String) -> Result<Self::ClientType>;
 }
 
-/// Constructor for query clients.
+/// Generalized constructor for query clients
 pub async fn new_grpc_query_client<T>(endpoint: &str) -> Result<T::ClientType>
 where
     T: GrpcClient,

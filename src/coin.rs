@@ -1,3 +1,4 @@
+//! A simple coin type convertable from [`cosmrs::Coin`] and the Cosmos SDK proto coin types.
 use cosmrs::Denom;
 use eyre::{Report, Result};
 use serde::{Deserialize, Serialize};

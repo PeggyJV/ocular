@@ -22,8 +22,8 @@ impl GrpcClient for BankQueryClient {
 }
 
 impl QueryClient {
-    /// Trys to get balance of a provided denom. Contained [`Option<Coin>`] will be [`None`] if it doesn't.
-    pub async fn balance(&mut self, address: &str, denom: &str) -> Result<Option<Coin>> {
+    /// Gets a balance at the specified address
+    pub async fn balance(&mut self, address: &str, denom: &str) -> Result<Coin> {
         let query_client = self.get_grpc_query_client::<BankQueryClient>().await?;
         let request = bank::QueryBalanceRequest {
             address: address.to_string(),
@@ -31,8 +31,11 @@ impl QueryClient {
         };
         let response = query_client.balance(request).await?.into_inner();
         let balance = match response.balance {
-            Some(c) => Some(c.try_into()?),
-            None => None,
+            Some(c) => c.try_into()?,
+            None => Coin {
+                amount: 0,
+                denom: denom.to_string(),
+            },
         };
 
         Ok(balance)
