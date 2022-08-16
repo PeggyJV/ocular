@@ -13,6 +13,7 @@ pub struct BaseAccount {
     pub sequence: u64,
 }
 
+// TO-DO: Handle public keys with type URL /cosmos.crypto.multisig.LegacyAminoPubKey
 impl TryFrom<cosmrs::proto::cosmos::auth::v1beta1::BaseAccount> for BaseAccount {
     type Error = Error;
 

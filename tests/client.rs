@@ -1,7 +1,7 @@
 use crate::common::*;
 
 use assay::assay;
-use ocular::query::{new_grpc_query_client, AuthQueryClient, PageRequest};
+use ocular::query::{new_grpc_query_client, AuthQueryClient, PageRequest, BankQueryClient};
 
 mod common;
 
@@ -43,7 +43,7 @@ async fn auth_queries() {
     let mut client = new_cosmos_client();
 
     client
-        .account("cosmos1j5f60735tg604tjd0ts7z22hsmva6nznz8na6q")
+        .account(HUB_TEST_ADDRESS)
         .await
         .expect("failed to query account");
     let pagination = PageRequest {
@@ -91,4 +91,21 @@ async fn bank_queries() {
 
     assert!(!denoms_metadata.is_empty());
     assert!(!total_supply.is_empty());
+}
+
+#[assay]
+async fn grpc_pool() {
+    let mut qclient = new_cosmos_client();
+
+    qclient
+        .account(HUB_TEST_ADDRESS)
+        .await
+        .expect("failed to query account");
+    let _balance = qclient
+        .balance(HUB_TEST_ADDRESS, "uatom")
+        .await
+        .expect("failed to query balance");
+
+    assert!(qclient.has_grpc_client::<AuthQueryClient>());
+    assert!(qclient.has_grpc_client::<BankQueryClient>());
 }
