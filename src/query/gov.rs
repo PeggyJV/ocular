@@ -15,7 +15,8 @@ impl GrpcClient for GovQueryClient {
     type ClientType = Self;
 
     async fn make_client(endpoint: String) -> Result<Self::ClientType> {
-        GovQueryClient::connect(endpoint).await
+        GovQueryClient::connect(endpoint)
+            .await
             .wrap_err("Failed to make gRPC connection")
     }
 }

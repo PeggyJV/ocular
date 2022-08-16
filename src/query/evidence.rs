@@ -15,7 +15,8 @@ impl GrpcClient for EvidenceQueryClient {
     type ClientType = Self;
 
     async fn make_client(endpoint: String) -> Result<Self::ClientType> {
-        EvidenceQueryClient::connect(endpoint).await
+        EvidenceQueryClient::connect(endpoint)
+            .await
             .wrap_err("Failed to make gRPC connection")
     }
 }

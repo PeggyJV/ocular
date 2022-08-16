@@ -1,6 +1,6 @@
 //! Query methods for the [Authz module](https://github.com/cosmos/cosmos-sdk/blob/main/proto/cosmos/authz/v1beta1/query.proto). If you need a query that does not have a method wrapper here, you can use the [`AuthzQueryClient`] directly.
 use async_trait::async_trait;
-use eyre::{Result, Context};
+use eyre::{Context, Result};
 use tonic::transport::Channel;
 
 use crate::cosmos_modules::authz::{self, *};
@@ -16,7 +16,8 @@ impl GrpcClient for AuthzQueryClient {
     type ClientType = Self;
 
     async fn make_client(endpoint: String) -> Result<Self::ClientType> {
-        AuthzQueryClient::connect(endpoint).await
+        AuthzQueryClient::connect(endpoint)
+            .await
             .wrap_err("Failed to make gRPC connection")
     }
 }
@@ -38,10 +39,6 @@ impl QueryClient {
             pagination: None,
         };
 
-        Ok(query_client
-            .grants(request)
-            .await?
-            .into_inner()
-            .grants)
+        Ok(query_client.grants(request).await?.into_inner().grants)
     }
 }

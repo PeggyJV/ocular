@@ -1,15 +1,12 @@
 //! Query methods for the [Auth module](https://github.com/cosmos/cosmos-sdk/blob/main/proto/cosmos/auth/v1beta1/query.proto). If you need a query that does not have a method wrapper here, you can use the [`AuthQueryClient`] directly.
 use async_trait::async_trait;
-use eyre::{Result, Context};
+use eyre::{Context, Result};
 use prost::Message;
 use tonic::transport::channel::Channel;
 
-use crate::{
-    account::BaseAccount,
-    cosmos_modules::auth,
-};
+use crate::{account::BaseAccount, cosmos_modules::auth};
 
-use super::{GrpcClient, QueryClient, PageRequest};
+use super::{GrpcClient, PageRequest, QueryClient};
 
 /// The auth module's query client proto definition
 pub type AuthQueryClient = auth::query_client::QueryClient<Channel>;
@@ -19,7 +16,8 @@ impl GrpcClient for AuthQueryClient {
     type ClientType = Self;
 
     async fn make_client(endpoint: String) -> Result<Self::ClientType> {
-        AuthQueryClient::connect(endpoint).await
+        AuthQueryClient::connect(endpoint)
+            .await
             .wrap_err("Failed to make gRPC connection")
     }
 }
@@ -31,19 +29,19 @@ impl QueryClient {
         let request = auth::QueryAccountRequest {
             address: address.to_string(),
         };
-        let response = query_client
-            .account(request)
-            .await?
-            .into_inner();
+        let response = query_client.account(request).await?.into_inner();
         let any = response.account.unwrap();
 
-        Ok(auth::BaseAccount::decode(&any.value as &[u8])
+        auth::BaseAccount::decode(&any.value as &[u8])
             .unwrap()
-            .try_into()?)
+            .try_into()
     }
 
     /// Gets all accounts
-    pub async fn all_accounts(&mut self, pagination: Option<PageRequest>) -> Result<Vec<BaseAccount>> {
+    pub async fn all_accounts(
+        &mut self,
+        pagination: Option<PageRequest>,
+    ) -> Result<Vec<BaseAccount>> {
         let query_client = self.get_grpc_query_client::<AuthQueryClient>().await?;
         let request = auth::QueryAccountsRequest { pagination };
         let base_accounts = query_client

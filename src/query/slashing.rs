@@ -15,7 +15,8 @@ impl GrpcClient for SlashingQueryClient {
     type ClientType = Self;
 
     async fn make_client(endpoint: String) -> Result<Self::ClientType> {
-        SlashingQueryClient::connect(endpoint).await
+        SlashingQueryClient::connect(endpoint)
+            .await
             .wrap_err("Failed to make gRPC connection")
     }
 }

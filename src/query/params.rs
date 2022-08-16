@@ -15,7 +15,8 @@ impl GrpcClient for ParamsQueryClient {
     type ClientType = Self;
 
     async fn make_client(endpoint: String) -> Result<Self::ClientType> {
-        ParamsQueryClient::connect(endpoint).await
+        ParamsQueryClient::connect(endpoint)
+            .await
             .wrap_err("Failed to make gRPC connection")
     }
 }

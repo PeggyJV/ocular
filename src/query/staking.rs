@@ -15,7 +15,8 @@ impl GrpcClient for StakingQueryClient {
     type ClientType = Self;
 
     async fn make_client(endpoint: String) -> Result<Self::ClientType> {
-        StakingQueryClient::connect(endpoint).await
+        StakingQueryClient::connect(endpoint)
+            .await
             .wrap_err("Failed to make gRPC connection")
     }
 }

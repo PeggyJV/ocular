@@ -29,17 +29,20 @@
 //!         .collect();
 //! }
 //! ```
-use std::{any::{TypeId, Any}, collections::HashMap};
+use std::{
+    any::{Any, TypeId},
+    collections::HashMap,
+};
 
 use async_trait::async_trait;
 use eyre::Result;
 
-pub use crate::rpc::RpcHttpClient;
-use crate::rpc::new_http_client;
 pub use self::{
     auth::*, authz::*, bank::*, distribution::*, evidence::*, gov::*, mint::*, params::*,
     slashing::*, staking::*,
 };
+use crate::rpc::new_http_client;
+pub use crate::rpc::RpcHttpClient;
 
 pub mod auth;
 pub mod authz;
@@ -49,9 +52,9 @@ pub mod evidence;
 pub mod gov;
 pub mod mint;
 pub mod params;
+pub mod rpc;
 pub mod slashing;
 pub mod staking;
-pub mod rpc;
 
 pub type PageRequest = cosmos_sdk_proto::cosmos::base::query::v1beta1::PageRequest;
 
@@ -62,10 +65,7 @@ pub struct QueryClient {
 }
 
 impl QueryClient {
-    pub fn new(
-        rpc_endpoint: &str,
-        grpc_endpoint: &str,
-    ) -> Result<QueryClient> {
+    pub fn new(rpc_endpoint: &str, grpc_endpoint: &str) -> Result<QueryClient> {
         let rpc_client = new_http_client(rpc_endpoint)?;
 
         Ok(QueryClient {
@@ -80,25 +80,20 @@ impl QueryClient {
         self.grpc_pool.contains_key(&key)
     }
 
-    async fn get_grpc_query_client<T: 'static + Any + GrpcClient>(&mut self) -> Result<&mut T>
-    {
+    async fn get_grpc_query_client<T: 'static + Any + GrpcClient>(&mut self) -> Result<&mut T> {
         let key = TypeId::of::<T>();
-        if !self.grpc_pool.contains_key(&key) {
-            let _ = self.grpc_pool.insert(key, Box::new(new_grpc_query_client::<T>(&self.grpc_endpoint).await?));
-        }
 
-        return Ok(self.grpc_pool
-            .get_mut(&key)
-            .unwrap()
-            .downcast_mut::<T>()
-            .unwrap())
+        Ok(self.grpc_pool.entry(key).or_insert(
+            Box::new(new_grpc_query_client::<T>(&self.grpc_endpoint).await?),
+        )
+        .downcast_mut::<T>()
+        .unwrap())
     }
 }
 
 #[async_trait]
 /// A marker trait for query client types in the Cosmos SDK proto
-pub trait GrpcClient
-{
+pub trait GrpcClient {
     type ClientType;
 
     async fn make_client(endpoint: String) -> Result<Self::ClientType>;
@@ -109,5 +104,5 @@ pub async fn new_grpc_query_client<T>(endpoint: &str) -> Result<T::ClientType>
 where
     T: GrpcClient,
 {
-    Ok(T::make_client(endpoint.to_string()).await?)
+    T::make_client(endpoint.to_string()).await
 }
