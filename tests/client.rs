@@ -51,22 +51,30 @@ async fn auth_queries() {
 
 #[assay]
 async fn bank_queries() {
-    let mut client = new_cosmos_client();
+    let mut qclient = new_cosmos_client();
 
     // TO-DO need an address for testing balance query. Maybe include test-specific keys?
-    let _denom_metadata = client
+    let _balance = qclient
+        .balance(HUB_TEST_ADDRESS, "uatom")
+        .await
+        .expect("failed to query balance");
+    let _balances = qclient
+        .all_balances(HUB_TEST_ADDRESS)
+        .await
+        .expect("failed to query denoms metadata");
+    let _denom_metadata = qclient
         .denom_metadata("uatom")
         .await
         .expect("failed to query denom metadata");
-    let denoms_metadata = client
+    let denoms_metadata = qclient
         .all_denoms_metadata(None)
         .await
         .expect("failed to query denoms metadata");
-    let _params = client
+    let _params = qclient
         .bank_params()
         .await
         .expect("failed to query bank params");
-    let total_supply = client
+    let total_supply = qclient
         .total_supply(None)
         .await
         .expect("failed to query total supply");
