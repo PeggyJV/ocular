@@ -71,7 +71,7 @@ pub struct QueryClient {
 impl QueryClient {
     /// Constructor
     ///
-    /// ```no_run
+    /// ```ignore
     /// // Note that because of how prost generates the proto definitions,
     /// // it is necessary to bind the client as mutable in order to use it.
     /// let mut client = QueryClient::new(rpc, grpc)?;
