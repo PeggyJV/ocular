@@ -58,6 +58,7 @@ pub mod staking;
 
 /// For paging large query responses
 pub type PageRequest = cosmos_sdk_proto::cosmos::base::query::v1beta1::PageRequest;
+pub type PageResponse = cosmos_sdk_proto::cosmos::base::query::v1beta1::PageResponse;
 
 /// A convencience wrapper for querying both Tendermint RPC and Cosmos SDK module endpoints. It creates a Tendermint RPC client
 /// at construction time. gRPC clients are created on demand because each module has it's own query client proto definition.

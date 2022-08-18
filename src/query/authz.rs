@@ -5,7 +5,7 @@ use tonic::transport::Channel;
 
 use crate::cosmos_modules::authz::{self, *};
 
-use super::{GrpcClient, QueryClient};
+use super::{GrpcClient, QueryClient, PageRequest};
 
 /// The authz module's query client proto definition
 pub type AuthzQueryClient = authz::query_client::QueryClient<Channel>;
@@ -29,16 +29,47 @@ impl QueryClient {
         granter: &str,
         grantee: &str,
         msg_type_url: &str,
-    ) -> Result<Vec<Grant>> {
+        pagination: Option<PageRequest>,
+    ) -> Result<QueryGrantsResponse> {
         let query_client = self.get_grpc_query_client::<AuthzQueryClient>().await?;
         let request = QueryGrantsRequest {
             granter: granter.to_string(),
             grantee: grantee.to_string(),
             msg_type_url: msg_type_url.to_string(),
             // TODO: Support pagination if use case arises
-            pagination: None,
+            pagination,
         };
 
-        Ok(query_client.grants(request).await?.into_inner().grants)
+        Ok(query_client.grants(request).await?.into_inner())
+    }
+
+    /// Gets all grant authorizations granted by the provided `granter`
+    pub async fn granter_grants(
+        &mut self,
+        granter: &str,
+        pagination: Option<PageRequest>,
+    ) -> Result<QueryGranterGrantsResponse> {
+        let query_client = self.get_grpc_query_client::<AuthzQueryClient>().await?;
+        let request = QueryGranterGrantsRequest {
+            granter: granter.to_string(),
+            pagination,
+        };
+
+        Ok(query_client.granter_grants(request).await?.into_inner())
+    }
+
+    /// Gets all grant authorizations granted to the provided `grantee`
+    pub async fn grantee_grants(
+        &mut self,
+        grantee: &str,
+        pagination: Option<PageRequest>,
+    ) -> Result<QueryGranteeGrantsResponse> {
+        let query_client = self.get_grpc_query_client::<AuthzQueryClient>().await?;
+        let request = QueryGranteeGrantsRequest {
+            grantee: grantee.to_string(),
+            pagination,
+        };
+
+        Ok(query_client.grantee_grants(request).await?.into_inner())
     }
 }
