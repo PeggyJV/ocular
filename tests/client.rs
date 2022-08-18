@@ -89,8 +89,8 @@ async fn bank_queries() {
         .await
         .expect("failed to query total supply");
 
-    assert!(!denoms_metadata.is_empty());
-    assert!(!total_supply.is_empty());
+    assert!(!denoms_metadata.metadatas.is_empty());
+    assert!(!total_supply.balances.is_empty());
 }
 
 #[assay]
