@@ -1,10 +1,11 @@
 //! Queries for the [Bank module](https://github.com/cosmos/cosmos-sdk/blob/main/proto/cosmos/bank/v1beta1/query.proto). If you need a query that does not have a method wrapper here, you can use the [`BankQueryClient`] directly.
 use async_trait::async_trait;
 use cosmos_sdk_proto::cosmos::bank::v1beta1::{QueryBalanceResponse, QueryAllBalancesResponse, QuerySpendableBalancesResponse, QueryTotalSupplyResponse, QueryDenomsMetadataResponse};
+use cosmrs::Coin;
 use eyre::{eyre, Context, Report, Result};
 use tonic::transport::Channel;
 
-use crate::{cosmos_modules::{bank}, Coin};
+use crate::{cosmos_modules::{bank}};
 
 use super::{GrpcClient, PageRequest, QueryClient, PageResponse};
 

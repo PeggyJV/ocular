@@ -1,6 +1,5 @@
 #![allow(clippy::too_many_arguments)]
 //! Ocular is a client library for Cosmos SDK chains with a focus on pleasant UX. Think of it as a convenience wrapper around the [cosmrs](https://docs.rs/cosmrs/latest/cosmrs/) client features.
-pub use coin::Coin;
 pub use query::QueryClient;
 
 pub mod account;
@@ -20,6 +19,5 @@ pub mod cosmos_modules {
     pub use cosmrs::proto::cosmos::slashing::v1beta1 as slashing;
     pub use cosmrs::proto::cosmos::staking::v1beta1 as staking;
 }
-pub mod coin;
 pub mod query;
 pub mod rpc;
