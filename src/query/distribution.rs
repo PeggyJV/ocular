@@ -136,7 +136,7 @@ impl QueryClient {
             .withdraw_address)
     }
 
-    pub async fn community_pool(&mut self, delegate_address: &str) -> Result<Vec<DecCoin>> {
+    pub async fn community_pool(&mut self) -> Result<Vec<DecCoin>> {
         let query_client = self.get_grpc_query_client::<DistributionQueryClient>().await?;
         let request = distribution::QueryCommunityPoolRequest {};
 
