@@ -49,6 +49,7 @@ pub mod authz;
 pub mod bank;
 pub mod distribution;
 pub mod evidence;
+pub mod feegrant;
 pub mod gov;
 pub mod mint;
 pub mod params;
