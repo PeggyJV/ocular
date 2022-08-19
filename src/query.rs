@@ -3,19 +3,24 @@
 //!
 //! # Examples
 //!
-//! ```no_run
-//! use proto::cosmos::auth::v1beta1::{BaseAccount, QueryAccountsRequest};
-//! use ocular::{query::auth::AuthQueryClient, QueryClient};
+//! You can use ocular's [`QueryClient`] for querying:
+//!
+//! ```ignore
+//! use ocular::QueryClient;
+//!
+//! async fn get_accounts_with_ocular_client() {
+//!     let mut qclient = QueryClient::new("", "http://some.grpc:9090").unwrap();
+//!     let accounts = qclient.all_accounts(None).await.accounts;
+//! }
+//! ```
+//!
+//! Or you can use the proto's query client directly, which is much more verbose:
+//!
+//! ```ignore
+//! use ocular::cosmrs::proto::cosmos::auth::v1beta1::{BaseAccount, QueryAccountsRequest}, query::auth::AuthQueryClient;
 //! use prost::Message;
 //!
-//! async fn get_accounts_example() {
-//!     // with ocular's `QueryClient`
-//!     let mut qclient = QueryClient::new("", "http://some.grpc:9090").unwrap();
-//!     let accounts = qclient.all_accounts(None).await;
-//!
-//!     //or
-//!
-//!     // with proto query client
+//! async fn get_accounts_with_proto_client() {
 //!     let mut auth_qclient = AuthQueryClient::connect("http://some.grpc:9090").await.unwrap();
 //!     let request = QueryAccountsRequest { pagination: None };
 //!     let accounts: Vec<BaseAccount> = auth_qclient
