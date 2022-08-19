@@ -52,12 +52,14 @@ impl QueryClient {
     }
 
     /// Gets the auth module's params
-    pub async fn auth_params(&mut self) -> Result<Option<auth::Params>> {
+    pub async fn auth_params(&mut self) -> Result<auth::QueryParamsResponse> {
         let query_client = self.get_grpc_query_client::<AuthQueryClient>().await?;
         let request = auth::QueryParamsRequest {};
-        let response = query_client.params(request).await?.into_inner();
 
-        Ok(response.params)
+        Ok(query_client
+            .params(request)
+            .await?
+            .into_inner())
     }
 }
 

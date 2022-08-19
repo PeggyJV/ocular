@@ -3,7 +3,7 @@ use async_trait::async_trait;
 use eyre::{Context, Result};
 use tonic::transport::Channel;
 
-use crate::cosmrs::proto::cosmos::gov::v1beta1::{self as gov, Proposal, Vote, QueryProposalsResponse, QueryVotesResponse};
+use crate::cosmrs::proto::cosmos::gov::v1beta1::{self as gov, QueryProposalsResponse, QueryVotesResponse};
 
 use super::{GrpcClient, PageRequest, QueryClient};
 
@@ -34,11 +34,14 @@ impl QueryClient {
     }
 
     /// Proposal queries proposal details based on ProposalID.
-    pub async fn proposal(&mut self, proposal_id: u64) -> Result<Option<Proposal>> {
+    pub async fn proposal(&mut self, proposal_id: u64) -> Result<gov::QueryProposalResponse> {
         let query_client = self.get_grpc_query_client::<GovQueryClient>().await?;
         let request = gov::QueryProposalRequest { proposal_id };
 
-        Ok(query_client.proposal(request).await?.into_inner().proposal)
+        Ok(query_client
+            .proposal(request)
+            .await?
+            .into_inner())
     }
 
     /// Proposals queries all proposals based on given status.
@@ -64,7 +67,7 @@ impl QueryClient {
     }
 
     /// Vote queries voted information based on proposalID, voterAddr.
-    pub async fn vote(&mut self, proposal_id: u64, voter: String) -> Result<Option<Vote>> {
+    pub async fn vote(&mut self, proposal_id: u64, voter: String) -> Result<gov::QueryVoteResponse> {
         let query_client = self.get_grpc_query_client::<GovQueryClient>().await?;
         let request = gov::QueryVoteRequest {
             proposal_id,
@@ -74,8 +77,7 @@ impl QueryClient {
         Ok(query_client
             .vote(request)
             .await?
-            .into_inner()
-            .vote)
+            .into_inner())
     }
 
     /// Votes queries votes of a given proposal.
@@ -97,7 +99,7 @@ impl QueryClient {
     }
 
     /// Deposit queries single deposit information based proposalID, depositAddr.
-    pub async fn deposit(&mut self, proposal_id: u64, depositor: String) -> Result<Option<gov::Deposit>> {
+    pub async fn deposit(&mut self, proposal_id: u64, depositor: String) -> Result<gov::QueryDepositResponse> {
         let query_client = self.get_grpc_query_client::<GovQueryClient>().await?;
         let request = gov::QueryDepositRequest {
             proposal_id,
@@ -107,8 +109,7 @@ impl QueryClient {
         Ok(query_client
             .deposit(request)
             .await?
-            .into_inner()
-            .deposit)
+            .into_inner())
     }
 
     /// Deposits queries all deposits of a single proposal.
@@ -130,7 +131,7 @@ impl QueryClient {
     }
 
     /// TallyResult queries the tally of a proposal vote.
-    pub async fn tally_result(&mut self, proposal_id: u64) -> Result<Option<gov::TallyResult>> {
+    pub async fn tally_result(&mut self, proposal_id: u64) -> Result<gov::QueryTallyResultResponse> {
         let query_client = self.get_grpc_query_client::<GovQueryClient>().await?;
         let request = gov::QueryTallyResultRequest {
             proposal_id,
@@ -139,7 +140,6 @@ impl QueryClient {
         Ok(query_client
             .tally_result(request)
             .await?
-            .into_inner()
-            .tally)
+            .into_inner())
     }
 }

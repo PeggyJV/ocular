@@ -107,7 +107,7 @@ impl QueryClient {
             .into_inner())
     }
 
-    pub async fn delegator_withdraw_address(&mut self, delegate_address: &str) -> Result<String> {
+    pub async fn delegator_withdraw_address(&mut self, delegate_address: &str) -> Result<distribution::QueryDelegatorWithdrawAddressResponse> {
         let query_client = self.get_grpc_query_client::<DistributionQueryClient>().await?;
         let request = distribution::QueryDelegatorWithdrawAddressRequest {
             delegator_address: delegate_address.to_string(),
@@ -116,8 +116,7 @@ impl QueryClient {
         Ok(query_client
             .delegator_withdraw_address(request)
             .await?
-            .into_inner()
-            .withdraw_address)
+            .into_inner())
     }
 
     pub async fn community_pool(&mut self) -> Result<Vec<DecCoin>> {

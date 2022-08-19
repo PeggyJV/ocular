@@ -3,7 +3,7 @@ use async_trait::async_trait;
 use eyre::{Context, Result};
 use tonic::transport::Channel;
 
-use crate::cosmrs::proto::cosmos::feegrant::v1beta1::{self as feegrant, Grant, QueryAllowancesResponse};
+use crate::cosmrs::proto::cosmos::feegrant::v1beta1::{self as feegrant, QueryAllowancesResponse};
 
 use super::{GrpcClient, QueryClient, PageRequest};
 
@@ -23,7 +23,7 @@ impl GrpcClient for FeeGrantQueryClient {
 
 impl QueryClient {
     /// Allowance returns fee granted to the grantee by the granter.
-    pub async fn allowance(&mut self, granter: &str, grantee: &str) -> Result<Option<Grant>> {
+    pub async fn allowance(&mut self, granter: &str, grantee: &str) -> Result<feegrant::QueryAllowanceResponse> {
         let query_client = self.get_grpc_query_client::<FeeGrantQueryClient>().await?;
         let request = feegrant::QueryAllowanceRequest {
             granter: granter.to_string(),
@@ -33,8 +33,7 @@ impl QueryClient {
         Ok(query_client
             .allowance(request)
             .await?
-            .into_inner()
-            .allowance)
+            .into_inner())
     }
 
     /// Allowances returns all the grants for address.

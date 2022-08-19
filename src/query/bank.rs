@@ -69,28 +69,27 @@ impl QueryClient {
     }
 
     /// Gets the bank module's params
-    pub async fn bank_params(&mut self) -> Result<Option<bank::Params>> {
+    pub async fn bank_params(&mut self) -> Result<bank::QueryParamsResponse> {
         let query_client = self.get_grpc_query_client::<BankQueryClient>().await?;
         let request = bank::QueryParamsRequest {};
-        let response = query_client.params(request).await?.into_inner();
 
-        Ok(response.params)
+        Ok(query_client
+            .params(request)
+            .await?
+            .into_inner())
     }
 
     /// Gets metadata for the specified coin denomination if it exists, errors otherwise
-    pub async fn denom_metadata(&mut self, denom: &str) -> Result<bank::Metadata> {
+    pub async fn denom_metadata(&mut self, denom: &str) -> Result<bank::QueryDenomMetadataResponse> {
         let query_client = self.get_grpc_query_client::<BankQueryClient>().await?;
         let request = bank::QueryDenomMetadataRequest {
             denom: denom.to_string(),
         };
-        let response = query_client.denom_metadata(request).await?.into_inner();
 
-        match response.metadata {
-            Some(md) => Ok(md),
-            None => Err(eyre!(
-                "Empty denom metadata result. Denom {denom} is probably invalid!"
-            )),
-        }
+        Ok(query_client
+            .denom_metadata(request)
+            .await?
+            .into_inner())
     }
 
     /// Gets the metadata for all coin denominations defined in the bank module.
