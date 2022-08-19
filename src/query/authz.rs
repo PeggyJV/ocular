@@ -3,7 +3,7 @@ use async_trait::async_trait;
 use eyre::{Context, Result};
 use tonic::transport::Channel;
 
-use crate::cosmos_modules::authz::{self, *};
+use crate::cosmrs::proto::cosmos::authz::v1beta1::{self as authz, *};
 
 use super::{GrpcClient, QueryClient, PageRequest};
 

@@ -3,7 +3,7 @@ use async_trait::async_trait;
 use eyre::{Context, Result};
 use tonic::transport::Channel;
 
-use crate::cosmos_modules::staking;
+use crate::cosmrs::proto::cosmos::staking::v1beta1 as staking;
 
 use super::GrpcClient;
 

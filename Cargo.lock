@@ -974,7 +974,6 @@ version = "1.0.0-alpha"
 dependencies = [
  "assay",
  "async-trait",
- "cosmos-sdk-proto",
  "cosmrs",
  "eyre",
  "prost",

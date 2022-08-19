@@ -15,8 +15,7 @@ normal = ["assay"]
 assay = "0.1"
 async-trait = "0.1.56"
 eyre = "0.6.8"
-cosmos-sdk-proto = "0.14.0"
-cosmrs = {version = "0.9.0", features = ["dev"] }
+cosmrs = {version = "0.9.0", features = ["dev", "grpc"] }
 serde = "1.0.133"
 tendermint-rpc = "0.23.7"
 tonic = { version = "0.8", features = ["transport"] }

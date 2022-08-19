@@ -1,11 +1,10 @@
 //! Query methods for the [Auth module](https://github.com/cosmos/cosmos-sdk/blob/main/proto/cosmos/auth/v1beta1/query.proto). If you need a query that does not have a method wrapper here, you can use the [`AuthQueryClient`] directly.
 use async_trait::async_trait;
-use cosmos_sdk_proto::cosmos::auth::v1beta1::QueryAccountsResponse;
 use eyre::{Context, Report, Result};
 use prost::Message;
 use tonic::transport::channel::Channel;
 
-use crate::{account::BaseAccount, cosmos_modules::auth};
+use crate::{account::BaseAccount, cosmrs::proto::cosmos::auth::v1beta1::{self as auth, QueryAccountsResponse}};
 
 use super::{GrpcClient, PageRequest, QueryClient, PageResponse};
 

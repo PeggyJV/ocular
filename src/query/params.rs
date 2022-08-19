@@ -3,7 +3,7 @@ use async_trait::async_trait;
 use eyre::{Context, Result};
 use tonic::transport::Channel;
 
-use crate::cosmos_modules::params;
+use crate::cosmrs::proto::cosmos::params::v1beta1 as params;
 
 use super::GrpcClient;
 

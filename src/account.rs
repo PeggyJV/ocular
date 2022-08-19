@@ -1,8 +1,10 @@
 //! Types pertaining to auth accounts
-pub use cosmrs::crypto::{secp256k1::SigningKey, PublicKey};
+pub use cosmrs::crypto::{secp256k1::SigningKey};
 /// Represents a bech32 account identifier
 pub use cosmrs::AccountId;
 pub use eyre::{Report, Result, eyre};
+
+use crate::cosmrs::crypto::PublicKey;
 
 /// Used for converting the BaseAccount type in cosmos_sdk_proto to something with concrete field types
 #[derive(Clone, Debug)]

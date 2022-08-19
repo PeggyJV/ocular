@@ -3,7 +3,7 @@ use async_trait::async_trait;
 use eyre::{Context, Result};
 use tonic::transport::Channel;
 
-use crate::cosmos_modules::slashing;
+use crate::cosmrs::proto::cosmos::slashing::v1beta1 as slashing;
 
 use super::GrpcClient;
 

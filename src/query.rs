@@ -4,7 +4,7 @@
 //! # Examples
 //!
 //! ```no_run
-//! use cosmos_sdk_proto::cosmos::auth::v1beta1::{BaseAccount, QueryAccountsRequest};
+//! use proto::cosmos::auth::v1beta1::{BaseAccount, QueryAccountsRequest};
 //! use ocular::{query::auth::AuthQueryClient, QueryClient};
 //! use prost::Message;
 //!
@@ -57,8 +57,8 @@ pub mod slashing;
 pub mod staking;
 
 /// For paging large query responses
-pub type PageRequest = cosmos_sdk_proto::cosmos::base::query::v1beta1::PageRequest;
-pub type PageResponse = cosmos_sdk_proto::cosmos::base::query::v1beta1::PageResponse;
+pub type PageRequest = crate::cosmrs::proto::cosmos::base::query::v1beta1::PageRequest;
+pub type PageResponse = crate::cosmrs::proto::cosmos::base::query::v1beta1::PageResponse;
 
 /// A convencience wrapper for querying both Tendermint RPC and Cosmos SDK module endpoints. It creates a Tendermint RPC client
 /// at construction time. gRPC clients are created on demand because each module has it's own query client proto definition.
