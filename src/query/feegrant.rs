@@ -5,7 +5,7 @@ use tonic::transport::Channel;
 
 use crate::cosmrs::proto::cosmos::feegrant::v1beta1::{self as feegrant, QueryAllowancesResponse};
 
-use super::{GrpcClient, QueryClient, PageRequest};
+use super::{GrpcClient, PageRequest, QueryClient};
 
 /// The gov module's query client proto definition
 pub type FeeGrantQueryClient = feegrant::query_client::QueryClient<Channel>;
@@ -23,30 +23,32 @@ impl GrpcClient for FeeGrantQueryClient {
 
 impl QueryClient {
     /// Allowance returns fee granted to the grantee by the granter.
-    pub async fn allowance(&mut self, granter: &str, grantee: &str) -> Result<feegrant::QueryAllowanceResponse> {
+    pub async fn allowance(
+        &mut self,
+        granter: &str,
+        grantee: &str,
+    ) -> Result<feegrant::QueryAllowanceResponse> {
         let query_client = self.get_grpc_query_client::<FeeGrantQueryClient>().await?;
         let request = feegrant::QueryAllowanceRequest {
             granter: granter.to_string(),
             grantee: grantee.to_string(),
         };
 
-        Ok(query_client
-            .allowance(request)
-            .await?
-            .into_inner())
+        Ok(query_client.allowance(request).await?.into_inner())
     }
 
     /// Allowances returns all the grants for address.
-    pub async fn all_allowances(&mut self, grantee: &str, pagination: Option<PageRequest>) -> Result<QueryAllowancesResponse> {
+    pub async fn all_allowances(
+        &mut self,
+        grantee: &str,
+        pagination: Option<PageRequest>,
+    ) -> Result<QueryAllowancesResponse> {
         let query_client = self.get_grpc_query_client::<FeeGrantQueryClient>().await?;
         let request = feegrant::QueryAllowancesRequest {
             grantee: grantee.to_string(),
-            pagination
+            pagination,
         };
 
-        Ok(query_client
-            .allowances(request)
-            .await?
-            .into_inner())
+        Ok(query_client.allowances(request).await?.into_inner())
     }
 }

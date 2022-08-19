@@ -5,7 +5,7 @@ use tonic::transport::Channel;
 
 use crate::cosmrs::proto::cosmos::authz::v1beta1::{self as authz, *};
 
-use super::{GrpcClient, QueryClient, PageRequest};
+use super::{GrpcClient, PageRequest, QueryClient};
 
 /// The authz module's query client proto definition
 pub type AuthzQueryClient = authz::query_client::QueryClient<Channel>;

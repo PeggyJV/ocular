@@ -27,10 +27,7 @@ impl QueryClient {
         let query_client = self.get_grpc_query_client::<MintQueryClient>().await?;
         let request = mint::QueryParamsRequest {};
 
-        Ok(query_client
-            .params(request)
-            .await?
-            .into_inner())
+        Ok(query_client.params(request).await?.into_inner())
     }
 
     /// Inflation returns the current minting inflation value.
@@ -38,10 +35,7 @@ impl QueryClient {
         let query_client = self.get_grpc_query_client::<MintQueryClient>().await?;
         let request = mint::QueryInflationRequest {};
 
-        Ok(query_client
-            .inflation(request)
-            .await?
-            .into_inner())
+        Ok(query_client.inflation(request).await?.into_inner())
     }
 
     /// AnnualProvisions returns current minting annual provisions value.
@@ -49,9 +43,6 @@ impl QueryClient {
         let query_client = self.get_grpc_query_client::<MintQueryClient>().await?;
         let request = mint::QueryAnnualProvisionsRequest {};
 
-        Ok(query_client
-            .annual_provisions(request)
-            .await?
-            .into_inner())
+        Ok(query_client.annual_provisions(request).await?.into_inner())
     }
 }

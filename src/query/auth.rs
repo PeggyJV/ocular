@@ -4,9 +4,12 @@ use eyre::{Context, Report, Result};
 use prost::Message;
 use tonic::transport::channel::Channel;
 
-use crate::{account::BaseAccount, cosmrs::proto::cosmos::auth::v1beta1::{self as auth, QueryAccountsResponse}};
+use crate::{
+    account::BaseAccount,
+    cosmrs::proto::cosmos::auth::v1beta1::{self as auth, QueryAccountsResponse},
+};
 
-use super::{GrpcClient, PageRequest, QueryClient, PageResponse};
+use super::{GrpcClient, PageRequest, PageResponse, QueryClient};
 
 /// The auth module's query client proto definition
 pub type AuthQueryClient = auth::query_client::QueryClient<Channel>;
@@ -56,13 +59,9 @@ impl QueryClient {
         let query_client = self.get_grpc_query_client::<AuthQueryClient>().await?;
         let request = auth::QueryParamsRequest {};
 
-        Ok(query_client
-            .params(request)
-            .await?
-            .into_inner())
+        Ok(query_client.params(request).await?.into_inner())
     }
 }
-
 
 /// Convenience type for `all_accounts()` responses
 #[derive(Clone, Debug)]

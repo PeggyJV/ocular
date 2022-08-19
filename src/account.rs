@@ -1,8 +1,8 @@
 //! Types pertaining to auth accounts
-pub use cosmrs::crypto::{secp256k1::SigningKey};
+pub use cosmrs::crypto::secp256k1::SigningKey;
 /// Represents a bech32 account identifier
 pub use cosmrs::AccountId;
-pub use eyre::{Report, Result, eyre};
+pub use eyre::{eyre, Report, Result};
 
 use crate::cosmrs::crypto::PublicKey;
 
@@ -20,9 +20,7 @@ pub struct BaseAccount {
 impl TryFrom<cosmrs::proto::cosmos::auth::v1beta1::BaseAccount> for BaseAccount {
     type Error = Report;
 
-    fn try_from(
-        account: cosmrs::proto::cosmos::auth::v1beta1::BaseAccount,
-    ) -> Result<BaseAccount> {
+    fn try_from(account: cosmrs::proto::cosmos::auth::v1beta1::BaseAccount) -> Result<BaseAccount> {
         let pub_key = match account.pub_key {
             Some(k) => Some(PublicKey::try_from(k)?),
             None => None,

@@ -4,9 +4,12 @@ use cosmrs::Coin;
 use eyre::{eyre, Context, Report, Result};
 use tonic::transport::Channel;
 
-use crate::{cosmrs::proto::cosmos::bank::v1beta1::{self as bank, QueryBalanceResponse, QueryAllBalancesResponse, QuerySpendableBalancesResponse, QueryTotalSupplyResponse, QueryDenomsMetadataResponse}};
+use crate::cosmrs::proto::cosmos::bank::v1beta1::{
+    self as bank, QueryAllBalancesResponse, QueryBalanceResponse, QueryDenomsMetadataResponse,
+    QuerySpendableBalancesResponse, QueryTotalSupplyResponse,
+};
 
-use super::{GrpcClient, PageRequest, QueryClient, PageResponse};
+use super::{GrpcClient, PageRequest, PageResponse, QueryClient};
 
 /// The bank module's query client proto definition
 pub type BankQueryClient = bank::query_client::QueryClient<Channel>;
@@ -31,11 +34,7 @@ impl QueryClient {
             denom: denom.to_string(),
         };
 
-        query_client
-            .balance(request)
-            .await?
-            .into_inner()
-            .try_into()
+        query_client.balance(request).await?.into_inner().try_into()
     }
 
     /// Gets all coin balances of the specified address with optional pagination
@@ -73,23 +72,20 @@ impl QueryClient {
         let query_client = self.get_grpc_query_client::<BankQueryClient>().await?;
         let request = bank::QueryParamsRequest {};
 
-        Ok(query_client
-            .params(request)
-            .await?
-            .into_inner())
+        Ok(query_client.params(request).await?.into_inner())
     }
 
     /// Gets metadata for the specified coin denomination if it exists, errors otherwise
-    pub async fn denom_metadata(&mut self, denom: &str) -> Result<bank::QueryDenomMetadataResponse> {
+    pub async fn denom_metadata(
+        &mut self,
+        denom: &str,
+    ) -> Result<bank::QueryDenomMetadataResponse> {
         let query_client = self.get_grpc_query_client::<BankQueryClient>().await?;
         let request = bank::QueryDenomMetadataRequest {
             denom: denom.to_string(),
         };
 
-        Ok(query_client
-            .denom_metadata(request)
-            .await?
-            .into_inner())
+        Ok(query_client.denom_metadata(request).await?.into_inner())
     }
 
     /// Gets the metadata for all coin denominations defined in the bank module.
@@ -146,7 +142,9 @@ impl TryFrom<QueryBalanceResponse> for BalanceResponse {
 
     fn try_from(response: QueryBalanceResponse) -> Result<Self> {
         Ok(match response.balance {
-            Some(b) => BalanceResponse { balance: Some(b.try_into()?) },
+            Some(b) => BalanceResponse {
+                balance: Some(b.try_into()?),
+            },
             None => BalanceResponse { balance: None },
         })
     }
@@ -222,4 +220,3 @@ impl TryFrom<QueryDenomsMetadataResponse> for DenomsMetadataResponse {
         })
     }
 }
-

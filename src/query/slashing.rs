@@ -27,32 +27,30 @@ impl QueryClient {
         let query_client = self.get_grpc_query_client::<SlashingQueryClient>().await?;
         let request = slashing::QueryParamsRequest {};
 
-        Ok(query_client
-            .params(request)
-            .await?
-            .into_inner())
+        Ok(query_client.params(request).await?.into_inner())
     }
 
-
     /// SigningInfo queries the signing info of given cons address
-    pub async fn signing_info(&mut self, cons_address: &str) -> Result<slashing::QuerySigningInfoResponse> {
+    pub async fn signing_info(
+        &mut self,
+        cons_address: &str,
+    ) -> Result<slashing::QuerySigningInfoResponse> {
         let query_client = self.get_grpc_query_client::<SlashingQueryClient>().await?;
-        let request = slashing::QuerySigningInfoRequest { cons_address: cons_address.to_string() };
+        let request = slashing::QuerySigningInfoRequest {
+            cons_address: cons_address.to_string(),
+        };
 
-        Ok(query_client
-            .signing_info(request)
-            .await?
-            .into_inner())
+        Ok(query_client.signing_info(request).await?.into_inner())
     }
 
     /// SigningInfos queries signing info of all validators
-    pub async fn signing_infos(&mut self, pagination: Option<PageRequest>) -> Result<slashing::QuerySigningInfosResponse> {
+    pub async fn signing_infos(
+        &mut self,
+        pagination: Option<PageRequest>,
+    ) -> Result<slashing::QuerySigningInfosResponse> {
         let query_client = self.get_grpc_query_client::<SlashingQueryClient>().await?;
-        let request = slashing::QuerySigningInfosRequest {pagination};
+        let request = slashing::QuerySigningInfosRequest { pagination };
 
-        Ok(query_client
-            .signing_infos(request)
-            .await?
-            .into_inner())
+        Ok(query_client.signing_infos(request).await?.into_inner())
     }
 }

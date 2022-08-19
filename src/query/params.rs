@@ -22,16 +22,17 @@ impl GrpcClient for ParamsQueryClient {
 }
 
 impl QueryClient {
-    pub async fn params(&mut self, subspace: &str, key: &str) -> Result<params::QueryParamsResponse> {
+    pub async fn params(
+        &mut self,
+        subspace: &str,
+        key: &str,
+    ) -> Result<params::QueryParamsResponse> {
         let query_client = self.get_grpc_query_client::<ParamsQueryClient>().await?;
         let request = params::QueryParamsRequest {
             subspace: subspace.to_string(),
             key: key.to_string(),
         };
 
-        Ok(query_client
-            .params(request)
-            .await?
-            .into_inner())
+        Ok(query_client.params(request).await?.into_inner())
     }
 }
