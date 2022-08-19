@@ -107,20 +107,6 @@ impl QueryClient {
             .into_inner())
     }
 
-
-    pub async fn delegator_validators(&mut self, delegate_address: &str) -> Result<Vec<String>> {
-        let query_client = self.get_grpc_query_client::<DistributionQueryClient>().await?;
-        let request = distribution::QueryDelegatorValidatorsRequest {
-            delegator_address: delegate_address.to_string(),
-        };
-
-        Ok(query_client
-            .delegator_validators(request)
-            .await?
-            .into_inner()
-            .validators)
-    }
-
     pub async fn delegator_withdraw_address(&mut self, delegate_address: &str) -> Result<String> {
         let query_client = self.get_grpc_query_client::<DistributionQueryClient>().await?;
         let request = distribution::QueryDelegatorWithdrawAddressRequest {
