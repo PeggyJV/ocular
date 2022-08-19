@@ -5,7 +5,7 @@ use tonic::transport::Channel;
 
 use crate::cosmrs::proto::cosmos::params::v1beta1 as params;
 
-use super::GrpcClient;
+use super::{GrpcClient, QueryClient};
 
 /// The params module's query client proto definition
 pub type ParamsQueryClient = params::query_client::QueryClient<Channel>;
@@ -18,5 +18,20 @@ impl GrpcClient for ParamsQueryClient {
         ParamsQueryClient::connect(endpoint)
             .await
             .wrap_err("Failed to make gRPC connection")
+    }
+}
+
+impl QueryClient {
+    pub async fn params(&mut self, subspace: &str, key: &str) -> Result<params::QueryParamsResponse> {
+        let query_client = self.get_grpc_query_client::<ParamsQueryClient>().await?;
+        let request = params::QueryParamsRequest {
+            subspace: subspace.to_string(),
+            key: key.to_string(),
+        };
+
+        Ok(query_client
+            .params(request)
+            .await?
+            .into_inner())
     }
 }
