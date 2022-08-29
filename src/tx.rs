@@ -19,32 +19,39 @@ pub struct UnsignedTx {
 }
 
 impl UnsignedTx {
-    /// Add a Msg to the transaction
+    /// Constructs an empty [`UnsignedTx`]
+    pub fn new() -> Self {
+        UnsignedTx {
+            inner: BodyBuilder::new(),
+        }
+    }
+
+    /// Adds a Msg to the transaction
     pub fn msg(&mut self, msg: impl Into<Any>) {
         self.inner.msg(msg);
     }
 
-    /// Add multiple Msgs to the transaction
+    /// Adds multiple Msgs to the transaction
     pub fn msgs(&mut self, msgs: impl IntoIterator<Item = Any>) {
         self.inner.msgs(msgs);
     }
 
-    /// Add an extension option
+    /// Adds an extension option
     pub fn extension_option(&mut self, value: impl Into<Any>) {
         self.inner.extension_option(value);
     }
 
-    /// Add a non-critical extension option
+    /// Adds a non-critical extension option
     pub fn non_critical_extension_option(&mut self, value: impl Into<Any>) {
         self.inner.non_critical_extension_option(value);
     }
 
-    /// Add a memo
+    /// Adds a memo
     pub fn memo(&mut self, value: impl Into<String>) {
         self.inner.memo(value);
     }
 
-    /// Add a timeout height
+    /// Adds a timeout height
     pub fn timeout_height(&mut self, value: u32) {
         self.inner.timeout_height(value);
     }
