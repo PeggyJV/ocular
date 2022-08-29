@@ -1,8 +1,11 @@
 //! Types pertaining to auth accounts
-use std::sync::Arc;
 use eyre::{Report, Result};
+use std::sync::Arc;
 
-use crate::cosmrs::{AccountId, crypto::{PublicKey, secp256k1::SigningKey}};
+use crate::cosmrs::{
+    crypto::{secp256k1::SigningKey, PublicKey},
+    AccountId,
+};
 
 /// Represents a local account derived from a [`SigningKey`].
 ///
