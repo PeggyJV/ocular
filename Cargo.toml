@@ -23,10 +23,9 @@ prost = "0.11"
 hex = "0.4.3"
 
 [features]
-default = ["tx"]
-tx = ["chains", "signing"]
-chains = []
-signing = []
+default = ["query", "tx"]
+query = []
+tx = []
 
 [dev-dependencies]
 rand = "0.8.5"

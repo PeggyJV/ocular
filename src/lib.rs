@@ -5,9 +5,7 @@ pub extern crate cosmrs as cosmrs;
 pub use query::QueryClient;
 
 pub mod account;
-#[cfg(feature = "chains")]
-pub mod chain;
 pub mod query;
 pub mod rpc;
-#[cfg(feature = "tx")]
+pub mod chain;
 pub mod tx;
