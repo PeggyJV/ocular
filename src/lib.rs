@@ -7,3 +7,4 @@ pub use query::QueryClient;
 pub mod account;
 pub mod query;
 pub mod rpc;
+pub mod tx;
