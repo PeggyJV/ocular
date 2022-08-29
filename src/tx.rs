@@ -15,7 +15,7 @@ use crate::{
     rpc::{RpcHttpClient, new_http_client},
 };
 
-mod bank;
+pub mod bank;
 
 /// Client for broadcasting [`SignedTx`]
 pub struct MsgClient {
