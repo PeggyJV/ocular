@@ -1,5 +1,5 @@
 #![cfg(feature = "tx")]
-//! Types pertaining to auth accounts
+//! Defines [`AccountInfo`], a private key wrapper used for signing and deriving addresses
 use std::sync::Arc;
 
 use eyre::Result;
