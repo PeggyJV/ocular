@@ -1,10 +1,54 @@
 //! Types pertaining to auth accounts
-pub use cosmrs::crypto::secp256k1::SigningKey;
-/// Represents a bech32 account identifier
-pub use cosmrs::AccountId;
-pub use eyre::{eyre, Report, Result};
+use std::sync::Arc;
+use eyre::{Report, Result};
 
-use crate::cosmrs::crypto::PublicKey;
+use crate::cosmrs::{AccountId, crypto::{PublicKey, secp256k1::SigningKey}};
+
+/// Represents a local account derived from a [`SigningKey`].
+///
+/// Note: Attempting a transaction with an account made from a newly generated key will fail as the account does not actually exist
+/// on-chain yet.
+#[derive(Clone)]
+pub struct AccountInfo {
+    public_key: PublicKey,
+    private_key: Arc<SigningKey>,
+}
+
+impl AccountInfo {
+    pub fn address(&self, prefix: &str) -> Result<String> {
+        Ok(self.id(prefix)?.as_ref().to_string())
+    }
+
+    pub fn id(&self, prefix: &str) -> Result<AccountId> {
+        self.public_key.account_id(prefix)
+    }
+
+    pub fn public_key(&self) -> PublicKey {
+        self.public_key
+    }
+
+    pub fn private_key(&self) -> &SigningKey {
+        self.private_key.as_ref()
+    }
+}
+
+impl From<SigningKey> for AccountInfo {
+    fn from(value: SigningKey) -> Self {
+        Self::from(Arc::new(value))
+    }
+}
+
+impl From<Arc<SigningKey>> for AccountInfo {
+    fn from(value: Arc<SigningKey>) -> Self {
+        let private_key = value;
+        let public_key = private_key.public_key();
+
+        AccountInfo {
+            private_key,
+            public_key,
+        }
+    }
+}
 
 /// Used for converting the BaseAccount type in cosmos_sdk_proto to something with concrete field types
 #[derive(Clone, Debug)]
