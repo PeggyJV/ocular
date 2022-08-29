@@ -1,6 +1,7 @@
-//! Defines core types for building and executing transactions.
+//! Defines core types for building and executing module Msgs and transactions.
 use cosmrs::AccountId;
 use eyre::{eyre, Result};
+use tendermint_rpc::endpoint::broadcast::tx_commit::Response;
 
 use crate::{
     account::AccountInfo,
@@ -10,7 +11,31 @@ use crate::{
         Any, Coin,
     },
     QueryClient,
+    rpc::{RpcHttpClient, new_http_client},
 };
+
+mod bank;
+
+/// Client for broadcasting [`SignedTx`]
+pub struct MsgClient {
+    inner: RpcHttpClient,
+}
+
+impl MsgClient {
+    /// Constructor
+    pub fn new(rpc_endpoint: &str) -> Result<MsgClient> {
+        let inner = new_http_client(rpc_endpoint)?;
+
+        Ok(MsgClient {
+            inner,
+        })
+    }
+
+    /// Gets a reference to the the inner RPC client
+    pub fn inner(&self) -> &RpcHttpClient {
+        &self.inner
+    }
+}
 
 /// Convenience wrapper around a [`BodyBuilder`] representing an unsigned tx
 #[derive(Clone, Debug)]
@@ -125,17 +150,28 @@ impl From<BodyBuilder> for UnsignedTx {
     }
 }
 
+/// Wrapper around a [`Raw`], the raw bytes of a signed tx
 #[derive(Debug)]
 pub struct SignedTx {
     inner: Raw,
 }
 
 impl SignedTx {
+    /// Broadcasts transaction using the /broadcast_commit Tendermint endpoint, waiting for CheckTx to complete before returning.
+    pub async fn broadcast(self, client: &mut MsgClient) -> Result<Response> {
+        match self.inner.broadcast_commit(client.inner()).await {
+            Ok(response) => Ok(response),
+            Err(err) => return Err(eyre!("Failed to broadcast tx: {}", err)).into(),
+        }
+    }
+
+    /// Converts to the inner [`Raw`]
     pub fn into_inner(self) -> Raw {
         self.inner
     }
 }
 
+/// Wrapper for fee/gas related tx configuration
 #[derive(Clone, Debug)]
 pub struct FeeInfo {
     fee: Coin,
