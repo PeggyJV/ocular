@@ -93,7 +93,7 @@ impl UnsignedTx {
         signer: AccountInfo,
         fee_info: FeeInfo,
         chain_context: Context,
-        mut qclient: QueryClient,
+        qclient: &mut QueryClient,
     ) -> Result<SignedTx> {
         let address = signer.address(&chain_context.prefix)?;
         let account = qclient.account(&address).await?;
@@ -179,6 +179,33 @@ pub struct FeeInfo {
     fee_payer: Option<AccountId>,
     fee_granter: Option<AccountId>,
     gas_limit: u64,
+}
+
+impl FeeInfo {
+    pub fn new(fee: Coin) -> Self {
+        FeeInfo {
+            fee,
+            fee_payer: None,
+            fee_granter: None,
+            gas_limit: 200_000,
+        }
+    }
+
+    pub fn amount(&mut self, value: u128) {
+        self.fee.amount = value;
+    }
+
+    pub fn fee_payer(&mut self, value: Option<AccountId>) {
+        self.fee_payer = value;
+    }
+
+    pub fn fee_granter(&mut self, value: Option<AccountId>) {
+        self.fee_granter = value;
+    }
+
+    pub fn gas_limit(&mut self, value: u64) {
+        self.gas_limit = value;
+    }
 }
 
 /// Represents an arbitrary Cosmos module Msg
