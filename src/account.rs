@@ -26,22 +26,6 @@ pub struct AccountInfo {
 }
 
 impl AccountInfo {
-    pub fn address(&self, prefix: &str) -> Result<String> {
-        Ok(self.id(prefix)?.as_ref().to_string())
-    }
-
-    pub fn id(&self, prefix: &str) -> Result<AccountId> {
-        self.public_key.account_id(prefix)
-    }
-
-    pub fn public_key(&self) -> PublicKey {
-        self.public_key
-    }
-
-    pub fn private_key(&self) -> &SigningKey {
-        self.private_key.as_ref()
-    }
-
     /// Constructs an [`AccountInfo`] from a mnemonic phrase and passphrase to salt the seed.
     /// If you don't wish to use a passphrase, set `passphrase` to `""`. Currently only supports
     /// 24 word phrases.
@@ -55,6 +39,26 @@ impl AccountInfo {
         let key = SigningKey::from_bytes(&key.to_be_bytes())?;
 
         Ok(AccountInfo::from(key))
+    }
+
+    /// Gets the bech32 address with the given prefix
+    pub fn address(&self, prefix: &str) -> Result<String> {
+        Ok(self.id(prefix)?.as_ref().to_string())
+    }
+
+    /// Gets the [`AccountId`] representing the account
+    pub fn id(&self, prefix: &str) -> Result<AccountId> {
+        self.public_key.account_id(prefix)
+    }
+
+    /// Gets the account's public key
+    pub fn public_key(&self) -> PublicKey {
+        self.public_key
+    }
+
+    /// Gets a reference to the account's private key
+    pub fn private_key(&self) -> &SigningKey {
+        self.private_key.as_ref()
     }
 }
 

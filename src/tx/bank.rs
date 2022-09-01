@@ -62,7 +62,7 @@ impl ModuleMsg for Bank<'_> {
         let msg = self.into_any()?;
         let mut unsigned = UnsignedTx::new();
 
-        unsigned.msg(msg);
+        unsigned.add_msg(msg);
 
         Ok(unsigned)
     }

@@ -1,5 +1,41 @@
 #![cfg(feature = "tx")]
 //! Defines core types for building and executing module Msgs and transactions.
+//!
+//! ## Examples
+//!
+//! One-off send transaction
+//!
+//! ```ignore
+//! // arguments construction not shown
+//! let response = Bank::Send {
+//!     from: "cosmos1y6d5kasehecexf09ka6y0ggl0pxzt6dgk0gnl9",
+//!     to: "cosmos154d0p9xhrruhxvazumej9nq29afeura2alje4u",
+//!     amount: 100000,
+//!     denom: "uatom"
+//! }
+//! .into_tx()?
+//! .sign(
+//!     &signer,
+//!     fee_info,
+//!     chain_context,
+//!     &mut qclient,
+//! )
+//! .broadcast_commit(&mut mclient)
+//! .await?;
+//! ```
+//!
+//! Building a tx with multiple Msgs
+//!
+//! ```ignore
+//! // msg construction not shown
+//! let mut unsigned_tx = UnsignedTx::new();
+//!
+//! unsigned_tx.add_msg(msg1);
+//! unsigned_tx.add_msg(msg2);
+//! unsigned_tx.memo("Arbitrage!");
+//!
+//! // ...
+//! ```
 use cosmrs::AccountId;
 use eyre::{eyre, Result};
 use tendermint_rpc::{
@@ -54,22 +90,22 @@ impl UnsignedTx {
     }
 
     /// Adds a Msg to the transaction
-    pub fn msg(&mut self, msg: impl Into<Any>) {
+    pub fn add_msg(&mut self, msg: impl Into<Any>) {
         self.inner.msg(msg);
     }
 
     /// Adds multiple Msgs to the transaction
-    pub fn msgs(&mut self, msgs: impl IntoIterator<Item = Any>) {
+    pub fn add_msgs(&mut self, msgs: impl IntoIterator<Item = Any>) {
         self.inner.msgs(msgs);
     }
 
     /// Adds an extension option
-    pub fn extension_option(&mut self, value: impl Into<Any>) {
+    pub fn add_extension_option(&mut self, value: impl Into<Any>) {
         self.inner.extension_option(value);
     }
 
     /// Adds a non-critical extension option
-    pub fn non_critical_extension_option(&mut self, value: impl Into<Any>) {
+    pub fn add_non_critical_extension_option(&mut self, value: impl Into<Any>) {
         self.inner.non_critical_extension_option(value);
     }
 
