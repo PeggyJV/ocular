@@ -6,19 +6,8 @@ pub use query::*;
 #[cfg(feature = "query")]
 pub mod query {
     pub use crate::query::{
-        *,
-        auth::*,
-        authz::*,
-        bank::*,
-        distribution::*,
-        evidence::*,
-        feegrant::*,
-        gov::*,
-        mint::*,
-        params::*,
-        rpc::*,
-        slashing::*,
-        staking::*,
+        auth::*, authz::*, bank::*, distribution::*, evidence::*, feegrant::*, gov::*, mint::*,
+        params::*, rpc::*, slashing::*, staking::*, *,
     };
 }
 
@@ -27,6 +16,6 @@ pub use tx::*;
 
 #[cfg(feature = "tx")]
 pub mod tx {
-    pub use crate::tx::{*, bank::*};
     pub use crate::chain;
+    pub use crate::tx::{bank::*, *};
 }
