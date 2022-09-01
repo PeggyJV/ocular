@@ -6,6 +6,7 @@ version = "1.0.0-alpha-2.0.0"
 edition = "2021"
 license = "Apache-2.0"
 repository = "https://github.com/PeggyJV/ocular"
+documentation = "https://docs.rs/ocular/latest/ocular/"
 readme = "README.md"
 
 [package.metadata.cargo-udeps.ignore]
