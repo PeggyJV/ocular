@@ -4,18 +4,20 @@ Ocular is a client library for Cosmos SDK chains with a focus on pleasent UX. Th
 
 # Alpha Features
 
-- Convenience methods around basic Auth, Authz, and Bank module queries (more coming soon), other modules' query client proto definitions are exposed
+- `QueryClient` providing an exhaustive API for core SDK module queries
+- `MsgClient` providing and API for core SDK module Msgs (in progress)
+- Robust transaction construction allowing multiple Msgs in one tx
+- `ModuleMsg` trait for creating extension crates to easily support custom Cosmos modules.
 
 ## In progress
 
-- Exhaustive SDK module query coverage
-- `Tx` construction and signing allowing multiple messages per tx
-- `MsgClient` for executing transactions
+- Exhaustive `Msg` coverage for the core Cosmos SDK modules
+- More ways to get an `AccountInfo` from a key
 
 ## To do
 
-- Coin math!
-- Load chain context from chain registry
+- (Nice-to-have) Load chain context from chain registry
+- Key stuff???
 
 # Contributions
 

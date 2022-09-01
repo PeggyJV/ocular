@@ -1,36 +1,80 @@
-//! Types pertaining to auth accounts
-pub use cosmrs::crypto::secp256k1::SigningKey;
-/// Represents a bech32 account identifier
-pub use cosmrs::AccountId;
-pub use eyre::{eyre, Report, Result};
+//! Defines [`AccountInfo`], a private key wrapper used for signing and deriving addresses
+use std::sync::Arc;
 
-use crate::cosmrs::crypto::PublicKey;
+use cosmrs::bip32::Language;
+use eyre::Result;
 
-/// Used for converting the BaseAccount type in cosmos_sdk_proto to something with concrete field types
-#[derive(Clone, Debug)]
-pub struct BaseAccount {
-    pub address: String,
-    // public key may not be present on chain
-    pub pub_key: Option<PublicKey>,
-    pub account_number: u64,
-    pub sequence: u64,
+use crate::cosmrs::{
+    bip32::{secp256k1::SecretKey, Mnemonic},
+    crypto::PublicKey,
+    AccountId,
+};
+
+pub const COSMOS_BASE_DERIVATION_PATH: &str = "m/44'/118'/0'/0/0";
+
+/// Represents a local account derived from a [`SigningKey`].
+///
+/// Note: Attempting a transaction with an account made from a newly generated key will fail as the account does not actually exist
+/// on-chain yet.
+use crate::cosmrs::crypto::secp256k1::SigningKey;
+
+#[derive(Clone)]
+pub struct AccountInfo {
+    public_key: PublicKey,
+    private_key: Arc<SigningKey>,
 }
 
-// TO-DO: Handle public keys with type URL /cosmos.crypto.multisig.LegacyAminoPubKey
-impl TryFrom<cosmrs::proto::cosmos::auth::v1beta1::BaseAccount> for BaseAccount {
-    type Error = Report;
+impl AccountInfo {
+    /// Constructs an [`AccountInfo`] from a mnemonic phrase and passphrase to salt the seed.
+    /// If you don't wish to use a passphrase, set `passphrase` to `""`. Currently only supports
+    /// 24 word phrases.
+    pub fn from_mnemonic(phrase: &str, passphrase: &str) -> Result<Self> {
+        let phrase = Mnemonic::new(phrase, Language::English)?;
+        let seed = phrase.to_seed(passphrase);
+        let derivation_path =
+            COSMOS_BASE_DERIVATION_PATH.parse::<cosmrs::bip32::DerivationPath>()?;
+        let key = cosmrs::bip32::XPrv::derive_from_path(seed, &derivation_path)?;
+        let key = SecretKey::from(key.private_key());
+        let key = SigningKey::from_bytes(&key.to_be_bytes())?;
 
-    fn try_from(account: cosmrs::proto::cosmos::auth::v1beta1::BaseAccount) -> Result<BaseAccount> {
-        let pub_key = match account.pub_key {
-            Some(k) => Some(PublicKey::try_from(k)?),
-            None => None,
-        };
+        Ok(AccountInfo::from(key))
+    }
 
-        Ok(BaseAccount {
-            address: account.address,
-            pub_key,
-            account_number: account.account_number,
-            sequence: account.sequence,
-        })
+    /// Gets the bech32 address with the given prefix
+    pub fn address(&self, prefix: &str) -> Result<String> {
+        Ok(self.id(prefix)?.as_ref().to_string())
+    }
+
+    /// Gets the [`AccountId`] representing the account
+    pub fn id(&self, prefix: &str) -> Result<AccountId> {
+        self.public_key.account_id(prefix)
+    }
+
+    /// Gets the account's public key
+    pub fn public_key(&self) -> PublicKey {
+        self.public_key
+    }
+
+    /// Gets a reference to the account's private key
+    pub fn private_key(&self) -> &SigningKey {
+        self.private_key.as_ref()
+    }
+}
+
+impl From<SigningKey> for AccountInfo {
+    fn from(value: SigningKey) -> Self {
+        Self::from(Arc::new(value))
+    }
+}
+
+impl From<Arc<SigningKey>> for AccountInfo {
+    fn from(value: Arc<SigningKey>) -> Self {
+        let private_key = value;
+        let public_key = private_key.public_key();
+
+        AccountInfo {
+            private_key,
+            public_key,
+        }
     }
 }
