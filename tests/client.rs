@@ -23,7 +23,7 @@ async fn query_latest_block_height() {
 
 #[assay]
 async fn connect_grpc_query_client() {
-    new_grpc_query_client::<AuthQueryClient>("http://cosmoshub.strange.love:9090")
+    new_grpc_query_client::<AuthQueryClient>("https://cosmos-grpc.polkachu.com:49090")
         .await
         .expect("failed to connect grpc client");
 }
