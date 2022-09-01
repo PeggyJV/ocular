@@ -240,7 +240,7 @@ impl FeeInfo {
 }
 
 /// Represents an arbitrary Cosmos module Msg
-pub trait ModuleMsg<'m> {
+pub trait ModuleMsg {
     type Error;
 
     fn into_any(self) -> Result<Any, Self::Error>;

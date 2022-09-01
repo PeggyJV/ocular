@@ -27,7 +27,7 @@ pub enum Bank<'m> {
     },
 }
 
-impl ModuleMsg<'_> for Bank<'_> {
+impl ModuleMsg for Bank<'_> {
     type Error = Report;
 
     fn into_any(self) -> Result<Any> {
