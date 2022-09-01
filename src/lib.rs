@@ -5,7 +5,7 @@ pub extern crate cosmrs as cosmrs;
 pub use query::QueryClient;
 
 pub mod account;
+pub mod chain;
 pub mod query;
 pub mod rpc;
-pub mod chain;
 pub mod tx;

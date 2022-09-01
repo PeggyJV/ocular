@@ -2,7 +2,10 @@
 //! Defines core types for building and executing module Msgs and transactions.
 use cosmrs::AccountId;
 use eyre::{eyre, Result};
-use tendermint_rpc::{endpoint::broadcast::{tx_commit, tx_async, tx_sync}, Client};
+use tendermint_rpc::{
+    endpoint::broadcast::{tx_async, tx_commit, tx_sync},
+    Client,
+};
 
 use crate::{
     account::AccountInfo,
@@ -11,8 +14,8 @@ use crate::{
         tx::{BodyBuilder, Fee, Raw, SignDoc, SignerInfo},
         Any, Coin,
     },
+    rpc::{new_http_client, RpcHttpClient},
     QueryClient,
-    rpc::{RpcHttpClient, new_http_client},
 };
 
 pub mod bank;
@@ -27,9 +30,7 @@ impl MsgClient {
     pub fn new(rpc_endpoint: &str) -> Result<MsgClient> {
         let inner = new_http_client(rpc_endpoint)?;
 
-        Ok(MsgClient {
-            inner,
-        })
+        Ok(MsgClient { inner })
     }
 
     /// Gets a reference to the the inner RPC client
@@ -167,7 +168,11 @@ impl SignedTx {
     /// Broadcasts transaction using the /broadcast_async Tendermint endpoint. Returns right away without waiting on CheckTx.
     pub async fn broadcast_async(self, client: &mut MsgClient) -> Result<tx_async::Response> {
         let tx = self.to_bytes()?.into();
-        client.inner().broadcast_tx_async(tx).await.map_err(|e| e.into())
+        client
+            .inner()
+            .broadcast_tx_async(tx)
+            .await
+            .map_err(|e| e.into())
     }
 
     /// Broadcasts transaction using the /broadcast_commit Tendermint endpoint, waiting for CheckTx and DeliverTx to complete
@@ -180,7 +185,11 @@ impl SignedTx {
     /// Broadcasts transaction using the /broadcast_sync Tendermint endpoint. Waits for CheckTx but not DeliverTx.
     pub async fn broadcast_sync(self, client: &mut MsgClient) -> Result<tx_sync::Response> {
         let tx = self.to_bytes()?.into();
-        client.inner().broadcast_tx_sync(tx).await.map_err(|e| e.into())
+        client
+            .inner()
+            .broadcast_tx_sync(tx)
+            .await
+            .map_err(|e| e.into())
     }
 
     /// Converts to the inner [`Raw`]

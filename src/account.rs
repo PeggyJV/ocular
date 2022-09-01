@@ -5,7 +5,11 @@ use std::sync::Arc;
 use cosmrs::bip32::Language;
 use eyre::Result;
 
-use crate::cosmrs::{AccountId, bip32::{Mnemonic, secp256k1::SecretKey}, crypto::PublicKey};
+use crate::cosmrs::{
+    bip32::{secp256k1::SecretKey, Mnemonic},
+    crypto::PublicKey,
+    AccountId,
+};
 
 pub const COSMOS_BASE_DERIVATION_PATH: &str = "m/44'/118'/0'/0/0";
 
@@ -44,7 +48,8 @@ impl AccountInfo {
     pub fn from_mnemonic(phrase: &str, passphrase: &str) -> Result<Self> {
         let phrase = Mnemonic::new(phrase, Language::English)?;
         let seed = phrase.to_seed(passphrase);
-        let derivation_path = COSMOS_BASE_DERIVATION_PATH.parse::<cosmrs::bip32::DerivationPath>()?;
+        let derivation_path =
+            COSMOS_BASE_DERIVATION_PATH.parse::<cosmrs::bip32::DerivationPath>()?;
         let key = cosmrs::bip32::XPrv::derive_from_path(seed, &derivation_path)?;
         let key = SecretKey::from(key.private_key());
         let key = SigningKey::from_bytes(&key.to_be_bytes())?;

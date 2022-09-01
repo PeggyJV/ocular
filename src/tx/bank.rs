@@ -4,7 +4,12 @@ use std::str::FromStr;
 
 use eyre::{Report, Result};
 
-use crate::cosmrs::{self, Any, bank::{MsgMultiSend, MsgSend, MultiSendIo}, AccountId, Denom, tx::Msg};
+use crate::cosmrs::{
+    self,
+    bank::{MsgMultiSend, MsgSend, MultiSendIo},
+    tx::Msg,
+    AccountId, Any, Denom,
+};
 
 use super::{ModuleMsg, UnsignedTx};
 
@@ -19,7 +24,7 @@ pub enum Bank<'m> {
     MultiSend {
         inputs: Vec<MultiSendIo>,
         outputs: Vec<MultiSendIo>,
-    }
+    },
 }
 
 impl ModuleMsg<'_> for Bank<'_> {
@@ -40,19 +45,13 @@ impl ModuleMsg<'_> for Bank<'_> {
                 let msg = MsgSend {
                     from_address: AccountId::from_str(from)?,
                     to_address: AccountId::from_str(to)?,
-                    amount: vec![amount.clone()],
+                    amount: vec![amount],
                 };
 
                 msg.to_any()
-            },
-            Bank::MultiSend {
-                inputs,
-                outputs
-            } => {
-                let msg = MsgMultiSend {
-                    inputs,
-                    outputs,
-                };
+            }
+            Bank::MultiSend { inputs, outputs } => {
+                let msg = MsgMultiSend { inputs, outputs };
 
                 msg.to_any()
             }

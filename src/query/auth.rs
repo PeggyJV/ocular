@@ -4,11 +4,9 @@ use eyre::{Context, Report, Result};
 use prost::Message;
 use tonic::transport::channel::Channel;
 
-use crate::{
-    cosmrs::{
-        crypto::PublicKey,
-        proto::cosmos::auth::v1beta1::{self as auth, QueryAccountsResponse}
-    },
+use crate::cosmrs::{
+    crypto::PublicKey,
+    proto::cosmos::auth::v1beta1::{self as auth, QueryAccountsResponse},
 };
 
 use super::{GrpcClient, PageRequest, PageResponse, QueryClient};
