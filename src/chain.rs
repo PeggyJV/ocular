@@ -1,4 +1,3 @@
-#![cfg(feature = "tx")]
 //! Types providing context and references to specific Cosmos chains
 
 /// Provides chain-specific context

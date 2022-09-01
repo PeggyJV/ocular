@@ -1,3 +1,4 @@
+#![cfg(feature = "query")]
 use crate::common::*;
 
 use assay::assay;

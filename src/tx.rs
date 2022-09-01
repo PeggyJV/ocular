@@ -1,4 +1,3 @@
-#![cfg(feature = "tx")]
 //! Defines core types for building and executing module Msgs and transactions.
 //!
 //! ## Examples

@@ -1,4 +1,3 @@
-#![cfg(feature = "tx")]
 //! Defines [`AccountInfo`], a private key wrapper used for signing and deriving addresses
 use std::sync::Arc;
 
