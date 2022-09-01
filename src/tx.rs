@@ -2,7 +2,7 @@
 //! Defines core types for building and executing module Msgs and transactions.
 use cosmrs::AccountId;
 use eyre::{eyre, Result};
-use tendermint_rpc::endpoint::broadcast::tx_commit::Response;
+use tendermint_rpc::{endpoint::broadcast::{tx_commit, tx_async, tx_sync}, Client};
 
 use crate::{
     account::AccountInfo,
@@ -90,7 +90,7 @@ impl UnsignedTx {
     /// Signs the inner tx body by first querying for the account's number and sequence.
     pub async fn sign(
         self,
-        signer: AccountInfo,
+        signer: &AccountInfo,
         fee_info: FeeInfo,
         chain_context: Context,
         qclient: &mut QueryClient,
@@ -111,7 +111,7 @@ impl UnsignedTx {
     /// speed is important.
     pub fn sign_with_sequence(
         self,
-        signer: AccountInfo,
+        signer: &AccountInfo,
         fee_info: FeeInfo,
         chain_context: Context,
         account_number: u64,
@@ -145,6 +145,12 @@ impl UnsignedTx {
     }
 }
 
+impl Default for UnsignedTx {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl From<BodyBuilder> for UnsignedTx {
     fn from(builder: BodyBuilder) -> Self {
         UnsignedTx { inner: builder }
@@ -158,17 +164,33 @@ pub struct SignedTx {
 }
 
 impl SignedTx {
-    /// Broadcasts transaction using the /broadcast_commit Tendermint endpoint, waiting for CheckTx to complete before returning.
-    pub async fn broadcast(self, client: &mut MsgClient) -> Result<Response> {
-        match self.inner.broadcast_commit(client.inner()).await {
-            Ok(response) => Ok(response),
-            Err(err) => return Err(eyre!("Failed to broadcast tx: {}", err)).into(),
-        }
+    /// Broadcasts transaction using the /broadcast_async Tendermint endpoint. Returns right away without waiting on CheckTx.
+    pub async fn broadcast_async(self, client: &mut MsgClient) -> Result<tx_async::Response> {
+        let tx = self.to_bytes()?.into();
+        client.inner().broadcast_tx_async(tx).await.map_err(|e| e.into())
+    }
+
+    /// Broadcasts transaction using the /broadcast_commit Tendermint endpoint, waiting for CheckTx and DeliverTx to complete
+    /// before returning. Note that the server may time out the connection while waiting for the tx to be included in a block.
+    /// This can result in an error being returned by this method even if the tx is ultimately successful.
+    pub async fn broadcast_commit(self, client: &mut MsgClient) -> Result<tx_commit::Response> {
+        self.inner.broadcast_commit(client.inner()).await
+    }
+
+    /// Broadcasts transaction using the /broadcast_sync Tendermint endpoint. Waits for CheckTx but not DeliverTx.
+    pub async fn broadcast_sync(self, client: &mut MsgClient) -> Result<tx_sync::Response> {
+        let tx = self.to_bytes()?.into();
+        client.inner().broadcast_tx_sync(tx).await.map_err(|e| e.into())
     }
 
     /// Converts to the inner [`Raw`]
     pub fn into_inner(self) -> Raw {
         self.inner
+    }
+
+    /// Converts to the bytes of the signed transaction
+    pub fn to_bytes(self) -> Result<Vec<u8>> {
+        self.inner.to_bytes()
     }
 }
 
