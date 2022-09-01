@@ -2,9 +2,12 @@
 //! Defines [`AccountInfo`], a private key wrapper used for signing and deriving addresses
 use std::sync::Arc;
 
+use cosmrs::bip32::Language;
 use eyre::Result;
 
-use crate::cosmrs::{AccountId, crypto::PublicKey};
+use crate::cosmrs::{AccountId, bip32::{Mnemonic, secp256k1::SecretKey}, crypto::PublicKey};
+
+pub const COSMOS_BASE_DERIVATION_PATH: &str = "m/44'/118'/0'/0/0";
 
 /// Represents a local account derived from a [`SigningKey`].
 ///
@@ -33,6 +36,20 @@ impl AccountInfo {
 
     pub fn private_key(&self) -> &SigningKey {
         self.private_key.as_ref()
+    }
+
+    /// Constructs an [`AccountInfo`] from a mnemonic phrase and passphrase to salt the seed.
+    /// If you don't wish to use a passphrase, set `passphrase` to `""`. Currently only supports
+    /// 24 word phrases.
+    pub fn from_mnemonic(phrase: &str, passphrase: &str) -> Result<Self> {
+        let phrase = Mnemonic::new(phrase, Language::English)?;
+        let seed = phrase.to_seed(passphrase);
+        let derivation_path = COSMOS_BASE_DERIVATION_PATH.parse::<cosmrs::bip32::DerivationPath>()?;
+        let key = cosmrs::bip32::XPrv::derive_from_path(seed, &derivation_path)?;
+        let key = SecretKey::from(key.private_key());
+        let key = SigningKey::from_bytes(&key.to_be_bytes())?;
+
+        Ok(AccountInfo::from(key))
     }
 }
 
