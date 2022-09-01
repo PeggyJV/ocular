@@ -976,7 +976,7 @@ dependencies = [
 
 [[package]]
 name = "ocular"
-version = "1.0.0-alpha-1.1.0"
+version = "1.0.0-alpha-2.0.0"
 dependencies = [
  "assay",
  "async-trait",
