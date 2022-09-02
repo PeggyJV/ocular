@@ -13,14 +13,17 @@ use crate::cosmrs::{
 
 use super::{ModuleMsg, UnsignedTx};
 
+/// Represents a [Bank module message](https://docs.cosmos.network/v0.45/modules/bank/03_messages.html)
 #[derive(Clone, Debug)]
 pub enum Bank<'m> {
+    /// Represents a [`MsgSend`]
     Send {
         from: &'m str,
         to: &'m str,
         amount: u64,
         denom: &'m str,
     },
+    /// Represents a [`MsgMultiSend`]
     MultiSend {
         inputs: Vec<MultiSendIo>,
         outputs: Vec<MultiSendIo>,
@@ -42,18 +45,15 @@ impl ModuleMsg for Bank<'_> {
                     amount: amount.into(),
                     denom: Denom::from_str(denom)?,
                 };
-                let msg = MsgSend {
+                MsgSend {
                     from_address: AccountId::from_str(from)?,
                     to_address: AccountId::from_str(to)?,
                     amount: vec![amount],
-                };
-
-                msg.to_any()
+                }
+                .to_any()
             }
             Bank::MultiSend { inputs, outputs } => {
-                let msg = MsgMultiSend { inputs, outputs };
-
-                msg.to_any()
+                MsgMultiSend { inputs, outputs }.to_any()
             }
         }
     }

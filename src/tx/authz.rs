@@ -11,18 +11,22 @@ use prost::Message;
 
 use super::{ModuleMsg, UnsignedTx};
 
+/// Represents a [Authz module message](https://docs.cosmos.network/v0.45/modules/authz/03_messages.html)
 #[derive(Clone, Debug)]
 pub enum Authz<'m> {
+    /// Represents a [`MsgGrant`]
     Grant {
         granter: &'m str,
         grantee: &'m str,
         grant: Grant,
     },
+    /// Represents a [`MsgRevoke`]
     Revoke {
         granter: &'m str,
         grantee: &'m str,
         msg_type_url: &'m str,
     },
+    /// Represents a [`MsgExec`]
     Exec {
         grantee: &'m str,
         msgs: Vec<Any>,

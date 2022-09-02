@@ -1,5 +1,7 @@
-#![allow(dead_code)]
-//! Types for constructing Bank module Msgs
+//! Types for constructing Crisis module Msgs
+//!
+//! Since cosmrs doesn't currently have [`cosmrs::tx::msg::Msg`] implementations for Crisis messages,
+//! they are defined here as well.
 use std::str::FromStr;
 
 use cosmrs::{AccountId, tx::Msg, proto::traits::TypeUrl, Any};
@@ -9,8 +11,10 @@ use prost::Message;
 use crate::cosmrs;
 use super::{ModuleMsg, UnsignedTx};
 
+/// Represents a [Crisis module message](https://docs.cosmos.network/v0.45/modules/crisis/02_messages.html)
 #[derive(Clone, Debug)]
 pub enum Crisis<'m> {
+    /// Represents a [`MsgVerifyInvariant`]
     VerifyInvariant {
         sender: &'m str,
         module_name: &'m str,
@@ -28,13 +32,12 @@ impl ModuleMsg for Crisis<'_> {
                 module_name,
                 route,
             } => {
-                let msg = MsgVerifyInvariant {
+                MsgVerifyInvariant {
                     sender: AccountId::from_str(sender)?,
                     invariant_module_name: module_name.to_string(),
                     invariant_route: route.to_string(),
-                };
-
-                msg.to_any()
+                }
+                .to_any()
             }
         }
     }

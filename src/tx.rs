@@ -55,6 +55,7 @@ use crate::{
 
 pub mod authz;
 pub mod crisis;
+pub mod distribution;
 pub mod bank;
 
 /// Client for broadcasting [`SignedTx`]
