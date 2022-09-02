@@ -59,6 +59,7 @@ pub mod crisis;
 pub mod distribution;
 pub mod evidence;
 pub mod feegrant;
+pub mod gov;
 
 /// Client for broadcasting [`SignedTx`]
 pub struct MsgClient {
