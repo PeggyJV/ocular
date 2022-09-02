@@ -4,12 +4,12 @@
 //! it's defined here.
 use std::str::FromStr;
 
-use cosmrs::{AccountId, tx::Msg, proto::traits::TypeUrl, Any};
+use cosmrs::{proto::traits::TypeUrl, tx::Msg, AccountId, Any};
 use eyre::{Report, Result};
 use prost::Message;
 
-use crate::cosmrs;
 use super::{ModuleMsg, UnsignedTx};
+use crate::cosmrs;
 
 /// Represents a [Crisis module message](https://docs.cosmos.network/v0.45/modules/crisis/02_messages.html)
 #[derive(Clone, Debug)]
@@ -32,14 +32,12 @@ impl ModuleMsg for Crisis<'_> {
                 sender,
                 module_name,
                 route,
-            } => {
-                MsgVerifyInvariant {
-                    sender: AccountId::from_str(sender)?,
-                    invariant_module_name: module_name.to_string(),
-                    invariant_route: route.to_string(),
-                }
-                .to_any()
+            } => MsgVerifyInvariant {
+                sender: AccountId::from_str(sender)?,
+                invariant_module_name: module_name.to_string(),
+                invariant_route: route.to_string(),
             }
+            .to_any(),
         }
     }
 
@@ -53,7 +51,7 @@ impl ModuleMsg for Crisis<'_> {
 }
 
 // We implement cosmrs::tx::Msg for crisis Msgs because they're not in cosmrs
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct WrappedMsgVerifyInvariant {
     inner: cosmrs::proto::cosmos::crisis::v1beta1::MsgVerifyInvariant,
 }
@@ -62,7 +60,8 @@ impl Message for WrappedMsgVerifyInvariant {
     fn encode_raw<B>(&self, buf: &mut B)
     where
         B: prost::bytes::BufMut,
-        Self: Sized {
+        Self: Sized,
+    {
         self.inner.encode_raw::<B>(buf);
     }
 
@@ -75,7 +74,8 @@ impl Message for WrappedMsgVerifyInvariant {
     ) -> Result<(), prost::DecodeError>
     where
         B: prost::bytes::Buf,
-        Self: Sized {
+        Self: Sized,
+    {
         self.inner.merge_field::<B>(tag, wire_type, buf, ctx)
     }
 
@@ -85,14 +85,6 @@ impl Message for WrappedMsgVerifyInvariant {
 
     fn clear(&mut self) {
         self.inner.clear()
-    }
-}
-
-impl Default for WrappedMsgVerifyInvariant {
-    fn default() -> Self {
-        WrappedMsgVerifyInvariant {
-            inner: cosmrs::proto::cosmos::crisis::v1beta1::MsgVerifyInvariant::default()
-        }
     }
 }
 
@@ -150,7 +142,7 @@ impl From<&MsgVerifyInvariant> for WrappedMsgVerifyInvariant {
                 sender: msg.sender.to_string(),
                 invariant_module_name: msg.invariant_module_name.clone(),
                 invariant_route: msg.invariant_route.clone(),
-            }
+            },
         }
     }
 }
@@ -164,10 +156,9 @@ mod tests {
         Crisis::VerifyInvariant {
             sender: "cosmos154d0p9xhrruhxvazumej9nq29afeura2alje4u",
             module_name: "",
-            route: ""
+            route: "",
         }
         .into_tx()
         .unwrap();
     }
 }
-

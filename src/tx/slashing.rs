@@ -4,20 +4,18 @@
 //! it's defined here.
 use std::str::FromStr;
 
-use cosmrs::{AccountId, tx::Msg, proto::traits::TypeUrl, Any};
+use cosmrs::{proto::traits::TypeUrl, tx::Msg, AccountId, Any};
 use eyre::{Report, Result};
 use prost::Message;
 
-use crate::cosmrs;
 use super::{ModuleMsg, UnsignedTx};
+use crate::cosmrs;
 
 /// Represents a [Slashing module message](https://docs.cosmos.network/v0.45/modules/slashing/03_messages.html)
 #[derive(Clone, Debug)]
 pub enum Slashing<'m> {
     /// Unjail a jailed validator. Represents a [`MsgUnjail`]
-    Unjail {
-        validator_address: &'m str,
-    },
+    Unjail { validator_address: &'m str },
 }
 
 impl ModuleMsg for Slashing<'_> {
@@ -26,12 +24,10 @@ impl ModuleMsg for Slashing<'_> {
     /// Converts the enum into an [`Any`] for use in a transaction
     fn into_any(self) -> Result<Any> {
         match self {
-            Slashing::Unjail { validator_address } => {
-                MsgUnjail {
-                    validator_addr: AccountId::from_str(validator_address)?,
-                }
-                .to_any()
+            Slashing::Unjail { validator_address } => MsgUnjail {
+                validator_addr: AccountId::from_str(validator_address)?,
             }
+            .to_any(),
         }
     }
 
@@ -45,7 +41,7 @@ impl ModuleMsg for Slashing<'_> {
 }
 
 // We implement cosmrs::tx::Msg for slashing Msgs because they're not in cosmrs
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct WrappedMsgVerifyInvariant {
     inner: cosmrs::proto::cosmos::slashing::v1beta1::MsgUnjail,
 }
@@ -54,7 +50,8 @@ impl Message for WrappedMsgVerifyInvariant {
     fn encode_raw<B>(&self, buf: &mut B)
     where
         B: prost::bytes::BufMut,
-        Self: Sized {
+        Self: Sized,
+    {
         self.inner.encode_raw::<B>(buf);
     }
 
@@ -67,7 +64,8 @@ impl Message for WrappedMsgVerifyInvariant {
     ) -> Result<(), prost::DecodeError>
     where
         B: prost::bytes::Buf,
-        Self: Sized {
+        Self: Sized,
+    {
         self.inner.merge_field::<B>(tag, wire_type, buf, ctx)
     }
 
@@ -77,14 +75,6 @@ impl Message for WrappedMsgVerifyInvariant {
 
     fn clear(&mut self) {
         self.inner.clear()
-    }
-}
-
-impl Default for WrappedMsgVerifyInvariant {
-    fn default() -> Self {
-        WrappedMsgVerifyInvariant {
-            inner: cosmrs::proto::cosmos::slashing::v1beta1::MsgUnjail::default()
-        }
     }
 }
 
@@ -132,7 +122,7 @@ impl From<&MsgUnjail> for WrappedMsgVerifyInvariant {
         WrappedMsgVerifyInvariant {
             inner: cosmrs::proto::cosmos::slashing::v1beta1::MsgUnjail {
                 validator_addr: msg.validator_addr.to_string(),
-            }
+            },
         }
     }
 }
@@ -150,4 +140,3 @@ mod tests {
         .unwrap();
     }
 }
-

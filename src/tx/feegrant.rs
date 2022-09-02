@@ -4,7 +4,7 @@ use std::str::FromStr;
 use eyre::{Report, Result};
 
 use crate::cosmrs::{
-    feegrant::{MsgRevokeAllowance, MsgGrantAllowance},
+    feegrant::{MsgGrantAllowance, MsgRevokeAllowance},
     tx::Msg,
     AccountId, Any,
 };
@@ -21,10 +21,7 @@ pub enum FeeGrant<'m> {
         allowance: Any,
     },
     /// Revoke a previously granted allowance. Represents a [`MsgRevokeAllowance`]
-    RevokeAllowance {
-        granter: &'m str,
-        grantee: &'m str,
-    },
+    RevokeAllowance { granter: &'m str, grantee: &'m str },
 }
 
 impl ModuleMsg for FeeGrant<'_> {
@@ -36,22 +33,18 @@ impl ModuleMsg for FeeGrant<'_> {
             FeeGrant::GrantAllowance {
                 granter,
                 grantee,
-                allowance
-            } => {
-                MsgGrantAllowance {
-                    granter: AccountId::from_str(granter)?,
-                    grantee: AccountId::from_str(grantee)?,
-                    allowance: Some(allowance),
-                }
-                .to_any()
+                allowance,
+            } => MsgGrantAllowance {
+                granter: AccountId::from_str(granter)?,
+                grantee: AccountId::from_str(grantee)?,
+                allowance: Some(allowance),
             }
-            FeeGrant::RevokeAllowance { granter, grantee } => {
-                MsgRevokeAllowance {
-                    granter: AccountId::from_str(granter)?,
-                    grantee: AccountId::from_str(grantee)?
-                }
-                .to_any()
+            .to_any(),
+            FeeGrant::RevokeAllowance { granter, grantee } => MsgRevokeAllowance {
+                granter: AccountId::from_str(granter)?,
+                grantee: AccountId::from_str(grantee)?,
             }
+            .to_any(),
         }
     }
 
@@ -86,4 +79,3 @@ mod tests {
         .unwrap();
     }
 }
-

@@ -1,10 +1,17 @@
 //! Messages for managing validator commission, staker rewards, and funding the community pool
 use std::str::FromStr;
 
-use cosmrs::{Any, distribution::{MsgSetWithdrawAddress, MsgWithdrawDelegatorReward, MsgWithdrawValidatorCommission, MsgFundCommunityPool}, AccountId, tx::Msg, Denom};
+use cosmrs::{
+    distribution::{
+        MsgFundCommunityPool, MsgSetWithdrawAddress, MsgWithdrawDelegatorReward,
+        MsgWithdrawValidatorCommission,
+    },
+    tx::Msg,
+    AccountId, Any, Denom,
+};
 use eyre::{Report, Result};
 
-use super::{UnsignedTx, ModuleMsg};
+use super::{ModuleMsg, UnsignedTx};
 
 /// Represents a [Distribution module message](https://docs.cosmos.network/v0.45/modules/distribution/04_messages.html)
 pub enum Distribution<'m> {
@@ -21,9 +28,7 @@ pub enum Distribution<'m> {
         validator_address: &'m str,
     },
     /// Withdraw validator commission earned from delegators' rewards. Represents a [`MsgWithdrawValidatorCommission`]
-    WithdrawValidatorCommission {
-        validator_address: &'m str,
-    },
+    WithdrawValidatorCommission { validator_address: &'m str },
     /// Deposit funds to the community pool. Represents a [`MsgFundCommunityPool`]
     FundCommunityPool {
         amount: u128,
@@ -41,38 +46,32 @@ impl ModuleMsg for Distribution<'_> {
             Distribution::SetWithdrawAddress {
                 delegator_address,
                 withdraw_address,
-            } => {
-                MsgSetWithdrawAddress {
-                    delegator_address: AccountId::from_str(delegator_address)?,
-                    withdraw_address: AccountId::from_str(withdraw_address)?,
-                }
-                .to_any()
-            },
+            } => MsgSetWithdrawAddress {
+                delegator_address: AccountId::from_str(delegator_address)?,
+                withdraw_address: AccountId::from_str(withdraw_address)?,
+            }
+            .to_any(),
             Distribution::WithdrawDelegatorReward {
                 delegator_address,
                 validator_address,
-            } => {
-                MsgWithdrawDelegatorReward {
-                    delegator_address: AccountId::from_str(delegator_address)?,
-                    validator_address: AccountId::from_str(validator_address)?,
-                }
-                .to_any()
-            },
-            Distribution::WithdrawValidatorCommission {
-                validator_address,
-            } => {
+            } => MsgWithdrawDelegatorReward {
+                delegator_address: AccountId::from_str(delegator_address)?,
+                validator_address: AccountId::from_str(validator_address)?,
+            }
+            .to_any(),
+            Distribution::WithdrawValidatorCommission { validator_address } => {
                 MsgWithdrawValidatorCommission {
                     validator_address: AccountId::from_str(validator_address)?,
                 }
                 .to_any()
-            },
+            }
             Distribution::FundCommunityPool {
                 amount,
                 denom,
                 depositor,
             } => {
                 let amount = cosmrs::Coin {
-                    amount: amount.into(),
+                    amount,
                     denom: Denom::from_str(denom)?,
                 };
                 MsgFundCommunityPool {
@@ -80,7 +79,7 @@ impl ModuleMsg for Distribution<'_> {
                     amount: vec![amount],
                 }
                 .to_any()
-            },
+            }
         }
     }
 
@@ -106,7 +105,6 @@ mod tests {
         .into_tx()
         .unwrap();
 
-
         Distribution::WithdrawDelegatorReward {
             delegator_address: "cosmos154d0p9xhrruhxvazumej9nq29afeura2alje4u",
             validator_address: "cosmos154d0p9xhrruhxvazumej9nq29afeura2alje4u",
@@ -114,13 +112,11 @@ mod tests {
         .into_tx()
         .unwrap();
 
-
         Distribution::WithdrawValidatorCommission {
             validator_address: "cosmos154d0p9xhrruhxvazumej9nq29afeura2alje4u",
         }
         .into_tx()
         .unwrap();
-
 
         Distribution::FundCommunityPool {
             amount: 0,

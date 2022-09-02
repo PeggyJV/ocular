@@ -5,8 +5,12 @@
 //! they are defined here.
 use std::str::FromStr;
 
+use cosmrs::{
+    proto::{cosmos::gov::v1beta1::VoteOption, traits::TypeUrl},
+    tx::Msg,
+    AccountId, Any, Coin, Denom,
+};
 use eyre::{eyre, Report, Result};
-use cosmrs::{proto::{cosmos::gov::v1beta1::VoteOption, traits::TypeUrl}, Any, AccountId, tx::Msg, Coin, Denom};
 use prost::Message;
 
 use super::{ModuleMsg, UnsignedTx};
@@ -49,7 +53,7 @@ impl ModuleMsg for Gov<'_> {
                 proposer,
             } => {
                 let initial_deposit = cosmrs::Coin {
-                    amount: amount.into(),
+                    amount,
                     denom: Denom::from_str(denom)?,
                 };
 
@@ -59,7 +63,7 @@ impl ModuleMsg for Gov<'_> {
                     proposer: AccountId::from_str(proposer)?,
                 }
                 .to_any()
-            },
+            }
             Gov::Deposit {
                 proposal_id,
                 depositor,
@@ -67,7 +71,7 @@ impl ModuleMsg for Gov<'_> {
                 denom,
             } => {
                 let amount = cosmrs::Coin {
-                    amount: amount.into(),
+                    amount,
                     denom: Denom::from_str(denom)?,
                 };
 
@@ -77,19 +81,17 @@ impl ModuleMsg for Gov<'_> {
                     amount,
                 }
                 .to_any()
-            },
+            }
             Gov::Vote {
                 proposal_id,
                 voter,
                 option,
-            } => {
-                MsgVote {
-                    proposal_id,
-                    voter: AccountId::from_str(voter)?,
-                    option,
-                }
-                .to_any()
+            } => MsgVote {
+                proposal_id,
+                voter: AccountId::from_str(voter)?,
+                option,
             }
+            .to_any(),
         }
     }
 
@@ -103,7 +105,7 @@ impl ModuleMsg for Gov<'_> {
 }
 
 // We implement cosmrs::tx::Msg for gov Msgs because they're not in cosmrs
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct WrappedMsgSubmitProposal {
     inner: cosmrs::proto::cosmos::gov::v1beta1::MsgSubmitProposal,
 }
@@ -112,7 +114,8 @@ impl Message for WrappedMsgSubmitProposal {
     fn encode_raw<B>(&self, buf: &mut B)
     where
         B: prost::bytes::BufMut,
-        Self: Sized {
+        Self: Sized,
+    {
         self.inner.encode_raw::<B>(buf);
     }
 
@@ -125,7 +128,8 @@ impl Message for WrappedMsgSubmitProposal {
     ) -> Result<(), prost::DecodeError>
     where
         B: prost::bytes::Buf,
-        Self: Sized {
+        Self: Sized,
+    {
         self.inner.merge_field::<B>(tag, wire_type, buf, ctx)
     }
 
@@ -135,14 +139,6 @@ impl Message for WrappedMsgSubmitProposal {
 
     fn clear(&mut self) {
         self.inner.clear()
-    }
-}
-
-impl Default for WrappedMsgSubmitProposal {
-    fn default() -> Self {
-        WrappedMsgSubmitProposal {
-            inner: cosmrs::proto::cosmos::gov::v1beta1::MsgSubmitProposal::default()
-        }
     }
 }
 
@@ -180,11 +176,15 @@ impl TryFrom<&WrappedMsgSubmitProposal> for MsgSubmitProposal {
 
     fn try_from(proto: &WrappedMsgSubmitProposal) -> Result<MsgSubmitProposal> {
         if proto.inner.initial_deposit.is_empty() {
-            return Err(eyre!("initial deposit cannot be empty"))
+            return Err(eyre!("initial deposit cannot be empty"));
         }
 
         Ok(MsgSubmitProposal {
-            content: proto.inner.content.clone().ok_or(eyre!("content cannot be empty"))?,
+            content: proto
+                .inner
+                .content
+                .clone()
+                .ok_or(eyre!("content cannot be empty"))?,
             initial_deposit: Coin::try_from(proto.inner.initial_deposit[0].clone())?,
             proposer: AccountId::from_str(&proto.inner.proposer)?,
         })
@@ -204,12 +204,12 @@ impl From<&MsgSubmitProposal> for WrappedMsgSubmitProposal {
                 content: Some(msg.content.to_owned()),
                 initial_deposit: vec![msg.initial_deposit.to_owned().into()],
                 proposer: msg.proposer.to_string(),
-            }
+            },
         }
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct WrappedMsgDeposit {
     inner: cosmrs::proto::cosmos::gov::v1beta1::MsgDeposit,
 }
@@ -218,7 +218,8 @@ impl Message for WrappedMsgDeposit {
     fn encode_raw<B>(&self, buf: &mut B)
     where
         B: prost::bytes::BufMut,
-        Self: Sized {
+        Self: Sized,
+    {
         self.inner.encode_raw::<B>(buf);
     }
 
@@ -231,7 +232,8 @@ impl Message for WrappedMsgDeposit {
     ) -> Result<(), prost::DecodeError>
     where
         B: prost::bytes::Buf,
-        Self: Sized {
+        Self: Sized,
+    {
         self.inner.merge_field::<B>(tag, wire_type, buf, ctx)
     }
 
@@ -241,14 +243,6 @@ impl Message for WrappedMsgDeposit {
 
     fn clear(&mut self) {
         self.inner.clear()
-    }
-}
-
-impl Default for WrappedMsgDeposit {
-    fn default() -> Self {
-        WrappedMsgDeposit {
-            inner: cosmrs::proto::cosmos::gov::v1beta1::MsgDeposit::default()
-        }
     }
 }
 
@@ -305,13 +299,13 @@ impl From<&MsgDeposit> for WrappedMsgDeposit {
             inner: cosmrs::proto::cosmos::gov::v1beta1::MsgDeposit {
                 proposal_id: msg.proposal_id,
                 depositor: msg.depositor.to_string(),
-                amount: vec![msg.amount.clone().into()]
-            }
+                amount: vec![msg.amount.clone().into()],
+            },
         }
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct WrappedMsgVote {
     inner: cosmrs::proto::cosmos::gov::v1beta1::MsgVote,
 }
@@ -320,7 +314,8 @@ impl Message for WrappedMsgVote {
     fn encode_raw<B>(&self, buf: &mut B)
     where
         B: prost::bytes::BufMut,
-        Self: Sized {
+        Self: Sized,
+    {
         self.inner.encode_raw::<B>(buf);
     }
 
@@ -333,7 +328,8 @@ impl Message for WrappedMsgVote {
     ) -> Result<(), prost::DecodeError>
     where
         B: prost::bytes::Buf,
-        Self: Sized {
+        Self: Sized,
+    {
         self.inner.merge_field::<B>(tag, wire_type, buf, ctx)
     }
 
@@ -343,14 +339,6 @@ impl Message for WrappedMsgVote {
 
     fn clear(&mut self) {
         self.inner.clear()
-    }
-}
-
-impl Default for WrappedMsgVote {
-    fn default() -> Self {
-        WrappedMsgVote {
-            inner: cosmrs::proto::cosmos::gov::v1beta1::MsgVote::default()
-        }
     }
 }
 
@@ -396,7 +384,7 @@ impl TryFrom<&WrappedMsgVote> for MsgVote {
                 2 => VoteOption::Abstain,
                 3 => VoteOption::No,
                 4 => VoteOption::NoWithVeto,
-                _ => return Err(eyre!("invalid vote option index"))
+                _ => return Err(eyre!("invalid vote option index")),
             },
         })
     }
@@ -415,7 +403,7 @@ impl From<&MsgVote> for WrappedMsgVote {
                 proposal_id: msg.proposal_id,
                 voter: msg.voter.to_string(),
                 option: msg.option.into(),
-            }
+            },
         }
     }
 }
@@ -439,11 +427,10 @@ mod tests {
             proposal_id: 0,
             depositor: "cosmos154d0p9xhrruhxvazumej9nq29afeura2alje4u",
             amount: 0,
-            denom: "uatom"
+            denom: "uatom",
         }
         .into_tx()
         .unwrap();
-
 
         Gov::Vote {
             proposal_id: 0,

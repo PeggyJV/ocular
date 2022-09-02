@@ -4,8 +4,12 @@
 //! they are defined here.
 use std::str::FromStr;
 
+use cosmrs::{
+    proto::{cosmos::authz::v1beta1::Grant, traits::TypeUrl},
+    tx::Msg,
+    AccountId, Any,
+};
 use eyre::{eyre, Report, Result};
-use cosmrs::{proto::{cosmos::authz::v1beta1::Grant, traits::TypeUrl}, Any, AccountId, tx::Msg};
 use prost::Message;
 
 use super::{ModuleMsg, UnsignedTx};
@@ -26,10 +30,7 @@ pub enum Authz<'m> {
         msg_type_url: &'m str,
     },
     /// Execute a message on behalf of another account under the authorization of a previously created [`Grant`]. Represents a [`MsgExec`]
-    Exec {
-        grantee: &'m str,
-        msgs: Vec<Any>,
-    },
+    Exec { grantee: &'m str, msgs: Vec<Any> },
 }
 
 impl ModuleMsg for Authz<'_> {
@@ -42,36 +43,27 @@ impl ModuleMsg for Authz<'_> {
                 granter,
                 grantee,
                 grant,
-            } => {
-                MsgGrant {
-                    granter: AccountId::from_str(granter)?,
-                    grantee: AccountId::from_str(grantee)?,
-                    grant: grant,
-                }
-                .to_any()
-            },
+            } => MsgGrant {
+                granter: AccountId::from_str(granter)?,
+                grantee: AccountId::from_str(grantee)?,
+                grant,
+            }
+            .to_any(),
             Authz::Revoke {
                 granter,
                 grantee,
                 msg_type_url,
-            } => {
-                MsgRevoke {
-                    granter: AccountId::from_str(granter)?,
-                    grantee: AccountId::from_str(grantee)?,
-                    msg_type_url: msg_type_url.to_string(),
-                }
-                .to_any()
-            },
-            Authz::Exec {
-                grantee,
-                msgs,
-            } => {
-                MsgExec {
-                    grantee: AccountId::from_str(grantee)?,
-                    msgs,
-                }
-                .to_any()
+            } => MsgRevoke {
+                granter: AccountId::from_str(granter)?,
+                grantee: AccountId::from_str(grantee)?,
+                msg_type_url: msg_type_url.to_string(),
             }
+            .to_any(),
+            Authz::Exec { grantee, msgs } => MsgExec {
+                grantee: AccountId::from_str(grantee)?,
+                msgs,
+            }
+            .to_any(),
         }
     }
 
@@ -85,7 +77,7 @@ impl ModuleMsg for Authz<'_> {
 }
 
 // We implement cosmrs::tx::Msg for authz Msgs because they're not in cosmrs
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct WrappedMsgGrant {
     inner: cosmrs::proto::cosmos::authz::v1beta1::MsgGrant,
 }
@@ -94,7 +86,8 @@ impl Message for WrappedMsgGrant {
     fn encode_raw<B>(&self, buf: &mut B)
     where
         B: prost::bytes::BufMut,
-        Self: Sized {
+        Self: Sized,
+    {
         self.inner.encode_raw::<B>(buf);
     }
 
@@ -107,7 +100,8 @@ impl Message for WrappedMsgGrant {
     ) -> Result<(), prost::DecodeError>
     where
         B: prost::bytes::Buf,
-        Self: Sized {
+        Self: Sized,
+    {
         self.inner.merge_field::<B>(tag, wire_type, buf, ctx)
     }
 
@@ -117,14 +111,6 @@ impl Message for WrappedMsgGrant {
 
     fn clear(&mut self) {
         self.inner.clear()
-    }
-}
-
-impl Default for WrappedMsgGrant {
-    fn default() -> Self {
-        WrappedMsgGrant {
-            inner: cosmrs::proto::cosmos::authz::v1beta1::MsgGrant::default()
-        }
     }
 }
 
@@ -164,7 +150,11 @@ impl TryFrom<&WrappedMsgGrant> for MsgGrant {
         Ok(MsgGrant {
             granter: AccountId::from_str(&proto.inner.granter)?,
             grantee: AccountId::from_str(&proto.inner.grantee)?,
-            grant: proto.inner.grant.clone().ok_or(eyre!("grant cannot be empty"))?
+            grant: proto
+                .inner
+                .grant
+                .clone()
+                .ok_or(eyre!("grant cannot be empty"))?,
         })
     }
 }
@@ -181,13 +171,13 @@ impl From<&MsgGrant> for WrappedMsgGrant {
             inner: cosmrs::proto::cosmos::authz::v1beta1::MsgGrant {
                 granter: msg.granter.to_string(),
                 grantee: msg.grantee.to_string(),
-                grant: Some(msg.grant.clone())
-            }
+                grant: Some(msg.grant.clone()),
+            },
         }
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct WrappedMsgRevoke {
     inner: cosmrs::proto::cosmos::authz::v1beta1::MsgRevoke,
 }
@@ -196,7 +186,8 @@ impl Message for WrappedMsgRevoke {
     fn encode_raw<B>(&self, buf: &mut B)
     where
         B: prost::bytes::BufMut,
-        Self: Sized {
+        Self: Sized,
+    {
         self.inner.encode_raw::<B>(buf);
     }
 
@@ -209,7 +200,8 @@ impl Message for WrappedMsgRevoke {
     ) -> Result<(), prost::DecodeError>
     where
         B: prost::bytes::Buf,
-        Self: Sized {
+        Self: Sized,
+    {
         self.inner.merge_field::<B>(tag, wire_type, buf, ctx)
     }
 
@@ -219,14 +211,6 @@ impl Message for WrappedMsgRevoke {
 
     fn clear(&mut self) {
         self.inner.clear()
-    }
-}
-
-impl Default for WrappedMsgRevoke {
-    fn default() -> Self {
-        WrappedMsgRevoke {
-            inner: cosmrs::proto::cosmos::authz::v1beta1::MsgRevoke::default()
-        }
     }
 }
 
@@ -282,13 +266,13 @@ impl From<&MsgRevoke> for WrappedMsgRevoke {
             inner: cosmrs::proto::cosmos::authz::v1beta1::MsgRevoke {
                 granter: msg.granter.to_string(),
                 grantee: msg.grantee.to_string(),
-                msg_type_url: msg.msg_type_url.clone()
-            }
+                msg_type_url: msg.msg_type_url.clone(),
+            },
         }
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct WrappedMsgExec {
     inner: cosmrs::proto::cosmos::authz::v1beta1::MsgExec,
 }
@@ -297,7 +281,8 @@ impl Message for WrappedMsgExec {
     fn encode_raw<B>(&self, buf: &mut B)
     where
         B: prost::bytes::BufMut,
-        Self: Sized {
+        Self: Sized,
+    {
         self.inner.encode_raw::<B>(buf);
     }
 
@@ -310,7 +295,8 @@ impl Message for WrappedMsgExec {
     ) -> Result<(), prost::DecodeError>
     where
         B: prost::bytes::Buf,
-        Self: Sized {
+        Self: Sized,
+    {
         self.inner.merge_field::<B>(tag, wire_type, buf, ctx)
     }
 
@@ -320,14 +306,6 @@ impl Message for WrappedMsgExec {
 
     fn clear(&mut self) {
         self.inner.clear()
-    }
-}
-
-impl Default for WrappedMsgExec {
-    fn default() -> Self {
-        WrappedMsgExec {
-            inner: cosmrs::proto::cosmos::authz::v1beta1::MsgExec::default()
-        }
     }
 }
 
@@ -379,8 +357,8 @@ impl From<&MsgExec> for WrappedMsgExec {
         WrappedMsgExec {
             inner: cosmrs::proto::cosmos::authz::v1beta1::MsgExec {
                 grantee: msg.grantee.to_string(),
-                msgs: msg.msgs.clone()
-            }
+                msgs: msg.msgs.clone(),
+            },
         }
     }
 }
@@ -397,7 +375,7 @@ mod tests {
             grant: Grant {
                 authorization: None,
                 expiration: None,
-            }
+            },
         }
         .into_tx()
         .unwrap();
@@ -410,10 +388,9 @@ mod tests {
         .into_tx()
         .unwrap();
 
-
         Authz::Exec {
             grantee: "cosmos1n6j7gnld9yxfyh6tflxhjjmt404zruuaf73t08",
-            msgs: vec![]
+            msgs: vec![],
         }
         .into_tx()
         .unwrap();

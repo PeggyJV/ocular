@@ -60,22 +60,14 @@ impl ModuleMsg for Bank<'_> {
                     amount: vec![amount],
                 }
                 .to_any()
-            },
-            Bank::SendMultipleDenoms {
-                from,
-                to,
+            }
+            Bank::SendMultipleDenoms { from, to, amount } => MsgSend {
+                from_address: AccountId::from_str(from)?,
+                to_address: AccountId::from_str(to)?,
                 amount,
-            } => {
-                MsgSend {
-                    from_address: AccountId::from_str(from)?,
-                    to_address: AccountId::from_str(to)?,
-                    amount,
-                }
-                .to_any()
             }
-            Bank::MultiSend { inputs, outputs } => {
-                MsgMultiSend { inputs, outputs }.to_any()
-            }
+            .to_any(),
+            Bank::MultiSend { inputs, outputs } => MsgMultiSend { inputs, outputs }.to_any(),
         }
     }
 
@@ -98,7 +90,7 @@ mod tests {
             to: "cosmos154d0p9xhrruhxvazumej9nq29afeura2alje4u",
             from: "cosmos154d0p9xhrruhxvazumej9nq29afeura2alje4u",
             amount: 0,
-            denom: "uatom"
+            denom: "uatom",
         }
         .into_tx()
         .unwrap();
@@ -111,4 +103,3 @@ mod tests {
         .unwrap();
     }
 }
-

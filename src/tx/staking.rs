@@ -1,10 +1,14 @@
 //! Messages for managing stake delegations to validators
 use std::str::FromStr;
 
-use cosmrs::{Any, staking::{MsgBeginRedelegate, MsgUndelegate, MsgDelegate}, AccountId, tx::Msg, Denom};
+use cosmrs::{
+    staking::{MsgBeginRedelegate, MsgDelegate, MsgUndelegate},
+    tx::Msg,
+    AccountId, Any, Denom,
+};
 use eyre::{Report, Result};
 
-use super::{UnsignedTx, ModuleMsg};
+use super::{ModuleMsg, UnsignedTx};
 
 /// Represents a [Staking module message](https://docs.cosmos.network/v0.45/modules/staking/03_messages.html)
 ///
@@ -47,7 +51,7 @@ impl ModuleMsg for Staking<'_> {
                 denom,
             } => {
                 let amount = cosmrs::Coin {
-                    amount: amount.into(),
+                    amount,
                     denom: Denom::from_str(denom)?,
                 };
 
@@ -57,7 +61,7 @@ impl ModuleMsg for Staking<'_> {
                     amount,
                 }
                 .to_any()
-            },
+            }
             Staking::Undelegate {
                 delegator_address,
                 validator_address,
@@ -65,7 +69,7 @@ impl ModuleMsg for Staking<'_> {
                 denom,
             } => {
                 let amount = cosmrs::Coin {
-                    amount: amount.into(),
+                    amount,
                     denom: Denom::from_str(denom)?,
                 };
 
@@ -75,7 +79,7 @@ impl ModuleMsg for Staking<'_> {
                     amount,
                 }
                 .to_any()
-            },
+            }
             Staking::BeginRedelegate {
                 delegator_address,
                 validator_src_address,
@@ -84,7 +88,7 @@ impl ModuleMsg for Staking<'_> {
                 denom,
             } => {
                 let amount = cosmrs::Coin {
-                    amount: amount.into(),
+                    amount,
                     denom: Denom::from_str(denom)?,
                 };
 
@@ -95,7 +99,7 @@ impl ModuleMsg for Staking<'_> {
                     amount,
                 }
                 .to_any()
-            },
+            }
         }
     }
 

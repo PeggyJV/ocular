@@ -4,22 +4,19 @@
 //! it's defined here.
 use std::str::FromStr;
 
-use cosmrs::{AccountId, tx::Msg, proto::traits::TypeUrl, Any};
+use cosmrs::{proto::traits::TypeUrl, tx::Msg, AccountId, Any};
 use eyre::{eyre, Report, Result};
 use prost::Message;
 
-use crate::cosmrs;
 use super::{ModuleMsg, UnsignedTx};
+use crate::cosmrs;
 
 /// Represents a [Evidence module message](https://docs.cosmos.network/v0.45/modules/evidence/03_messages.html)
 #[derive(Clone, Debug)]
 pub enum Evidence<'m> {
     /// Submit evidence of malicious behavior by a validator for slashing. To learn more, see
     /// [Evidence](https://docs.cosmos.network/master/modules/evidence/). Represents a [`MsgSubmitEvidence`]
-    SubmitEvidence {
-        submitter: &'m str,
-        evidence: Any,
-    },
+    SubmitEvidence { submitter: &'m str, evidence: Any },
 }
 
 impl ModuleMsg for Evidence<'_> {
@@ -31,13 +28,11 @@ impl ModuleMsg for Evidence<'_> {
             Evidence::SubmitEvidence {
                 submitter,
                 evidence,
-            } => {
-                MsgSubmitEvidence {
-                    submitter: AccountId::from_str(submitter)?,
-                    evidence,
-                }
-                .to_any()
+            } => MsgSubmitEvidence {
+                submitter: AccountId::from_str(submitter)?,
+                evidence,
             }
+            .to_any(),
         }
     }
 
@@ -51,7 +46,7 @@ impl ModuleMsg for Evidence<'_> {
 }
 
 // We implement cosmrs::tx::Msg for evidence Msgs because they're not in cosmrs
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct WrappedMsgSubmitEvidence {
     inner: cosmrs::proto::cosmos::evidence::v1beta1::MsgSubmitEvidence,
 }
@@ -60,7 +55,8 @@ impl Message for WrappedMsgSubmitEvidence {
     fn encode_raw<B>(&self, buf: &mut B)
     where
         B: prost::bytes::BufMut,
-        Self: Sized {
+        Self: Sized,
+    {
         self.inner.encode_raw::<B>(buf);
     }
 
@@ -73,7 +69,8 @@ impl Message for WrappedMsgSubmitEvidence {
     ) -> Result<(), prost::DecodeError>
     where
         B: prost::bytes::Buf,
-        Self: Sized {
+        Self: Sized,
+    {
         self.inner.merge_field::<B>(tag, wire_type, buf, ctx)
     }
 
@@ -83,14 +80,6 @@ impl Message for WrappedMsgSubmitEvidence {
 
     fn clear(&mut self) {
         self.inner.clear()
-    }
-}
-
-impl Default for WrappedMsgSubmitEvidence {
-    fn default() -> Self {
-        WrappedMsgSubmitEvidence {
-            inner: cosmrs::proto::cosmos::evidence::v1beta1::MsgSubmitEvidence::default()
-        }
     }
 }
 
@@ -126,7 +115,11 @@ impl TryFrom<&WrappedMsgSubmitEvidence> for MsgSubmitEvidence {
     fn try_from(proto: &WrappedMsgSubmitEvidence) -> Result<MsgSubmitEvidence> {
         Ok(MsgSubmitEvidence {
             submitter: AccountId::from_str(&proto.inner.submitter)?,
-            evidence: proto.inner.evidence.to_owned().ok_or(eyre!("evidence cannot be empty"))?,
+            evidence: proto
+                .inner
+                .evidence
+                .to_owned()
+                .ok_or(eyre!("evidence cannot be empty"))?,
         })
     }
 }
@@ -142,8 +135,8 @@ impl From<&MsgSubmitEvidence> for WrappedMsgSubmitEvidence {
         WrappedMsgSubmitEvidence {
             inner: cosmrs::proto::cosmos::evidence::v1beta1::MsgSubmitEvidence {
                 submitter: msg.submitter.to_string(),
-                evidence: Some(msg.evidence.to_owned())
-            }
+                evidence: Some(msg.evidence.to_owned()),
+            },
         }
     }
 }

@@ -19,6 +19,8 @@ pub use tx::*;
 #[cfg_attr(docsrs, doc(cfg(feature = "rt")))]
 pub mod tx {
     pub use crate::chain;
-    pub use crate::tx::{authz::*, bank::*, crisis::*, distribution::*, evidence::*, feegrant::*,
-        gov::*, slashing::*, staking::*, *};
+    pub use crate::tx::{
+        authz::*, bank::*, crisis::*, distribution::*, evidence::*, feegrant::*, gov::*,
+        slashing::*, staking::*, *,
+    };
 }
