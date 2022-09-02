@@ -9,13 +9,9 @@ Ocular is a client library for Cosmos SDK chains with a focus on pleasent UX. Th
 - Robust transaction construction allowing multiple Msgs in one tx
 - `ModuleMsg` trait for creating extension crates to easily support custom Cosmos modules.
 
-## In progress
-
-- Exhaustive `Msg` coverage for the core Cosmos SDK modules
-- More ways to get an `AccountInfo` from a key
-
 ## To do
 
+- More ways to get an `AccountInfo` from a key
 - (Nice-to-have) Load chain context from chain registry
 - Key stuff???
 
