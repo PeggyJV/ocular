@@ -59,11 +59,34 @@ impl ModuleMsg for Bank<'_> {
     }
 
     fn into_tx(self) -> Result<UnsignedTx> {
-        let msg = self.into_any()?;
-        let mut unsigned = UnsignedTx::new();
+        let mut tx = UnsignedTx::new();
+        tx.add_msg(self.into_any()?);
 
-        unsigned.add_msg(msg);
-
-        Ok(unsigned)
+        Ok(tx)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn construct_txs() {
+        Bank::Send {
+            to: "cosmos154d0p9xhrruhxvazumej9nq29afeura2alje4u",
+            from: "cosmos154d0p9xhrruhxvazumej9nq29afeura2alje4u",
+            amount: 0,
+            denom: "uatom"
+        }
+        .into_tx()
+        .unwrap();
+
+        Bank::MultiSend {
+            inputs: vec![],
+            outputs: vec![],
+        }
+        .into_tx()
+        .unwrap();
+    }
+}
+

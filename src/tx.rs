@@ -53,6 +53,7 @@ use crate::{
     QueryClient,
 };
 
+pub mod authz;
 pub mod bank;
 
 /// Client for broadcasting [`SignedTx`]
