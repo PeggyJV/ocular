@@ -127,7 +127,7 @@ impl TypeUrl for WrappedMsgGrant {
     const TYPE_URL: &'static str = "/cosmos.authz.v1beta1.MsgGrant";
 }
 
-/// MsgGrant represents a message to send coins from one account to another.
+/// MsgGrant represents a message to grant authorization to execute a Msg from `granter` to `grantee`
 #[derive(Clone, Debug)]
 pub struct MsgGrant {
     /// Sender's address.
@@ -229,16 +229,15 @@ impl TypeUrl for WrappedMsgRevoke {
     const TYPE_URL: &'static str = "/cosmos.authz.v1beta1.MsgRevoke";
 }
 
-/// MsgRevoke represents a message to send coins from one account to another.
+/// MsgRevoke represents a message to revoke a [`Grant`] from `granter` to `grantee`
 #[derive(Clone, Debug)]
 pub struct MsgRevoke {
-    /// Sender's address.
+    /// Granter's address.
     pub granter: AccountId,
 
-    /// Recipient's address.
+    /// Grantee's address.
     pub grantee: AccountId,
 
-    /// Amount to send
     pub msg_type_url: String,
 }
 
@@ -331,13 +330,13 @@ impl TypeUrl for WrappedMsgExec {
     const TYPE_URL: &'static str = "/cosmos.authz.v1beta1.MsgExec";
 }
 
-/// MsgExec represents a message to send coins from one account to another.
+/// MsgExec represents a message to execute a tx on behalf of another account
 #[derive(Clone, Debug)]
 pub struct MsgExec {
     /// Grantee's address.
     pub grantee: AccountId,
 
-    /// Amount to send
+    /// Msgs to execute on behalf of a granter
     pub msgs: Vec<Any>,
 }
 
