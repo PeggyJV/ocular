@@ -1,7 +1,7 @@
-//! Types for constructing Authz module Msgs
+//! Messages for managing Authz grants and executing transactions on behalf of another account
 //!
 //! Since cosmrs doesn't currently have [`cosmrs::tx::msg::Msg`] implementations for Authz messages,
-//! they are defined here as well.
+//! they are defined here.
 use std::str::FromStr;
 
 use eyre::{eyre, Report, Result};
@@ -13,19 +13,19 @@ use super::{ModuleMsg, UnsignedTx};
 /// Represents a [Authz module message](https://docs.cosmos.network/v0.45/modules/authz/03_messages.html)
 #[derive(Clone, Debug)]
 pub enum Authz<'m> {
-    /// Represents a [`MsgGrant`]
+    /// Authorize one account to execute a specified message on behalf of another. Represents a [`MsgGrant`]
     Grant {
         granter: &'m str,
         grantee: &'m str,
         grant: Grant,
     },
-    /// Represents a [`MsgRevoke`]
+    /// Revoke authorization of a previously created [`Grant`]. Represents a [`MsgRevoke`]
     Revoke {
         granter: &'m str,
         grantee: &'m str,
         msg_type_url: &'m str,
     },
-    /// Represents a [`MsgExec`]
+    /// Execute a message on behalf of another account under the authorization of a previously created [`Grant`]. Represents a [`MsgExec`]
     Exec {
         grantee: &'m str,
         msgs: Vec<Any>,
@@ -35,6 +35,7 @@ pub enum Authz<'m> {
 impl ModuleMsg for Authz<'_> {
     type Error = Report;
 
+    /// Converts the enum into an [`Any`] for use in a transaction
     fn into_any(self) -> Result<Any> {
         match self {
             Authz::Grant {
@@ -74,6 +75,7 @@ impl ModuleMsg for Authz<'_> {
         }
     }
 
+    /// Converts the message enum representation into an [`UnsignedTx`] containing the corresponding Msg
     fn into_tx(self) -> Result<UnsignedTx> {
         let mut tx = UnsignedTx::new();
         tx.add_msg(self.into_any()?);
@@ -82,7 +84,7 @@ impl ModuleMsg for Authz<'_> {
     }
 }
 
-// Implement cosmrs::tx::Msg for authz Msgs because it's not in cosmrs
+// We implement cosmrs::tx::Msg for authz Msgs because they're not in cosmrs
 #[derive(Debug)]
 pub struct WrappedMsgGrant {
     inner: cosmrs::proto::cosmos::authz::v1beta1::MsgGrant,
@@ -130,16 +132,16 @@ impl TypeUrl for WrappedMsgGrant {
     const TYPE_URL: &'static str = "/cosmos.authz.v1beta1.MsgGrant";
 }
 
-/// MsgGrant represents a message to grant authorization to execute a Msg from `granter` to `grantee`
+/// Represents a message to grant authorization to execute a Msg from `granter` to `grantee`
 #[derive(Clone, Debug)]
 pub struct MsgGrant {
-    /// Sender's address.
+    /// Granting account's address.
     pub granter: AccountId,
 
-    /// Recipient's address.
+    /// Grantee's address.
     pub grantee: AccountId,
 
-    /// Amount to send
+    /// The scope of authority granted to the `grantee`, including authorized messages and expiry.
     pub grant: Grant,
 }
 

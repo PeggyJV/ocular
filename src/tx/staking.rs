@@ -1,4 +1,4 @@
-//! Types for constructing Staking module Msgs
+//! Messages for managing stake delegations to validators
 use std::str::FromStr;
 
 use cosmrs::{Any, staking::{MsgBeginRedelegate, MsgUndelegate, MsgDelegate}, AccountId, tx::Msg, Denom};
@@ -10,21 +10,21 @@ use super::{UnsignedTx, ModuleMsg};
 ///
 /// MsgCreateValidator and MsgEditValidator are currently unimplimented
 pub enum Staking<'m> {
-    /// Represents a [`MsgDelegate`]
+    /// Delegate stake to a validator. Represents a [`MsgDelegate`]
     Delegate {
         delegator_address: &'m str,
         validator_address: &'m str,
         amount: u128,
         denom: &'m str,
     },
-    /// Represents a [`MsgUndelegate`]
+    /// Undelegate (remove) stake from a validator. Represents a [`MsgUndelegate`]
     Undelegate {
         delegator_address: &'m str,
         validator_address: &'m str,
         amount: u128,
         denom: &'m str,
     },
-    /// Represents a [`MsgBeginRedelegate`]
+    /// Start a redelegation from one validator to another. Represents a [`MsgBeginRedelegate`]
     BeginRedelegate {
         delegator_address: &'m str,
         validator_src_address: &'m str,
@@ -37,6 +37,7 @@ pub enum Staking<'m> {
 impl ModuleMsg for Staking<'_> {
     type Error = Report;
 
+    /// Converts the enum into an [`Any`] for use in a transaction
     fn into_any(self) -> Result<Any> {
         match self {
             Staking::Delegate {
@@ -98,6 +99,7 @@ impl ModuleMsg for Staking<'_> {
         }
     }
 
+    /// Converts the message enum representation into an [`UnsignedTx`] containing the corresponding Msg
     fn into_tx(self) -> Result<UnsignedTx> {
         let mut tx = UnsignedTx::new();
         tx.add_msg(self.into_any()?);

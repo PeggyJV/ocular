@@ -1,4 +1,4 @@
-//! Types for constructing Authz module Msgs
+//! Messages for managing validator commission, staker rewards, and funding the community pool
 use std::str::FromStr;
 
 use cosmrs::{Any, distribution::{MsgSetWithdrawAddress, MsgWithdrawDelegatorReward, MsgWithdrawValidatorCommission, MsgFundCommunityPool}, AccountId, tx::Msg, Denom};
@@ -8,21 +8,23 @@ use super::{UnsignedTx, ModuleMsg};
 
 /// Represents a [Distribution module message](https://docs.cosmos.network/v0.45/modules/distribution/04_messages.html)
 pub enum Distribution<'m> {
+    /// Set the withdraw address for a delegators rewards. To learn more, see
+    /// [MsgSetWithdrawAddress](https://docs.cosmos.network/master/modules/distribution/04_messages.html#msgsetwithdrawaddress).
     /// Represents a [`MsgSetWithdrawAddress`]
     SetWithdrawAddress {
         delegator_address: &'m str,
         withdraw_address: &'m str,
     },
-    /// Represents a [`MsgWithdrawDelegatorReward`]
+    /// Withdraw delegator rewards. Represents a [`MsgWithdrawDelegatorReward`]
     WithdrawDelegatorReward {
         delegator_address: &'m str,
         validator_address: &'m str,
     },
-    /// Represents a [`MsgWithdrawValidatorCommission`]
+    /// Withdraw validator commission earned from delegators' rewards. Represents a [`MsgWithdrawValidatorCommission`]
     WithdrawValidatorCommission {
         validator_address: &'m str,
     },
-    /// Represents a [`MsgFundCommunityPool`]
+    /// Deposit funds to the community pool. Represents a [`MsgFundCommunityPool`]
     FundCommunityPool {
         amount: u128,
         denom: &'m str,
@@ -33,6 +35,7 @@ pub enum Distribution<'m> {
 impl ModuleMsg for Distribution<'_> {
     type Error = Report;
 
+    /// Converts the enum into an [`Any`] for use in a transaction
     fn into_any(self) -> Result<Any> {
         match self {
             Distribution::SetWithdrawAddress {
@@ -81,6 +84,7 @@ impl ModuleMsg for Distribution<'_> {
         }
     }
 
+    /// Converts the message enum representation into an [`UnsignedTx`] containing the corresponding Msg
     fn into_tx(self) -> Result<UnsignedTx> {
         let mut tx = UnsignedTx::new();
         tx.add_msg(self.into_any()?);

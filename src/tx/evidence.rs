@@ -1,7 +1,7 @@
-//! Types for constructing Evidence module Msgs
+//! Message for submitting evidence of malicious behavior for slashing
 //!
-//! Since cosmrs doesn't currently have [`cosmrs::tx::msg::Msg`] implementations for Evidence messages,
-//! they are defined here as well.
+//! Since cosmrs doesn't currently have a [`cosmrs::tx::msg::Msg`] implementation for Evidence messages,
+//! it's defined here.
 use std::str::FromStr;
 
 use cosmrs::{AccountId, tx::Msg, proto::traits::TypeUrl, Any};
@@ -14,7 +14,8 @@ use super::{ModuleMsg, UnsignedTx};
 /// Represents a [Evidence module message](https://docs.cosmos.network/v0.45/modules/evidence/03_messages.html)
 #[derive(Clone, Debug)]
 pub enum Evidence<'m> {
-    /// Represents a [`MsgSubmitEvidence`]
+    /// Submit evidence of malicious behavior by a validator for slashing. To learn more, see
+    /// [Evidence](https://docs.cosmos.network/master/modules/evidence/). Represents a [`MsgSubmitEvidence`]
     SubmitEvidence {
         submitter: &'m str,
         evidence: Any,
@@ -24,6 +25,7 @@ pub enum Evidence<'m> {
 impl ModuleMsg for Evidence<'_> {
     type Error = Report;
 
+    /// Converts the enum into an [`Any`] for use in a transaction
     fn into_any(self) -> Result<Any> {
         match self {
             Evidence::SubmitEvidence {
@@ -39,6 +41,7 @@ impl ModuleMsg for Evidence<'_> {
         }
     }
 
+    /// Converts the message enum representation into an [`UnsignedTx`] containing the corresponding Msg
     fn into_tx(self) -> Result<UnsignedTx> {
         let mut tx = UnsignedTx::new();
         tx.add_msg(self.into_any()?);
@@ -47,6 +50,7 @@ impl ModuleMsg for Evidence<'_> {
     }
 }
 
+// We implement cosmrs::tx::Msg for evidence Msgs because they're not in cosmrs
 #[derive(Debug)]
 pub struct WrappedMsgSubmitEvidence {
     inner: cosmrs::proto::cosmos::evidence::v1beta1::MsgSubmitEvidence,
@@ -94,11 +98,12 @@ impl TypeUrl for WrappedMsgSubmitEvidence {
     const TYPE_URL: &'static str = "/cosmos.evidence.v1beta1.MsgSubmitEvidence";
 }
 
-/// MsgSubmitEvidence represents a message to send coins from one account to another.
+/// MsgSubmitEvidence represents a message to send evidence of malicious conduct by a validator for slashing
 #[derive(Clone, Debug)]
 pub struct MsgSubmitEvidence {
     /// Submitter's address.
     pub submitter: AccountId,
+
     /// Evidence to submit
     pub evidence: Any,
 }

@@ -1,4 +1,4 @@
-//! Types for constructing FeeGrant module Msgs
+//! Messages for managing allowance fee grants
 use std::str::FromStr;
 
 use eyre::{Report, Result};
@@ -14,13 +14,13 @@ use super::{ModuleMsg, UnsignedTx};
 /// Represents a [FeeGrant module message](https://docs.cosmos.network/v0.45/modules/feegrant/03_messages.html)
 #[derive(Clone, Debug)]
 pub enum FeeGrant<'m> {
-    /// Represents a [`MsgGrantAllowance`]
+    /// Grant an allowance of funds to another account to cover transaction fees. Represents a [`MsgGrantAllowance`]
     GrantAllowance {
         granter: &'m str,
         grantee: &'m str,
         allowance: Any,
     },
-    /// Represents a [`MsgRevokeAllowance`]
+    /// Revoke a previously granted allowance. Represents a [`MsgRevokeAllowance`]
     RevokeAllowance {
         granter: &'m str,
         grantee: &'m str,
@@ -30,6 +30,7 @@ pub enum FeeGrant<'m> {
 impl ModuleMsg for FeeGrant<'_> {
     type Error = Report;
 
+    /// Converts the enum into an [`Any`] for use in a transaction
     fn into_any(self) -> Result<Any> {
         match self {
             FeeGrant::GrantAllowance {
@@ -54,6 +55,7 @@ impl ModuleMsg for FeeGrant<'_> {
         }
     }
 
+    /// Converts the message enum representation into an [`UnsignedTx`] containing the corresponding Msg
     fn into_tx(self) -> Result<UnsignedTx> {
         let mut tx = UnsignedTx::new();
         tx.add_msg(self.into_any()?);

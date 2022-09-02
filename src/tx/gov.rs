@@ -1,8 +1,8 @@
 #![allow(dead_code)]
-//! Types for constructing Gov module Msgs
+//! Messages for participating in governance
 //!
 //! Since cosmrs doesn't currently have [`cosmrs::tx::msg::Msg`] implementations for Gov messages,
-//! they are defined here as well.
+//! they are defined here.
 use std::str::FromStr;
 
 use eyre::{eyre, Report, Result};
@@ -14,21 +14,21 @@ use super::{ModuleMsg, UnsignedTx};
 /// Represents a [Gov module message](https://docs.cosmos.network/v0.45/modules/gov/03_messages.html)
 #[derive(Clone, Debug)]
 pub enum Gov<'m> {
-    /// Represents a [`MsgSubmitProposal`]
+    /// Submit a proposal to governance. Represents a [`MsgSubmitProposal`]
     SubmitProposal {
         content: Any,
         amount: u128,
         denom: &'m str,
         proposer: &'m str,
     },
-    /// Represents a [`MsgDeposit`]
+    /// Make a deposit to fund a proposal. Represents a [`MsgDeposit`]
     Deposit {
         proposal_id: u64,
         depositor: &'m str,
         amount: u128,
         denom: &'m str,
     },
-    /// Represents a [`MsgVote`]
+    /// Vote on a proposal. Represents a [`MsgVote`]
     Vote {
         proposal_id: u64,
         voter: &'m str,
@@ -39,6 +39,7 @@ pub enum Gov<'m> {
 impl ModuleMsg for Gov<'_> {
     type Error = Report;
 
+    /// Converts the enum into an [`Any`] for use in a transaction
     fn into_any(self) -> Result<Any> {
         match self {
             Gov::SubmitProposal {
@@ -92,6 +93,7 @@ impl ModuleMsg for Gov<'_> {
         }
     }
 
+    /// Converts the message enum representation into an [`UnsignedTx`] containing the corresponding Msg
     fn into_tx(self) -> Result<UnsignedTx> {
         let mut tx = UnsignedTx::new();
         tx.add_msg(self.into_any()?);
@@ -100,7 +102,7 @@ impl ModuleMsg for Gov<'_> {
     }
 }
 
-// Implement cosmrs::tx::Msg for gov Msgs because it's not in cosmrs
+// We implement cosmrs::tx::Msg for gov Msgs because they're not in cosmrs
 #[derive(Debug)]
 pub struct WrappedMsgSubmitProposal {
     inner: cosmrs::proto::cosmos::gov::v1beta1::MsgSubmitProposal,
@@ -148,13 +150,13 @@ impl TypeUrl for WrappedMsgSubmitProposal {
     const TYPE_URL: &'static str = "/cosmos.gov.v1beta1.MsgSubmitProposal";
 }
 
-/// MsgSubmitProposal represents a message to grant authorization to execute a Msg from `granter` to `grantee`
+/// MsgSubmitProposal represents a message to submit a governance proposal
 #[derive(Clone, Debug)]
 pub struct MsgSubmitProposal {
     /// Content of the proposal
     pub content: Any,
 
-    /// Initial deposit
+    /// Initial deposit required to submit the proposal
     pub initial_deposit: Coin,
 
     /// Proposor's address.
@@ -254,7 +256,7 @@ impl TypeUrl for WrappedMsgDeposit {
     const TYPE_URL: &'static str = "/cosmos.gov.v1beta1.MsgDeposit";
 }
 
-/// MsgDeposit represents a message to revoke a [`SubmitProposal`] from `granter` to `grantee`
+/// MsgDeposit represents a message to fund a proposal
 #[derive(Clone, Debug)]
 pub struct MsgDeposit {
     /// ID of the proposal
@@ -356,7 +358,7 @@ impl TypeUrl for WrappedMsgVote {
     const TYPE_URL: &'static str = "/cosmos.gov.v1beta1.MsgVote";
 }
 
-/// MsgVote represents a message to execute a tx on behalf of another account
+/// MsgVote represents a message to vote on a proposal
 #[derive(Clone, Debug)]
 pub struct MsgVote {
     /// ID of the proposal

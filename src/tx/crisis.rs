@@ -1,7 +1,7 @@
-//! Types for constructing Crisis module Msgs
+//! Message for checking invariants. To learn more, see [Implementing Invariants](https://docs.cosmos.network/master/building-modules/invariants.html)
 //!
-//! Since cosmrs doesn't currently have [`cosmrs::tx::msg::Msg`] implementations for Crisis messages,
-//! they are defined here as well.
+//! Since cosmrs doesn't currently have an [`cosmrs::tx::msg::Msg`] implementation for Crisis messages,
+//! it's defined here.
 use std::str::FromStr;
 
 use cosmrs::{AccountId, tx::Msg, proto::traits::TypeUrl, Any};
@@ -14,7 +14,7 @@ use super::{ModuleMsg, UnsignedTx};
 /// Represents a [Crisis module message](https://docs.cosmos.network/v0.45/modules/crisis/02_messages.html)
 #[derive(Clone, Debug)]
 pub enum Crisis<'m> {
-    /// Represents a [`MsgVerifyInvariant`]
+    /// Verify a given invariant for a given module. Represents a [`MsgVerifyInvariant`]
     VerifyInvariant {
         sender: &'m str,
         module_name: &'m str,
@@ -25,6 +25,7 @@ pub enum Crisis<'m> {
 impl ModuleMsg for Crisis<'_> {
     type Error = Report;
 
+    /// Converts the enum into an [`Any`] for use in a transaction
     fn into_any(self) -> Result<Any> {
         match self {
             Crisis::VerifyInvariant {
@@ -42,6 +43,7 @@ impl ModuleMsg for Crisis<'_> {
         }
     }
 
+    /// Converts the message enum representation into an [`UnsignedTx`] containing the corresponding Msg
     fn into_tx(self) -> Result<UnsignedTx> {
         let mut tx = UnsignedTx::new();
         tx.add_msg(self.into_any()?);
@@ -50,6 +52,7 @@ impl ModuleMsg for Crisis<'_> {
     }
 }
 
+// We implement cosmrs::tx::Msg for crisis Msgs because they're not in cosmrs
 #[derive(Debug)]
 pub struct WrappedMsgVerifyInvariant {
     inner: cosmrs::proto::cosmos::crisis::v1beta1::MsgVerifyInvariant,
@@ -97,12 +100,16 @@ impl TypeUrl for WrappedMsgVerifyInvariant {
     const TYPE_URL: &'static str = "/cosmos.crisis.v1beta1.MsgVerifyInvariant";
 }
 
-/// MsgVerifyInvariant represents a message to send coins from one account to another.
+/// Represents a message to verify a given invariant of a given module.
 #[derive(Clone, Debug)]
 pub struct MsgVerifyInvariant {
     /// Sender's address.
     pub sender: AccountId,
+
+    /// Name of the module that contains the invariant
     pub invariant_module_name: String,
+
+    /// The route of the invariant as defined in the chain's invariant registry.
     pub invariant_route: String,
 }
 

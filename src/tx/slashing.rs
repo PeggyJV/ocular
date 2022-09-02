@@ -1,7 +1,7 @@
-//! Types for constructing Slashing module Msgs
+//! Message for unjailing a validator
 //!
-//! Since cosmrs doesn't currently have [`cosmrs::tx::msg::Msg`] implementations for Slashing messages,
-//! they are defined here as well.
+//! Since cosmrs doesn't currently have a [`cosmrs::tx::msg::Msg`] implementation for Slashing messages,
+//! it's defined here.
 use std::str::FromStr;
 
 use cosmrs::{AccountId, tx::Msg, proto::traits::TypeUrl, Any};
@@ -14,7 +14,7 @@ use super::{ModuleMsg, UnsignedTx};
 /// Represents a [Slashing module message](https://docs.cosmos.network/v0.45/modules/slashing/03_messages.html)
 #[derive(Clone, Debug)]
 pub enum Slashing<'m> {
-    /// Represents a [`MsgUnjail`]
+    /// Unjail a jailed validator. Represents a [`MsgUnjail`]
     Unjail {
         validator_address: &'m str,
     },
@@ -23,6 +23,7 @@ pub enum Slashing<'m> {
 impl ModuleMsg for Slashing<'_> {
     type Error = Report;
 
+    /// Converts the enum into an [`Any`] for use in a transaction
     fn into_any(self) -> Result<Any> {
         match self {
             Slashing::Unjail { validator_address } => {
@@ -34,6 +35,7 @@ impl ModuleMsg for Slashing<'_> {
         }
     }
 
+    /// Converts the message enum representation into an [`UnsignedTx`] containing the corresponding Msg
     fn into_tx(self) -> Result<UnsignedTx> {
         let mut tx = UnsignedTx::new();
         tx.add_msg(self.into_any()?);
@@ -42,6 +44,7 @@ impl ModuleMsg for Slashing<'_> {
     }
 }
 
+// We implement cosmrs::tx::Msg for slashing Msgs because they're not in cosmrs
 #[derive(Debug)]
 pub struct WrappedMsgVerifyInvariant {
     inner: cosmrs::proto::cosmos::slashing::v1beta1::MsgUnjail,
