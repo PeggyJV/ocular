@@ -54,9 +54,10 @@ use crate::{
 };
 
 pub mod authz;
+pub mod bank;
 pub mod crisis;
 pub mod distribution;
-pub mod bank;
+pub mod evidence;
 
 /// Client for broadcasting [`SignedTx`]
 pub struct MsgClient {

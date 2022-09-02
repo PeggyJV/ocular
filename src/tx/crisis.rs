@@ -49,6 +49,7 @@ impl ModuleMsg for Crisis<'_> {
         Ok(tx)
     }
 }
+
 #[derive(Debug)]
 pub struct WrappedMsgVerifyInvariant {
     inner: cosmrs::proto::cosmos::crisis::v1beta1::MsgVerifyInvariant,
