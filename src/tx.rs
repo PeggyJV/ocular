@@ -60,6 +60,7 @@ pub mod distribution;
 pub mod evidence;
 pub mod feegrant;
 pub mod gov;
+pub mod slashing;
 
 /// Client for broadcasting [`SignedTx`]
 pub struct MsgClient {
