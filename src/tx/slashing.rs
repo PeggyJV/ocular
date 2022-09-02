@@ -11,7 +11,7 @@ use prost::Message;
 use crate::cosmrs;
 use super::{ModuleMsg, UnsignedTx};
 
-/// Represents a [Slashing module message](https://docs.cosmos.network/v0.45/modules/slashing/02_messages.html)
+/// Represents a [Slashing module message](https://docs.cosmos.network/v0.45/modules/slashing/03_messages.html)
 #[derive(Clone, Debug)]
 pub enum Slashing<'m> {
     /// Represents a [`MsgUnjail`]

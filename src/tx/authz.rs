@@ -1,4 +1,3 @@
-#![allow(dead_code)]
 //! Types for constructing Authz module Msgs
 //!
 //! Since cosmrs doesn't currently have [`cosmrs::tx::msg::Msg`] implementations for Authz messages,
