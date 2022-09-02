@@ -1,3 +1,4 @@
+#![cfg_attr(docsrs, feature(doc_cfg))]
 #![allow(clippy::too_many_arguments)]
 //! Ocular is a client library for Cosmos SDK chains with a focus on pleasant UX. Think of it as a convenience wrapper around the [cosmrs](https://docs.rs/cosmrs/latest/cosmrs/) client features.
 pub extern crate cosmrs as cosmrs;
@@ -13,6 +14,8 @@ pub mod rpc;
 pub mod query;
 
 #[cfg(feature = "tx")]
+#[cfg_attr(docsrs, doc(cfg(feature = "tx")))]
 pub mod chain;
 #[cfg(feature = "tx")]
+#[cfg_attr(docsrs, doc(cfg(feature = "tx")))]
 pub mod tx;

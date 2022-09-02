@@ -12,9 +12,11 @@ pub mod query {
 }
 
 #[cfg(feature = "tx")]
+#[cfg_attr(docsrs, doc(cfg(feature = "rt")))]
 pub use tx::*;
 
 #[cfg(feature = "tx")]
+#[cfg_attr(docsrs, doc(cfg(feature = "rt")))]
 pub mod tx {
     pub use crate::chain;
     pub use crate::tx::{bank::*, *};

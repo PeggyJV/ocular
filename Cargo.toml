@@ -2,15 +2,20 @@
 name = "ocular"
 description = "A client library for Cosmos SDK chains with a focus on pleasant UX"
 authors = ["Collin Brittain", "Phil Bal"]
-version = "1.0.0-alpha-2.0.1"
+version = "1.0.0-alpha-2.0.2"
 edition = "2021"
 license = "Apache-2.0"
 repository = "https://github.com/PeggyJV/ocular"
 documentation = "https://docs.rs/ocular/latest/ocular/"
+keywords = ["cosmos", "client", "tx", "query"]
 readme = "README.md"
 
 [package.metadata.cargo-udeps.ignore]
 normal = ["assay"]
+
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]
 
 [dependencies]
 assay = "0.1"
