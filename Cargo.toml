@@ -27,11 +27,14 @@ tendermint-rpc = "0.23.7"
 tonic = { version = "0.8", features = ["transport"] }
 prost = "0.11"
 hex = "0.4.3"
+pkcs8 = { version = "0.9.0", features = ["encryption", "pem"] }
 
 [features]
-default = ["query"]
+default = ["query", "keys"]
 query = []
 tx = ["query"]
+keys = []
 
 [dev-dependencies]
-rand = "0.8.5"
+k256 = { version = "0.11.4", features = ["pem"] }
+rand_core = { version = "0.6.3", features = ["getrandom"] }
