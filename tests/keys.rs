@@ -1,5 +1,4 @@
 #[cfg(feature = "keys")]
-
 #[test]
 fn account_from_pem() {
     use std::fs;
@@ -38,7 +37,9 @@ fn account_from_encrypted_pem() {
     // generate new key
     let key = SigningKey::random(&mut OsRng);
     let key = SecretKey::<Secp256k1>::from(key);
-    let pem = key.to_pkcs8_encrypted_pem(&mut OsRng, "password".as_bytes(), Default::default()).unwrap();
+    let pem = key
+        .to_pkcs8_encrypted_pem(&mut OsRng, "password".as_bytes(), Default::default())
+        .unwrap();
 
     // write the key as a PEM-encoded file
     let pem_path = "./test.pem";
@@ -90,7 +91,9 @@ fn account_from_encrypted_der() {
     // generate new key
     let key = SigningKey::random(&mut OsRng);
     let key = SecretKey::<Secp256k1>::from(key);
-    let der = key.to_pkcs8_encrypted_der(&mut OsRng, "password".as_bytes()).unwrap();
+    let der = key
+        .to_pkcs8_encrypted_der(&mut OsRng, "password".as_bytes())
+        .unwrap();
 
     // write the key as a DER-encoded file
     let der_path = "./test_encrypted.der";
