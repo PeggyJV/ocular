@@ -30,7 +30,8 @@ hex = "0.4.3"
 pkcs8 = { version = "0.9.0", features = ["encryption", "pem"] }
 
 [features]
-default = ["query", "keys"]
+default = ["query"]
+full = ["tx", "keys"]
 query = []
 tx = ["query"]
 keys = []

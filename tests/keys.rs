@@ -1,4 +1,5 @@
-#[cfg(feature = "keys")]
+#![cfg(feature = "keys")]
+
 #[test]
 fn account_from_pem() {
     use std::fs;
@@ -19,7 +20,7 @@ fn account_from_pem() {
     fs::write(pem_path, pem.as_bytes()).unwrap();
 
     // test constructor
-    let _pem_account = AccountInfo::from_pkcs8_pem(pem_path).unwrap();
+    let _pem_account = AccountInfo::from_pem(pem_path).unwrap();
 
     // clean up the key
     fs::remove_file(pem_path).unwrap();
@@ -42,12 +43,12 @@ fn account_from_encrypted_pem() {
         .unwrap();
 
     // write the key as a PEM-encoded file
-    let pem_path = "./test.pem";
+    let pem_path = "./test_encrypted.pem";
     let _ = fs::remove_file(pem_path);
     fs::write(pem_path, pem.as_bytes()).unwrap();
 
     // test constructor
-    let _pem_account = AccountInfo::from_pkcs8_encrypted_pem(pem_path, "password").unwrap();
+    let _pem_account = AccountInfo::from_encrypted_pem(pem_path, "password").unwrap();
 
     // clean up the key
     fs::remove_file(pem_path).unwrap();
@@ -68,12 +69,12 @@ fn account_from_der() {
     let der = key.to_pkcs8_der().unwrap();
 
     // write the key as a DER-encoded file
-    let der_path = "./test_encrypted.der";
+    let der_path = "./test.der";
     let _ = fs::remove_file(der_path);
     fs::write(der_path, der.as_bytes()).unwrap();
 
     // test constructor
-    let _der_account = AccountInfo::from_pkcs8_der(der_path).unwrap();
+    let _der_account = AccountInfo::from_der(der_path).unwrap();
 
     // clean up key
     fs::remove_file(der_path).unwrap();
@@ -101,7 +102,7 @@ fn account_from_encrypted_der() {
     fs::write(der_path, der.as_bytes()).unwrap();
 
     // test constructor
-    let _der_account = AccountInfo::from_pkcs8_encrypted_der(der_path, "password").unwrap();
+    let _der_account = AccountInfo::from_encrypted_der(der_path, "password").unwrap();
 
     // clean up key
     fs::remove_file(der_path).unwrap();

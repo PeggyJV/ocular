@@ -2,7 +2,7 @@
 use std::sync::Arc;
 
 use cosmrs::bip32::Language;
-use eyre::{eyre, Context, Result};
+use eyre::{Context, Result};
 
 use crate::cosmrs::{
     bip32::{secp256k1::SecretKey, Mnemonic},
@@ -41,11 +41,13 @@ impl AccountInfo {
         Ok(AccountInfo::from(key))
     }
 
-    /// Constructs an [`AccountInfo`] from an unencrypted PEM-encoded key on disk.
-    // TO-DO I think I can just use the [`k256`] crate and skip the pkcs8 crate? (elliptic_curve::SecretKey<Secp256k1>::from_pkcs8_*())
+    /// Constructs an [`AccountInfo`] from a PEM-encoded, PKCS #8 key on disk.
     #[cfg(feature = "keys")]
-    pub fn from_pkcs8_pem(path: &str) -> Result<Self> {
+    pub fn from_pem(path: &str) -> Result<Self> {
         use std::{fs, path::Path};
+
+        use eyre::eyre;
+        use pkcs8::DecodePrivateKey;
 
         let key_path = Path::new(path);
         if let Err(e) = Path::try_exists(key_path) {
@@ -53,18 +55,20 @@ impl AccountInfo {
         }
 
         let pem = fs::read_to_string(path)?;
-        let key: SecretKey = pkcs8::DecodePrivateKey::from_pkcs8_pem(&pem)
+        let key = SecretKey::from_pkcs8_pem(&pem)
             .map_err(|e| eyre!("error decoding key at {}: {}", path, e))?;
         let key = SigningKey::from_bytes(key.to_be_bytes().as_slice())?;
 
         Ok(AccountInfo::from(key))
     }
 
-    /// Constructs an [`AccountInfo`] from an encrypted PEM-encoded key on disk
-    // TO-DO I think I can just use the [`k256`] crate and skip the pkcs8 crate? (elliptic_curve::SecretKey<Secp256k1>::from_pkcs8_*())
+    /// Constructs an [`AccountInfo`] from an encrypted, PEM-encoded, PKCS #8 key on disk
     #[cfg(feature = "keys")]
-    pub fn from_pkcs8_encrypted_pem(path: &str, passphrase: &str) -> Result<Self> {
+    pub fn from_encrypted_pem(path: &str, passphrase: &str) -> Result<Self> {
         use std::{fs, path::Path};
+
+        use eyre::eyre;
+        use pkcs8::DecodePrivateKey;
 
         let key_path = Path::new(path);
         if let Err(e) = Path::try_exists(key_path) {
@@ -72,18 +76,20 @@ impl AccountInfo {
         }
 
         let pem = fs::read_to_string(path)?;
-        let key: SecretKey = pkcs8::DecodePrivateKey::from_pkcs8_encrypted_pem(&pem, passphrase)
+        let key = SecretKey::from_pkcs8_encrypted_pem(&pem, passphrase)
             .map_err(|e| eyre!("error decoding encrypted key at {}: {}", path, e))?;
         let key = SigningKey::from_bytes(key.to_be_bytes().as_slice())?;
 
         Ok(AccountInfo::from(key))
     }
 
-    /// Constructs an [`AccountInfo`] from an unencrypted DER-encoded key on disk. If the key is unencrypted,
-    /// set `passphrase` to [`None`].
+    /// Constructs an [`AccountInfo`] from an unencrypted DER-encoded, PKCS #8 formatted key on disk.
     #[cfg(feature = "keys")]
-    pub fn from_pkcs8_der(path: &str) -> Result<Self> {
+    pub fn from_der(path: &str) -> Result<Self> {
         use std::{fs, path::Path};
+
+        use eyre::eyre;
+        use pkcs8::DecodePrivateKey;
 
         let key_path = Path::new(path);
         if let Err(e) = Path::try_exists(key_path) {
@@ -91,18 +97,20 @@ impl AccountInfo {
         }
 
         let bytes = fs::read(path)?;
-        let key: SecretKey = pkcs8::DecodePrivateKey::from_pkcs8_der(&bytes)
+        let key = SecretKey::from_pkcs8_der(&bytes)
             .map_err(|e| eyre!("error decoding key at {}: {}", path, e))?;
         let key = SigningKey::from_bytes(key.to_be_bytes().as_slice())?;
 
         Ok(AccountInfo::from(key))
     }
 
-    /// Constructs an [`AccountInfo`] from an encrypted DER-encoded key on disk. If the key is unencrypted,
-    /// set `passphrase` to [`None`].
+    /// Constructs an [`AccountInfo`] from an encrypted, DER-encoded, PKCS #8 formatted key on disk.
     #[cfg(feature = "keys")]
-    pub fn from_pkcs8_encrypted_der(path: &str, passphrase: &str) -> Result<Self> {
+    pub fn from_encrypted_der(path: &str, passphrase: &str) -> Result<Self> {
         use std::{fs, path::Path};
+
+        use eyre::eyre;
+        use pkcs8::DecodePrivateKey;
 
         let key_path = Path::new(path);
         if let Err(e) = Path::try_exists(key_path) {
@@ -110,7 +118,7 @@ impl AccountInfo {
         }
 
         let bytes = fs::read(path)?;
-        let key: SecretKey = pkcs8::DecodePrivateKey::from_pkcs8_encrypted_der(&bytes, passphrase)
+        let key = SecretKey::from_pkcs8_encrypted_der(&bytes, passphrase)
             .map_err(|e| eyre!("error decoding encrypted key at {}: {}", path, e))?;
         let key = SigningKey::from_bytes(key.to_be_bytes().as_slice())?;
 
