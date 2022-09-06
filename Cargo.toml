@@ -31,11 +31,9 @@ pkcs8 = { version = "0.9.0", features = ["encryption", "pem"] }
 
 [features]
 default = ["query"]
-full = ["tx", "keys"]
+full = ["tx"]
 query = []
 tx = ["query"]
-keys = []
 
 [dev-dependencies]
-k256 = { version = "0.11.4", features = ["pem"] }
 rand_core = { version = "0.6.3", features = ["getrandom"] }

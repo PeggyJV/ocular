@@ -42,7 +42,6 @@ impl AccountInfo {
     }
 
     /// Constructs an [`AccountInfo`] from a PEM-encoded, PKCS #8 key on disk.
-    #[cfg(feature = "keys")]
     pub fn from_pem(path: &str) -> Result<Self> {
         use std::{fs, path::Path};
 
@@ -62,8 +61,7 @@ impl AccountInfo {
         Ok(AccountInfo::from(key))
     }
 
-    /// Constructs an [`AccountInfo`] from an encrypted, PEM-encoded, PKCS #8 key on disk
-    #[cfg(feature = "keys")]
+    /// Constructs an [`AccountInfo`] from an encrypted, PEM-encoded, PKCS #8 key on disk.
     pub fn from_encrypted_pem(path: &str, passphrase: &str) -> Result<Self> {
         use std::{fs, path::Path};
 
@@ -84,7 +82,6 @@ impl AccountInfo {
     }
 
     /// Constructs an [`AccountInfo`] from an unencrypted DER-encoded, PKCS #8 formatted key on disk.
-    #[cfg(feature = "keys")]
     pub fn from_der(path: &str) -> Result<Self> {
         use std::{fs, path::Path};
 
@@ -105,7 +102,6 @@ impl AccountInfo {
     }
 
     /// Constructs an [`AccountInfo`] from an encrypted, DER-encoded, PKCS #8 formatted key on disk.
-    #[cfg(feature = "keys")]
     pub fn from_encrypted_der(path: &str, passphrase: &str) -> Result<Self> {
         use std::{fs, path::Path};
 
