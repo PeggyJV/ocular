@@ -136,7 +136,7 @@ impl UnsignedTx {
         self,
         signer: &AccountInfo,
         fee_info: FeeInfo,
-        chain_context: Context,
+        chain_context: &Context,
         qclient: &mut QueryClient,
     ) -> Result<SignedTx> {
         let address = signer.address(&chain_context.prefix)?;
@@ -157,7 +157,7 @@ impl UnsignedTx {
         self,
         signer: &AccountInfo,
         fee_info: FeeInfo,
-        chain_context: Context,
+        chain_context: &Context,
         account_number: u64,
         sequence: u64,
     ) -> Result<SignedTx> {
@@ -168,7 +168,7 @@ impl UnsignedTx {
             payer: fee_info.fee_payer,
             granter: fee_info.fee_granter,
         });
-        let chain_id = &cosmrs::tendermint::chain::Id::try_from(chain_context.id)?;
+        let chain_id = &cosmrs::tendermint::chain::Id::try_from(chain_context.id.to_owned())?;
         let tx_body = self.into_inner().finish();
         let sign_doc = match SignDoc::new(&tx_body, &auth_info, chain_id, account_number) {
             Ok(doc) => doc,
@@ -263,6 +263,10 @@ impl FeeInfo {
             fee_granter: None,
             gas_limit: 200_000,
         }
+    }
+
+    pub fn get_fee(&self) -> &Coin {
+        &self.fee
     }
 
     pub fn amount(&mut self, value: u128) {

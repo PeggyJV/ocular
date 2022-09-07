@@ -2,7 +2,7 @@
 use std::sync::Arc;
 
 use cosmrs::bip32::Language;
-use eyre::Result;
+use eyre::{Context, Result};
 
 use crate::cosmrs::{
     bip32::{secp256k1::SecretKey, Mnemonic},
@@ -29,13 +29,94 @@ impl AccountInfo {
     /// If you don't wish to use a passphrase, set `passphrase` to `""`. Currently only supports
     /// 24 word phrases.
     pub fn from_mnemonic(phrase: &str, passphrase: &str) -> Result<Self> {
-        let phrase = Mnemonic::new(phrase, Language::English)?;
+        let phrase = Mnemonic::new(phrase, Language::English)
+            .wrap_err("failed to parse mnemonic phrase. be sure it is a 24 word phrase as this crate does not support fewer words.")?;
         let seed = phrase.to_seed(passphrase);
         let derivation_path =
             COSMOS_BASE_DERIVATION_PATH.parse::<cosmrs::bip32::DerivationPath>()?;
         let key = cosmrs::bip32::XPrv::derive_from_path(seed, &derivation_path)?;
         let key = SecretKey::from(key.private_key());
-        let key = SigningKey::from_bytes(&key.to_be_bytes())?;
+        let key = SigningKey::from_bytes(key.to_be_bytes().as_slice())?;
+
+        Ok(AccountInfo::from(key))
+    }
+
+    /// Constructs an [`AccountInfo`] from a PEM-encoded, PKCS #8 key on disk.
+    pub fn from_pem(path: &str) -> Result<Self> {
+        use std::{fs, path::Path};
+
+        use eyre::eyre;
+        use pkcs8::DecodePrivateKey;
+
+        let key_path = Path::new(path);
+        if let Err(e) = Path::try_exists(key_path) {
+            return Err(eyre!("{}", e));
+        }
+
+        let pem = fs::read_to_string(path)?;
+        let key = SecretKey::from_pkcs8_pem(&pem)
+            .map_err(|e| eyre!("error decoding key at {}: {}", path, e))?;
+        let key = SigningKey::from_bytes(key.to_be_bytes().as_slice())?;
+
+        Ok(AccountInfo::from(key))
+    }
+
+    /// Constructs an [`AccountInfo`] from an encrypted, PEM-encoded, PKCS #8 key on disk.
+    pub fn from_encrypted_pem(path: &str, passphrase: &str) -> Result<Self> {
+        use std::{fs, path::Path};
+
+        use eyre::eyre;
+        use pkcs8::DecodePrivateKey;
+
+        let key_path = Path::new(path);
+        if let Err(e) = Path::try_exists(key_path) {
+            return Err(eyre!("{}", e));
+        }
+
+        let pem = fs::read_to_string(path)?;
+        let key = SecretKey::from_pkcs8_encrypted_pem(&pem, passphrase)
+            .map_err(|e| eyre!("error decoding encrypted key at {}: {}", path, e))?;
+        let key = SigningKey::from_bytes(key.to_be_bytes().as_slice())?;
+
+        Ok(AccountInfo::from(key))
+    }
+
+    /// Constructs an [`AccountInfo`] from an unencrypted DER-encoded, PKCS #8 formatted key on disk.
+    pub fn from_der(path: &str) -> Result<Self> {
+        use std::{fs, path::Path};
+
+        use eyre::eyre;
+        use pkcs8::DecodePrivateKey;
+
+        let key_path = Path::new(path);
+        if let Err(e) = Path::try_exists(key_path) {
+            return Err(eyre!("{}", e));
+        }
+
+        let bytes = fs::read(path)?;
+        let key = SecretKey::from_pkcs8_der(&bytes)
+            .map_err(|e| eyre!("error decoding key at {}: {}", path, e))?;
+        let key = SigningKey::from_bytes(key.to_be_bytes().as_slice())?;
+
+        Ok(AccountInfo::from(key))
+    }
+
+    /// Constructs an [`AccountInfo`] from an encrypted, DER-encoded, PKCS #8 formatted key on disk.
+    pub fn from_encrypted_der(path: &str, passphrase: &str) -> Result<Self> {
+        use std::{fs, path::Path};
+
+        use eyre::eyre;
+        use pkcs8::DecodePrivateKey;
+
+        let key_path = Path::new(path);
+        if let Err(e) = Path::try_exists(key_path) {
+            return Err(eyre!("{}", e));
+        }
+
+        let bytes = fs::read(path)?;
+        let key = SecretKey::from_pkcs8_encrypted_der(&bytes, passphrase)
+            .map_err(|e| eyre!("error decoding encrypted key at {}: {}", path, e))?;
+        let key = SigningKey::from_bytes(key.to_be_bytes().as_slice())?;
 
         Ok(AccountInfo::from(key))
     }
