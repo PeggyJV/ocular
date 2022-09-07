@@ -171,6 +171,7 @@ impl From<&MsgGrant> for WrappedMsgGrant {
             inner: cosmrs::proto::cosmos::authz::v1beta1::MsgGrant {
                 granter: msg.granter.to_string(),
                 grantee: msg.grantee.to_string(),
+                // TO-DO: Grant type needs a wrapper, it's cumbersome
                 grant: Some(msg.grant.clone()),
             },
         }
