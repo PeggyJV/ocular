@@ -1,5 +1,3 @@
-#![cfg(feature = "keys")]
-
 #[test]
 fn account_from_pem() {
     use std::fs;
