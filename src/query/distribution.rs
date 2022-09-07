@@ -38,6 +38,7 @@ impl QueryClient {
         Ok(response.params)
     }
 
+    /// Gets a validator's outstanding (unwithdrawn) rewards
     pub async fn validator_outstanding_rewards(
         &mut self,
         validator_address: &str,
@@ -56,6 +57,7 @@ impl QueryClient {
             .rewards)
     }
 
+    /// Get's a validators outstanding commission earned from delegator's staking rewards
     pub async fn validator_commission(
         &mut self,
         validator_address: &str,
@@ -74,6 +76,7 @@ impl QueryClient {
             .commission)
     }
 
+    /// Gets recorded slashes for a validator
     pub async fn validator_slashes(
         &mut self,
         validator_address: &str,
@@ -97,6 +100,7 @@ impl QueryClient {
             .slashes)
     }
 
+    /// Gets the outstanding staking rewards of a delegator with a given validator
     pub async fn delegation_rewards(
         &mut self,
         delegate_address: &str,
@@ -117,6 +121,7 @@ impl QueryClient {
             .rewards)
     }
 
+    /// Gets the total outstanding staking rewards of a delegator with all validators
     pub async fn delegation_total_rewards(
         &mut self,
         delegate_address: &str,
@@ -134,6 +139,7 @@ impl QueryClient {
             .into_inner())
     }
 
+    /// Gets a delegator's reward withdraw address
     pub async fn delegator_withdraw_address(
         &mut self,
         delegate_address: &str,
@@ -151,6 +157,7 @@ impl QueryClient {
             .into_inner())
     }
 
+    /// Gets Community Pool funds
     pub async fn community_pool(&mut self) -> Result<Vec<DecCoin>> {
         let query_client = self
             .get_grpc_query_client::<DistributionQueryClient>()

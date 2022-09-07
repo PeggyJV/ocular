@@ -19,20 +19,30 @@ pub enum Distribution<'m> {
     /// [MsgSetWithdrawAddress](https://docs.cosmos.network/master/modules/distribution/04_messages.html#msgsetwithdrawaddress).
     /// Represents a [`MsgSetWithdrawAddress`]
     SetWithdrawAddress {
+        /// Address of the delegator account to set withdraw address for
         delegator_address: &'m str,
+        /// Address delegator rewards should be withdraw to
         withdraw_address: &'m str,
     },
     /// Withdraw delegator rewards. Represents a [`MsgWithdrawDelegatorReward`]
     WithdrawDelegatorReward {
+        /// Address of the delegator account
         delegator_address: &'m str,
+        /// Address of the validator staking rewards should be withdraw from
         validator_address: &'m str,
     },
     /// Withdraw validator commission earned from delegators' rewards. Represents a [`MsgWithdrawValidatorCommission`]
-    WithdrawValidatorCommission { validator_address: &'m str },
+    WithdrawValidatorCommission {
+        /// Address of the validator
+        validator_address: &'m str,
+    },
     /// Deposit funds to the community pool. Represents a [`MsgFundCommunityPool`]
     FundCommunityPool {
+        /// Deposit amount
         amount: u128,
+        /// Deposit coin denomination
         denom: &'m str,
+        /// Address of the depositing account
         depositor: &'m str,
     },
 }

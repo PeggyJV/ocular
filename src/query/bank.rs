@@ -5,8 +5,8 @@ use eyre::{eyre, Context, Report, Result};
 use tonic::transport::Channel;
 
 use crate::cosmrs::proto::cosmos::bank::v1beta1::{
-    self as bank, QueryAllBalancesResponse, QueryBalanceResponse, QueryDenomsMetadataResponse,
-    QuerySpendableBalancesResponse, QueryTotalSupplyResponse,
+    self as bank, QueryAllBalancesResponse, QueryBalanceResponse, QuerySpendableBalancesResponse,
+    QueryTotalSupplyResponse,
 };
 
 use super::{GrpcClient, PageRequest, PageResponse, QueryClient};
@@ -92,15 +92,11 @@ impl QueryClient {
     pub async fn all_denoms_metadata(
         &mut self,
         pagination: Option<PageRequest>,
-    ) -> Result<DenomsMetadataResponse> {
+    ) -> Result<bank::QueryDenomsMetadataResponse> {
         let query_client = self.get_grpc_query_client::<BankQueryClient>().await?;
         let request = bank::QueryDenomsMetadataRequest { pagination };
 
-        query_client
-            .denoms_metadata(request)
-            .await?
-            .into_inner()
-            .try_into()
+        Ok(query_client.denoms_metadata(request).await?.into_inner())
     }
 
     /// Gets the supply of the specified coin denomination
@@ -132,8 +128,10 @@ impl QueryClient {
     }
 }
 
+/// Convenience type for representing the queried balance with [`cosmrs::Coin`]
 #[derive(Clone, Debug)]
 pub struct BalanceResponse {
+    /// Coin balance. [`None`] if the account has no balance in the request denomination.
     pub balance: Option<Coin>,
 }
 
@@ -150,9 +148,12 @@ impl TryFrom<QueryBalanceResponse> for BalanceResponse {
     }
 }
 
+/// Convenience type for representing the queried balances with [`cosmrs::Coin`]
 #[derive(Clone, Debug)]
 pub struct CoinsResponse {
+    /// Total balances of each coin denomination in the chain
     pub balances: Vec<Coin>,
+    /// Paging info
     pub pagination: Option<PageResponse>,
 }
 
@@ -199,23 +200,6 @@ impl TryFrom<QueryTotalSupplyResponse> for CoinsResponse {
 
         Ok(Self {
             balances,
-            pagination: response.pagination,
-        })
-    }
-}
-
-#[derive(Clone, Debug)]
-pub struct DenomsMetadataResponse {
-    pub metadatas: Vec<bank::Metadata>,
-    pub pagination: Option<PageResponse>,
-}
-
-impl TryFrom<QueryDenomsMetadataResponse> for DenomsMetadataResponse {
-    type Error = Report;
-
-    fn try_from(response: QueryDenomsMetadataResponse) -> Result<Self> {
-        Ok(Self {
-            metadatas: response.metadatas,
             pagination: response.pagination,
         })
     }

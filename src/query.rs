@@ -62,8 +62,9 @@ pub mod rpc;
 pub mod slashing;
 pub mod staking;
 
-/// For paging large query responses
+/// Paging configuration for queries with potentially large result sets
 pub type PageRequest = crate::cosmrs::proto::cosmos::base::query::v1beta1::PageRequest;
+/// Information for requesting the next page of results
 pub type PageResponse = crate::cosmrs::proto::cosmos::base::query::v1beta1::PageResponse;
 
 /// A convencience wrapper for querying both Tendermint RPC and Cosmos SDK module endpoints. It creates a Tendermint RPC client
@@ -118,8 +119,10 @@ impl QueryClient {
 #[async_trait]
 /// A marker trait for query client types in the Cosmos SDK proto
 pub trait GrpcClient {
+    /// The particular QueryClient type for the given module
     type ClientType;
 
+    /// Constructor wrapper
     async fn make_client(endpoint: String) -> Result<Self::ClientType>;
 }
 

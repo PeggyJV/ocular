@@ -16,12 +16,20 @@ use super::{ModuleMsg, UnsignedTx};
 pub enum FeeGrant<'m> {
     /// Grant an allowance of funds to another account to cover transaction fees. Represents a [`MsgGrantAllowance`]
     GrantAllowance {
+        /// Address of the granting account
         granter: &'m str,
+        /// Address of the account being granted the allowance
         grantee: &'m str,
+        /// Allowance to be granted
         allowance: Any,
     },
     /// Revoke a previously granted allowance. Represents a [`MsgRevokeAllowance`]
-    RevokeAllowance { granter: &'m str, grantee: &'m str },
+    RevokeAllowance {
+        /// Address of the granting account
+        granter: &'m str,
+        /// Address of the grantee
+        grantee: &'m str,
+    },
 }
 
 impl ModuleMsg for FeeGrant<'_> {

@@ -256,6 +256,7 @@ pub struct FeeInfo {
 }
 
 impl FeeInfo {
+    /// Constructor
     pub fn new(fee: Coin) -> Self {
         FeeInfo {
             fee,
@@ -265,22 +266,38 @@ impl FeeInfo {
         }
     }
 
+    /// Gets a reference to the inner fee
     pub fn get_fee(&self) -> &Coin {
         &self.fee
     }
 
+    /// Set the inner fee's amount field
     pub fn amount(&mut self, value: u128) {
         self.fee.amount = value;
     }
 
+    /// Set the fee payer. If [`None`] (default), the first signer is responsible for paying the fees.
+    ///
+    /// If [`Some`], the specified account must pay the fees. The payer must be
+    /// a tx signer.
+    ///
+    /// Setting this field does not change the ordering of required signers for
+    /// the transaction.
     pub fn fee_payer(&mut self, value: Option<AccountId>) {
         self.fee_payer = value;
     }
 
+    /// Set the fee granter. If [`Some`], the fee payer (either the first signer or the
+    /// value of the payer field) requests that a fee grant be used to pay fees
+    /// instead of the fee payer’s own balance.
+    ///
+    /// If an appropriate fee grant does not exist or the chain does not
+    /// support fee grants, this will fail.
     pub fn fee_granter(&mut self, value: Option<AccountId>) {
         self.fee_granter = value;
     }
 
+    /// Set the gas limit (GasWanted) of the transaction
     pub fn gas_limit(&mut self, value: u64) {
         self.gas_limit = value;
     }
@@ -288,8 +305,11 @@ impl FeeInfo {
 
 /// Represents an arbitrary Cosmos module Msg
 pub trait ModuleMsg {
+    #[allow(missing_docs)]
     type Error;
 
+    /// Attempts to convert the message into an [`Any`] for inclusion in a transaction
     fn into_any(self) -> Result<Any, Self::Error>;
+    /// Attempts to construct an [`UnsignedTx`] containing the message.
     fn into_tx(self) -> Result<UnsignedTx, Self::Error>;
 }

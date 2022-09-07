@@ -22,6 +22,7 @@ impl GrpcClient for ParamsQueryClient {
 }
 
 impl QueryClient {
+    /// Gets the chain's params
     pub async fn params(
         &mut self,
         subspace: &str,

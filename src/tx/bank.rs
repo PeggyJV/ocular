@@ -18,22 +18,31 @@ use super::{ModuleMsg, UnsignedTx};
 pub enum Bank<'m> {
     /// Send coins from one account to another. Represents a [`MsgSend`]
     Send {
+        /// Address of the sender account
         from: &'m str,
+        /// Address of the recipient account
         to: &'m str,
-        amount: u64,
+        /// Amount to send
+        amount: u128,
+        /// Coin denomination to send
         denom: &'m str,
     },
     /// Send multiple denominations of coins from one account to another. Represents a [`MsgSend`]
     SendMultipleDenoms {
+        /// Address of the sender account
         from: &'m str,
+        /// Address of the recipient account
         to: &'m str,
+        /// Coins to send
         amount: Vec<Coin>,
     },
     /// Send coins from one or more accounts to one or more accounts. Note that each input account must be
     /// a signer of the transaction, and the sum of the input coins must equal the sum of output coins. To learn more,
     /// see https://docs.cosmos.network/master/modules/bank/03_messages.html#msgmultisend. Represents a [`MsgMultiSend`]
     MultiSend {
+        /// Sending address/amount inputs
         inputs: Vec<MultiSendIo>,
+        /// Receiving address/amount inputs
         outputs: Vec<MultiSendIo>,
     },
 }
@@ -51,7 +60,7 @@ impl ModuleMsg for Bank<'_> {
                 denom,
             } => {
                 let amount = cosmrs::Coin {
-                    amount: amount.into(),
+                    amount,
                     denom: Denom::from_str(denom)?,
                 };
                 MsgSend {

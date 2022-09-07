@@ -1,3 +1,4 @@
+//! Tendermint RPC queries
 use eyre::Result;
 use tendermint_rpc::Client as TendermintClient;
 

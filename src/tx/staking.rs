@@ -16,24 +16,37 @@ use super::{ModuleMsg, UnsignedTx};
 pub enum Staking<'m> {
     /// Delegate stake to a validator. Represents a [`MsgDelegate`]
     Delegate {
+        /// Address of the delegating account
         delegator_address: &'m str,
+        /// Address of the validator being delegated to
         validator_address: &'m str,
+        /// Delegation amount
         amount: u128,
+        /// Delegation coin denomination
         denom: &'m str,
     },
     /// Undelegate (remove) stake from a validator. Represents a [`MsgUndelegate`]
     Undelegate {
+        /// Address of the undelegating account
         delegator_address: &'m str,
+        /// Address of the validator being undelegated from
         validator_address: &'m str,
+        /// Amount to undelegate
         amount: u128,
+        /// Denomination of the coin to undelegate
         denom: &'m str,
     },
     /// Start a redelegation from one validator to another. Represents a [`MsgBeginRedelegate`]
     BeginRedelegate {
+        /// Address of the redelegating account
         delegator_address: &'m str,
+        /// Address of the validator delegated stake will be undelegated from
         validator_src_address: &'m str,
+        /// Address of the validator the stake will be redelegated to
         validator_dst_address: &'m str,
+        /// Redelegation amount
         amount: u128,
+        /// Redelegation coin denomination
         denom: &'m str,
     },
 }

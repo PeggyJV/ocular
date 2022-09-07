@@ -20,22 +20,33 @@ use super::{ModuleMsg, UnsignedTx};
 pub enum Gov<'m> {
     /// Submit a proposal to governance. Represents a [`MsgSubmitProposal`]
     SubmitProposal {
+        /// Description content of the proposal
         content: Any,
+        /// Initial deposit amount
         amount: u128,
+        /// Initial deposit coin denomation
         denom: &'m str,
+        /// Proposer's account address
         proposer: &'m str,
     },
     /// Make a deposit to fund a proposal. Represents a [`MsgDeposit`]
     Deposit {
+        /// ID of the proposal
         proposal_id: u64,
+        /// Address of the depositing account
         depositor: &'m str,
+        /// Deposit amount
         amount: u128,
+        /// Deposit coin denomination
         denom: &'m str,
     },
     /// Vote on a proposal. Represents a [`MsgVote`]
     Vote {
+        /// ID of the proposal
         proposal_id: u64,
+        /// Address of the voting account
         voter: &'m str,
+        /// Vote option
         option: VoteOption,
     },
 }
@@ -104,7 +115,7 @@ impl ModuleMsg for Gov<'_> {
     }
 }
 
-// We implement cosmrs::tx::Msg for gov Msgs because they're not in cosmrs
+/// Implementation of [`cosmrs::tx::Msg`] for `MsgSubmitProposal`
 #[derive(Debug, Default)]
 pub struct WrappedMsgSubmitProposal {
     inner: cosmrs::proto::cosmos::gov::v1beta1::MsgSubmitProposal,
@@ -209,6 +220,7 @@ impl From<&MsgSubmitProposal> for WrappedMsgSubmitProposal {
     }
 }
 
+/// Implementation of [`cosmrs::tx::Msg`] for `MsgDeposit`
 #[derive(Debug, Default)]
 pub struct WrappedMsgDeposit {
     inner: cosmrs::proto::cosmos::gov::v1beta1::MsgDeposit,
@@ -305,6 +317,7 @@ impl From<&MsgDeposit> for WrappedMsgDeposit {
     }
 }
 
+/// Implementation of [`cosmrs::tx::Msg`] for `MsgVote`
 #[derive(Debug, Default)]
 pub struct WrappedMsgVote {
     inner: cosmrs::proto::cosmos::gov::v1beta1::MsgVote,

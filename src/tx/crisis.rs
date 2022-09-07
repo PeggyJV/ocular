@@ -16,8 +16,11 @@ use crate::cosmrs;
 pub enum Crisis<'m> {
     /// Verify a given invariant for a given module. Represents a [`MsgVerifyInvariant`]
     VerifyInvariant {
+        /// Address of the message sender
         sender: &'m str,
+        /// Name of the module where the invariant is defined
         module_name: &'m str,
+        /// Invariant route
         route: &'m str,
     },
 }
@@ -50,7 +53,7 @@ impl ModuleMsg for Crisis<'_> {
     }
 }
 
-// We implement cosmrs::tx::Msg for crisis Msgs because they're not in cosmrs
+/// We implement cosmrs::tx::Msg for crisis Msgs because they're not in cosmrs
 #[derive(Debug, Default)]
 pub struct WrappedMsgVerifyInvariant {
     inner: cosmrs::proto::cosmos::crisis::v1beta1::MsgVerifyInvariant,

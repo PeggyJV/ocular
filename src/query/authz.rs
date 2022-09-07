@@ -9,6 +9,7 @@ use super::{GrpcClient, PageRequest, QueryClient};
 
 /// The authz module's query client proto definition
 pub type AuthzQueryClient = authz::query_client::QueryClient<Channel>;
+#[allow(missing_docs)]
 pub type Grant = authz::Grant;
 
 #[async_trait]

@@ -6,18 +6,17 @@ use eyre::{Context, Result};
 
 use crate::cosmrs::{
     bip32::{secp256k1::SecretKey, Mnemonic},
-    crypto::PublicKey,
+    crypto::{secp256k1::SigningKey, PublicKey},
     AccountId,
 };
 
+/// The derivation path commonly used by Cosmos chains for key generation
 pub const COSMOS_BASE_DERIVATION_PATH: &str = "m/44'/118'/0'/0/0";
 
 /// Represents a local account derived from a [`SigningKey`].
 ///
 /// Note: Attempting a transaction with an account made from a newly generated key will fail as the account does not actually exist
 /// on-chain yet.
-use crate::cosmrs::crypto::secp256k1::SigningKey;
-
 #[derive(Clone)]
 pub struct AccountInfo {
     public_key: PublicKey,

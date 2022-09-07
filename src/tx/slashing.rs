@@ -15,7 +15,10 @@ use crate::cosmrs;
 #[derive(Clone, Debug)]
 pub enum Slashing<'m> {
     /// Unjail a jailed validator. Represents a [`MsgUnjail`]
-    Unjail { validator_address: &'m str },
+    Unjail {
+        /// Address of the validator to unjail
+        validator_address: &'m str,
+    },
 }
 
 impl ModuleMsg for Slashing<'_> {
@@ -40,7 +43,7 @@ impl ModuleMsg for Slashing<'_> {
     }
 }
 
-// We implement cosmrs::tx::Msg for slashing Msgs because they're not in cosmrs
+/// We implement cosmrs::tx::Msg for slashing Msgs because they're not in cosmrs
 #[derive(Debug, Default)]
 pub struct WrappedMsgVerifyInvariant {
     inner: cosmrs::proto::cosmos::slashing::v1beta1::MsgUnjail,

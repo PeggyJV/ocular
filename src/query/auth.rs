@@ -66,7 +66,9 @@ impl QueryClient {
 /// Convenience type for `all_accounts()` responses
 #[derive(Clone, Debug)]
 pub struct AccountsResponse {
+    /// Accounts returned in current page
     pub accounts: Vec<BaseAccount>,
+    /// Paging information
     pub pagination: Option<PageResponse>,
 }
 
@@ -94,17 +96,22 @@ impl TryFrom<QueryAccountsResponse> for AccountsResponse {
 /// Used for converting the BaseAccount type in cosmos_sdk_proto to something with concrete field types
 #[derive(Clone, Debug)]
 pub struct BaseAccount {
+    /// Bech32 address of the account
     pub address: String,
-    // public key may not be present on chain
+    /// Public key of the account. May or may not be present on chain.
     pub pub_key: Option<PublicKey>,
+    /// Account number
     pub account_number: u64,
+    /// Sequence number representing how many previous transactions have been executed by the current
+    /// account number used to prevent replay attacks.
     pub sequence: u64,
 }
 
-// TO-DO: Handle public keys with type URL /cosmos.crypto.multisig.LegacyAminoPubKey
+// TO-DO: Handle public keys with type URL /cosmos.crypto.multisig.LegacyAminoPubKey?
 impl TryFrom<cosmrs::proto::cosmos::auth::v1beta1::BaseAccount> for BaseAccount {
     type Error = Report;
 
+    /// This will fail if the public key is not of type `/cosmos.crypto.ed25519.PubKey` or `/cosmos.crypto.secp256k1.PubKey`
     fn try_from(account: cosmrs::proto::cosmos::auth::v1beta1::BaseAccount) -> Result<BaseAccount> {
         let pub_key = match account.pub_key {
             Some(k) => Some(PublicKey::try_from(k)?),

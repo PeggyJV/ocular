@@ -19,18 +19,29 @@ use super::{ModuleMsg, UnsignedTx};
 pub enum Authz<'m> {
     /// Authorize one account to execute a specified message on behalf of another. Represents a [`MsgGrant`]
     Grant {
+        /// Address of the granter account
         granter: &'m str,
+        /// Address of the grantee account
         grantee: &'m str,
+        /// Authorization to be granted to grantee
         grant: Grant,
     },
     /// Revoke authorization of a previously created [`Grant`]. Represents a [`MsgRevoke`]
     Revoke {
+        /// Address of the granter account
         granter: &'m str,
+        /// Address of the grantee account
         grantee: &'m str,
+        /// Type URL of the message previously authorized for grantee
         msg_type_url: &'m str,
     },
     /// Execute a message on behalf of another account under the authorization of a previously created [`Grant`]. Represents a [`MsgExec`]
-    Exec { grantee: &'m str, msgs: Vec<Any> },
+    Exec {
+        /// Address of the grantee account
+        grantee: &'m str,
+        /// Messages to be executed
+        msgs: Vec<Any>,
+    },
 }
 
 impl ModuleMsg for Authz<'_> {
@@ -76,7 +87,7 @@ impl ModuleMsg for Authz<'_> {
     }
 }
 
-// We implement cosmrs::tx::Msg for authz Msgs because they're not in cosmrs
+/// Implemention of [`cosmrs::tx::Msg`] for `MsgGrant`
 #[derive(Debug, Default)]
 pub struct WrappedMsgGrant {
     inner: cosmrs::proto::cosmos::authz::v1beta1::MsgGrant,
@@ -178,6 +189,7 @@ impl From<&MsgGrant> for WrappedMsgGrant {
     }
 }
 
+/// Implemention of [`cosmrs::tx::Msg`] for `MsgRevoke`
 #[derive(Debug, Default)]
 pub struct WrappedMsgRevoke {
     inner: cosmrs::proto::cosmos::authz::v1beta1::MsgRevoke,
@@ -228,6 +240,7 @@ pub struct MsgRevoke {
     /// Grantee's address.
     pub grantee: AccountId,
 
+    /// Type URL of the message to revoke authorization for
     pub msg_type_url: String,
 }
 
@@ -273,6 +286,7 @@ impl From<&MsgRevoke> for WrappedMsgRevoke {
     }
 }
 
+/// Implemention of [`cosmrs::tx::Msg`] for `MsgExec`
 #[derive(Debug, Default)]
 pub struct WrappedMsgExec {
     inner: cosmrs::proto::cosmos::authz::v1beta1::MsgExec,

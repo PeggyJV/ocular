@@ -16,7 +16,12 @@ use crate::cosmrs;
 pub enum Evidence<'m> {
     /// Submit evidence of malicious behavior by a validator for slashing. To learn more, see
     /// [Evidence](https://docs.cosmos.network/master/modules/evidence/). Represents a [`MsgSubmitEvidence`]
-    SubmitEvidence { submitter: &'m str, evidence: Any },
+    SubmitEvidence {
+        /// Address of the account submitting evidence
+        submitter: &'m str,
+        /// Evidence to be submitted
+        evidence: Any,
+    },
 }
 
 impl ModuleMsg for Evidence<'_> {
@@ -45,7 +50,7 @@ impl ModuleMsg for Evidence<'_> {
     }
 }
 
-// We implement cosmrs::tx::Msg for evidence Msgs because they're not in cosmrs
+/// We implement cosmrs::tx::Msg for evidence Msgs because they're not in cosmrs
 #[derive(Debug, Default)]
 pub struct WrappedMsgSubmitEvidence {
     inner: cosmrs::proto::cosmos::evidence::v1beta1::MsgSubmitEvidence,
