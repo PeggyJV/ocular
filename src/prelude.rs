@@ -9,7 +9,7 @@ pub use query::*;
 pub mod query {
     pub use crate::query::{
         auth::*, authz::*, bank::*, distribution::*, evidence::*, feegrant::*, gov::*, mint::*,
-        params::*, rpc::*, slashing::*, staking::*, *,
+        params::*, slashing::*, staking::*, *,
     };
 }
 

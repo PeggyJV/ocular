@@ -36,7 +36,7 @@
 //! // ...
 //! ```
 use cosmrs::AccountId;
-use eyre::{eyre, Result};
+use eyre::{eyre, Context, Result};
 use tendermint_rpc::{
     endpoint::broadcast::{tx_async, tx_commit, tx_sync},
     Client,
@@ -44,13 +44,12 @@ use tendermint_rpc::{
 
 use crate::{
     account::AccountInfo,
-    chain::Context,
+    chain::ChainContext,
     cosmrs::{
         tx::{BodyBuilder, Fee, Raw, SignDoc, SignerInfo},
         Any, Coin,
     },
-    rpc::{new_http_client, RpcHttpClient},
-    QueryClient,
+    HttpClient, QueryClient,
 };
 
 pub mod authz;
@@ -65,19 +64,19 @@ pub mod staking;
 
 /// Client for broadcasting [`SignedTx`]
 pub struct MsgClient {
-    inner: RpcHttpClient,
+    inner: HttpClient,
 }
 
 impl MsgClient {
     /// Constructor
     pub fn new(rpc_endpoint: &str) -> Result<MsgClient> {
-        let inner = new_http_client(rpc_endpoint)?;
+        let inner = HttpClient::new(rpc_endpoint).wrap_err("failed to connect to rpc endpoint")?;
 
         Ok(MsgClient { inner })
     }
 
     /// Gets a reference to the the inner RPC client
-    pub fn inner(&self) -> &RpcHttpClient {
+    pub fn inner(&self) -> &HttpClient {
         &self.inner
     }
 }
@@ -136,7 +135,7 @@ impl UnsignedTx {
         self,
         signer: &AccountInfo,
         fee_info: FeeInfo,
-        chain_context: &Context,
+        chain_context: &ChainContext,
         qclient: &mut QueryClient,
     ) -> Result<SignedTx> {
         let address = signer.address(&chain_context.prefix)?;
@@ -157,7 +156,7 @@ impl UnsignedTx {
         self,
         signer: &AccountInfo,
         fee_info: FeeInfo,
-        chain_context: &Context,
+        chain_context: &ChainContext,
         account_number: u64,
         sequence: u64,
     ) -> Result<SignedTx> {
