@@ -35,12 +35,8 @@
 //!
 //! // ...
 //! ```
-use cosmrs::AccountId;
-use eyre::{eyre, Context, Result};
-use tendermint_rpc::{
-    endpoint::broadcast::{tx_async, tx_commit, tx_sync},
-    Client,
-};
+use cosmrs::{AccountId, rpc::{Client, endpoint::broadcast::{tx_async, tx_commit, tx_sync}}};
+use eyre::{eyre, Result, Context};
 
 use crate::{
     account::AccountInfo,

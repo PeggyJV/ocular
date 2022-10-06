@@ -21,19 +21,21 @@ rustdoc-args = ["--cfg", "docsrs"]
 assay = "0.1"
 async-trait = "0.1.56"
 eyre = "0.6.8"
-cosmrs = {version = "0.9.0", features = ["dev", "grpc"] }
+cosmrs = { version = "0.9.0", features = ["grpc", "rpc"] }
 serde = "1.0.133"
-tendermint-rpc = { version = "0.23.7", features = ["websocket-client"] }
 tonic = { version = "0.8", features = ["transport"] }
 prost = "0.11"
 hex = "0.4.3"
 pkcs8 = { version = "0.9.0", features = ["encryption", "pem"] }
+tendermint-rpc = { version = "0.23.9", optional = true, features = ["websocket-client"] }
 
 [features]
 default = ["tx"]
 query = []
 tx = ["query"]
+tendermint-rpc-ws = ["tendermint-rpc"]
 
 [dev-dependencies]
+cosmrs = { version = "0.9.0", features = ["dev"] }
 k256 = { version = "0.11.4", features = ["pem"] }
 rand_core = { version = "0.6.3", features = ["getrandom"] }
