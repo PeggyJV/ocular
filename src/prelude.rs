@@ -2,14 +2,16 @@
 pub use crate::account::AccountInfo;
 
 #[cfg(feature = "query")]
+#[cfg_attr(docsrs, doc(cfg(feature = "query")))]
 pub use query::*;
 
 #[cfg(feature = "query")]
+#[cfg_attr(docsrs, doc(cfg(feature = "query")))]
 /// Prelude submodule for only importing items relevant to querying
 pub mod query {
     pub use crate::query::{
         auth::*, authz::*, bank::*, distribution::*, evidence::*, feegrant::*, gov::*, mint::*,
-        params::*, rpc::*, slashing::*, staking::*, *,
+        params::*, slashing::*, staking::*, *,
     };
 }
 

@@ -1,6 +1,7 @@
 //! Tendermint RPC queries
 use eyre::Result;
-use tendermint_rpc::Client as TendermintClient;
+
+use crate::cosmrs::rpc::Client as TendermintClient;
 
 use super::QueryClient;
 

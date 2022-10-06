@@ -46,8 +46,6 @@ pub use self::{
     auth::*, authz::*, bank::*, distribution::*, evidence::*, gov::*, mint::*, params::*,
     slashing::*, staking::*,
 };
-use crate::rpc::new_http_client;
-pub use crate::rpc::RpcHttpClient;
 
 pub mod auth;
 pub mod authz;
@@ -58,7 +56,6 @@ pub mod feegrant;
 pub mod gov;
 pub mod mint;
 pub mod params;
-pub mod rpc;
 pub mod slashing;
 pub mod staking;
 
@@ -67,13 +64,12 @@ pub type PageRequest = crate::cosmrs::proto::cosmos::base::query::v1beta1::PageR
 /// Information for requesting the next page of results
 pub type PageResponse = crate::cosmrs::proto::cosmos::base::query::v1beta1::PageResponse;
 
-/// A convencience wrapper for querying both Tendermint RPC and Cosmos SDK module endpoints. It creates a Tendermint RPC client
-/// at construction time. gRPC clients are created on demand because each module has it's own query client proto definition.
-/// [`QueryClient`] keeps a cache of these gRPC clients, and will reuse them for subsequent queries to the same SDK module.
+/// A convencience wrapper for querying Cosmos SDK module gRPC endpoints. It creates a Tendermint RPC client at construction
+/// time. gRPC clients are created on demand because each module has it's own query client proto definition. [`QueryClient`]
+/// keeps a cache of these gRPC clients, and will reuse them for subsequent queries to the same SDK module.
 pub struct QueryClient {
     grpc_endpoint: String,
     grpc_cache: HashMap<TypeId, Box<dyn Any>>,
-    rpc_client: RpcHttpClient,
 }
 
 impl QueryClient {
@@ -84,13 +80,10 @@ impl QueryClient {
     /// // it is necessary to bind the client as mutable in order to use it.
     /// let mut client = QueryClient::new(rpc, grpc)?;
     /// ```
-    pub fn new(rpc_endpoint: &str, grpc_endpoint: &str) -> Result<QueryClient> {
-        let rpc_client = new_http_client(rpc_endpoint)?;
-
+    pub fn new(grpc_endpoint: &str) -> Result<QueryClient> {
         Ok(QueryClient {
             grpc_endpoint: String::from(grpc_endpoint),
             grpc_cache: HashMap::new(),
-            rpc_client,
         })
     }
 

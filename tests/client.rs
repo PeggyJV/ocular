@@ -11,32 +11,11 @@ async fn chain_client_construction() {
     new_cosmos_client();
 }
 
-// the rpc endpoints are unreliable so only run this when explicity requested
-#[assay]
-async fn query_latest_block_height() {
-    let client = new_cosmos_client();
-
-    client
-        .latest_height()
-        .await
-        .expect("failed to query latest height");
-}
-
 #[assay]
 async fn connect_grpc_query_client() {
     new_grpc_query_client::<AuthQueryClient>("https://cosmos-grpc.polkachu.com:49090")
         .await
         .expect("failed to connect grpc client");
-}
-
-#[assay]
-async fn rpc_queries() {
-    let client = new_cosmos_client();
-
-    client
-        .latest_height()
-        .await
-        .expect("failed to query latest block height");
 }
 
 #[assay]

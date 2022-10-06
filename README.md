@@ -12,7 +12,7 @@ Ocular is a client library for Cosmos SDK chains with a focus on pleasent UX. Th
 
 ## To do
 
-- RPC query coverage
+- RPC query coverage?
 - Feature enabling dynamic chain contexts populated by chain registry data
 - Key generation/persistance API
 - Websocket query support?
