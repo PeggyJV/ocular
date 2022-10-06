@@ -35,8 +35,14 @@
 //!
 //! // ...
 //! ```
-use cosmrs::{AccountId, rpc::{Client, endpoint::broadcast::{tx_async, tx_commit, tx_sync}}};
-use eyre::{eyre, Result, Context};
+use cosmrs::{
+    rpc::{
+        endpoint::broadcast::{tx_async, tx_commit, tx_sync},
+        Client,
+    },
+    AccountId,
+};
+use eyre::{eyre, Context, Result};
 
 use crate::{
     account::AccountInfo,
