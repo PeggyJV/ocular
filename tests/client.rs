@@ -2,20 +2,13 @@
 use crate::common::*;
 
 use assay::assay;
-use ocular::query::{new_grpc_query_client, AuthQueryClient, BankQueryClient, PageRequest};
+use ocular::query::{AuthQueryClient, BankQueryClient, PageRequest};
 
 mod common;
 
 #[assay]
 async fn chain_client_construction() {
     new_cosmos_client();
-}
-
-#[assay]
-async fn connect_grpc_query_client() {
-    new_grpc_query_client::<AuthQueryClient>("https://cosmos-grpc.polkachu.com:49090")
-        .await
-        .expect("failed to connect grpc client");
 }
 
 #[assay]
