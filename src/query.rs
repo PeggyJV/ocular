@@ -58,6 +58,7 @@ pub mod mint;
 pub mod params;
 pub mod slashing;
 pub mod staking;
+pub mod tendermint;
 
 /// Paging configuration for queries with potentially large result sets
 pub type PageRequest = crate::cosmrs::proto::cosmos::base::query::v1beta1::PageRequest;
