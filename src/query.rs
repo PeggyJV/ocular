@@ -108,6 +108,11 @@ impl QueryClient {
             .downcast_mut::<T>()
             .unwrap())
     }
+
+    /// Gets the inner gRPC endpoint
+    pub fn grpc_endpoint(&self) -> &str {
+        &self.grpc_endpoint
+    }
 }
 
 #[async_trait]

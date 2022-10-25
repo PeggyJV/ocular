@@ -79,7 +79,7 @@ impl TryFrom<QueryAccountsResponse> for AccountsResponse {
         let base_accounts = response
             .accounts
             .iter()
-            .map(|any| auth::BaseAccount::decode(&any.value as &[u8]).unwrap())
+            .filter_map(|any| auth::BaseAccount::decode(&any.value as &[u8]).ok())
             .collect::<Vec<auth::BaseAccount>>();
         let mut accounts = Vec::<BaseAccount>::new();
         for ba in base_accounts {
@@ -111,10 +111,10 @@ pub struct BaseAccount {
 impl TryFrom<cosmrs::proto::cosmos::auth::v1beta1::BaseAccount> for BaseAccount {
     type Error = Report;
 
-    /// This will fail if the public key is not of type `/cosmos.crypto.ed25519.PubKey` or `/cosmos.crypto.secp256k1.PubKey`
+    /// This will ignore public keys not of type `/cosmos.crypto.ed25519.PubKey` or `/cosmos.crypto.secp256k1.PubKey`
     fn try_from(account: cosmrs::proto::cosmos::auth::v1beta1::BaseAccount) -> Result<BaseAccount> {
         let pub_key = match account.pub_key {
-            Some(k) => Some(PublicKey::try_from(k)?),
+            Some(k) => PublicKey::try_from(k).ok(),
             None => None,
         };
 
