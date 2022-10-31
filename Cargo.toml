@@ -30,9 +30,10 @@ pkcs8 = { version = "0.9.0", features = ["encryption", "pem"] }
 tendermint-rpc = { version = "0.23.9", optional = true, features = ["websocket-client"] }
 
 [features]
-default = ["tx"]
+default = ["tx", "crypto"]
 query = []
 tx = ["query"]
+crypto = []
 tendermint-rpc-ws = ["tendermint-rpc"]
 
 [dev-dependencies]

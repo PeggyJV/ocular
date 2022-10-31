@@ -40,7 +40,10 @@ use std::{
 };
 
 use async_trait::async_trait;
-use eyre::Result;
+use cosmrs::proto::cosmos::tx::v1beta1::{GetTxResponse, GetTxRequest};
+use eyre::{Result, Context};
+
+use crate::tx::TxClient;
 
 pub use self::{
     auth::*, authz::*, bank::*, distribution::*, evidence::*, gov::*, mint::*, params::*,
@@ -65,9 +68,21 @@ pub type PageRequest = crate::cosmrs::proto::cosmos::base::query::v1beta1::PageR
 /// Information for requesting the next page of results
 pub type PageResponse = crate::cosmrs::proto::cosmos::base::query::v1beta1::PageResponse;
 
+#[async_trait]
+impl GrpcClient for TxClient {
+    type ClientType = Self;
+
+    async fn make_client(endpoint: String) -> Result<Self::ClientType> {
+        TxClient::connect(endpoint)
+            .await
+            .wrap_err("Failed to make gRPC connection")
+    }
+}
+
 /// A convencience wrapper for querying Cosmos SDK module gRPC endpoints. It creates a Tendermint RPC client at construction
 /// time. gRPC clients are created on demand because each module has it's own query client proto definition. [`QueryClient`]
 /// keeps a cache of these gRPC clients, and will reuse them for subsequent queries to the same SDK module.
+#[derive(Debug)]
 pub struct QueryClient {
     grpc_endpoint: String,
     grpc_cache: HashMap<TypeId, Box<dyn Any>>,
@@ -81,11 +96,11 @@ impl QueryClient {
     /// // it is necessary to bind the client as mutable in order to use it.
     /// let mut client = QueryClient::new(rpc, grpc)?;
     /// ```
-    pub fn new(grpc_endpoint: &str) -> Result<QueryClient> {
-        Ok(QueryClient {
+    pub fn new(grpc_endpoint: &str) -> QueryClient {
+        QueryClient {
             grpc_endpoint: String::from(grpc_endpoint),
             grpc_cache: HashMap::new(),
-        })
+        }
     }
 
     /// Checks if the internal gRPC pool contains a client of the given module type. Primarily used for testing.
@@ -112,6 +127,14 @@ impl QueryClient {
     /// Gets the inner gRPC endpoint
     pub fn grpc_endpoint(&self) -> &str {
         &self.grpc_endpoint
+    }
+
+    /// Gets a tx by its hash
+    pub async fn tx_by_hash(&mut self, hash: &str) -> Result<GetTxResponse> {
+        let client = self.get_grpc_query_client::<TxClient>().await?;
+        let request = GetTxRequest { hash: hash.to_string() };
+
+        Ok(client.get_tx(request).await?.into_inner())
     }
 }
 

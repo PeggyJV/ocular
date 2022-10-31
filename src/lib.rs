@@ -29,3 +29,7 @@ pub mod chain;
 #[cfg(feature = "tx")]
 #[cfg_attr(docsrs, doc(cfg(feature = "tx")))]
 pub mod tx;
+
+#[cfg(feature = "crypto")]
+#[cfg_attr(docsrs, doc(cfg(feature = "crypto")))]
+pub mod crypto;

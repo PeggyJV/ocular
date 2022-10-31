@@ -1,7 +1,7 @@
 //! Types providing context and references to specific Cosmos chains
 
 /// Provides chain-specific context
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Default)]
 pub struct ChainContext {
     /// The chain's ID, usually formatted as <chain_name>-<major_version_number> (ex. cosmoshub-4)
     pub id: String,
