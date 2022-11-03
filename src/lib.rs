@@ -6,6 +6,7 @@ pub extern crate cosmrs as cosmrs;
 
 /// Convenience alias for Tendermint RPC HTTP client type
 pub type HttpClient = crate::cosmrs::rpc::HttpClient;
+pub use crate::grpc::GrpcClient;
 
 pub mod account;
 pub mod chain;
