@@ -9,26 +9,24 @@ use crate::cosmrs::{
     proto::cosmos::auth::v1beta1::{self as auth, QueryAccountsResponse},
 };
 
-use super::{GrpcClient, PageRequest, PageResponse, QueryClient};
+use super::{ConstructClient, GrpcClient, PageRequest, PageResponse};
 
 /// The auth module's query client proto definition
 pub type AuthQueryClient = auth::query_client::QueryClient<Channel>;
 
 #[async_trait]
-impl GrpcClient for AuthQueryClient {
-    type ClientType = Self;
-
-    async fn make_client(endpoint: String) -> Result<Self::ClientType> {
-        AuthQueryClient::connect(endpoint)
+impl ConstructClient<AuthQueryClient> for AuthQueryClient {
+    async fn new_client(endpoint: String) -> Result<AuthQueryClient> {
+        AuthQueryClient::connect(endpoint.to_owned())
             .await
             .wrap_err("Failed to make gRPC connection")
     }
 }
 
-impl QueryClient {
+impl GrpcClient {
     /// Gets the account on chain with the specified address
-    pub async fn account(&mut self, address: &str) -> Result<BaseAccount> {
-        let query_client = self.get_grpc_query_client::<AuthQueryClient>().await?;
+    pub async fn query_account(&mut self, address: &str) -> Result<BaseAccount> {
+        let query_client = self.get_client::<AuthQueryClient>().await?;
         let request = auth::QueryAccountRequest {
             address: address.to_string(),
         };
@@ -41,11 +39,11 @@ impl QueryClient {
     }
 
     /// Gets all accounts
-    pub async fn all_accounts(
+    pub async fn query_all_accounts(
         &mut self,
         pagination: Option<PageRequest>,
     ) -> Result<AccountsResponse> {
-        let query_client = self.get_grpc_query_client::<AuthQueryClient>().await?;
+        let query_client = self.get_client::<AuthQueryClient>().await?;
         let request = auth::QueryAccountsRequest { pagination };
         query_client
             .accounts(request)
@@ -55,8 +53,8 @@ impl QueryClient {
     }
 
     /// Gets the auth module's params
-    pub async fn auth_params(&mut self) -> Result<auth::QueryParamsResponse> {
-        let query_client = self.get_grpc_query_client::<AuthQueryClient>().await?;
+    pub async fn query_auth_params(&mut self) -> Result<auth::QueryParamsResponse> {
+        let query_client = self.get_client::<AuthQueryClient>().await?;
         let request = auth::QueryParamsRequest {};
 
         Ok(query_client.params(request).await?.into_inner())

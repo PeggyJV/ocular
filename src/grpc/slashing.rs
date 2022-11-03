@@ -1,15 +1,64 @@
-//! Message for unjailing a validator
-//!
-//! Since cosmrs doesn't currently have a [`cosmrs::tx::msg::Msg`] implementation for Slashing messages,
-//! it's defined here.
+//! Queries and messages for the [Slashing module](https://github.com/cosmos/cosmos-sdk/blob/main/proto/cosmos/slashing/v1beta1/query.proto). If you need a query that does not have a method wrapper here, you can use the [`SlashingQueryClient`] directly.
 use std::str::FromStr;
 
+use async_trait::async_trait;
 use cosmrs::{proto::traits::TypeUrl, tx::Msg, AccountId, Any};
-use eyre::{Report, Result};
+use eyre::{Context, Report, Result};
 use prost::Message;
+use tonic::transport::Channel;
 
-use super::{ModuleMsg, UnsignedTx};
-use crate::cosmrs;
+use crate::{
+    cosmrs::proto::cosmos::slashing::v1beta1 as slashing,
+    tx::{ModuleMsg, UnsignedTx},
+};
+
+use super::{ConstructClient, GrpcClient, PageRequest};
+
+/// The slashing module's query client proto definition
+pub type SlashingQueryClient = slashing::query_client::QueryClient<Channel>;
+
+#[async_trait]
+impl ConstructClient<SlashingQueryClient> for SlashingQueryClient {
+    async fn new_client(endpoint: String) -> Result<Self> {
+        SlashingQueryClient::connect(endpoint.to_owned())
+            .await
+            .wrap_err("Failed to make gRPC connection")
+    }
+}
+
+impl GrpcClient {
+    /// Params queries the parameters of slashing module
+    pub async fn query_slashing_params(&mut self) -> Result<slashing::QueryParamsResponse> {
+        let query_client = self.get_client::<SlashingQueryClient>().await?;
+        let request = slashing::QueryParamsRequest {};
+
+        Ok(query_client.params(request).await?.into_inner())
+    }
+
+    /// SigningInfo queries the signing info of given cons address
+    pub async fn query_signing_info(
+        &mut self,
+        cons_address: &str,
+    ) -> Result<slashing::QuerySigningInfoResponse> {
+        let query_client = self.get_client::<SlashingQueryClient>().await?;
+        let request = slashing::QuerySigningInfoRequest {
+            cons_address: cons_address.to_string(),
+        };
+
+        Ok(query_client.signing_info(request).await?.into_inner())
+    }
+
+    /// SigningInfos queries signing info of all validators
+    pub async fn query_signing_infos(
+        &mut self,
+        pagination: Option<PageRequest>,
+    ) -> Result<slashing::QuerySigningInfosResponse> {
+        let query_client = self.get_client::<SlashingQueryClient>().await?;
+        let request = slashing::QuerySigningInfosRequest { pagination };
+
+        Ok(query_client.signing_infos(request).await?.into_inner())
+    }
+}
 
 /// Represents a [Slashing module message](https://docs.cosmos.network/v0.45/modules/slashing/03_messages.html)
 #[derive(Clone, Debug)]
