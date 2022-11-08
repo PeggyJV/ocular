@@ -17,7 +17,7 @@ impl ConstructClient<TxClient> for TxClient {
 }
 
 impl GrpcClient {
-    /// Gets a tx by its hash
+    /// Gets a tx by its hash. Will error if the hash is not found.
     pub async fn query_tx_by_hash(&mut self, hash: &str) -> Result<GetTxResponse> {
         let client = self.get_client::<TxClient>().await?;
         let request = GetTxRequest {
@@ -31,7 +31,7 @@ impl GrpcClient {
     pub async fn broadcast_async(&mut self, tx: SignedTx) -> Result<BroadcastTxResponse> {
         let request = BroadcastTxRequest {
             tx_bytes: tx.to_bytes()?,
-            mode: BroadcastMode::Block.into(),
+            mode: BroadcastMode::Async.into(),
         };
 
         Ok(self.tx_client.broadcast_tx(request).await?.into_inner())
@@ -43,7 +43,7 @@ impl GrpcClient {
     pub async fn broadcast_commit(&mut self, tx: SignedTx) -> Result<BroadcastTxResponse> {
         let request = BroadcastTxRequest {
             tx_bytes: tx.to_bytes()?,
-            mode: BroadcastMode::Async.into(),
+            mode: BroadcastMode::Block.into(),
         };
 
         Ok(self.tx_client.broadcast_tx(request).await?.into_inner())
