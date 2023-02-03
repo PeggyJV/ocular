@@ -60,10 +60,7 @@ impl QueryClient {
     ) -> Result<auth::QueryAccountsResponse> {
         let query_client = self.get_grpc_query_client::<AuthQueryClient>().await?;
         let request = auth::QueryAccountsRequest { pagination };
-        Ok(query_client
-            .accounts(request)
-            .await?
-            .into_inner())
+        Ok(query_client.accounts(request).await?.into_inner())
     }
 
     /// Gets the auth module's params
@@ -97,7 +94,7 @@ impl TryFrom<cosmrs::proto::cosmos::auth::v1beta1::BaseAccount> for BaseAccount 
     fn try_from(account: cosmrs::proto::cosmos::auth::v1beta1::BaseAccount) -> Result<BaseAccount> {
         let pub_key = match account.pub_key {
             // We don't currently support LegacyAminoPubKey so we simply return None if decoding fails
-            Some(k) => PublicKey::try_from(k).map_or(None, |v| Some(v)),
+            Some(k) => PublicKey::try_from(k).ok(),
             None => None,
         };
 
