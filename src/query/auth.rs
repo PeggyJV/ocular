@@ -1,15 +1,16 @@
 //! Query methods for the [Auth module](https://github.com/cosmos/cosmos-sdk/blob/main/proto/cosmos/auth/v1beta1/query.proto). If you need a query that does not have a method wrapper here, you can use the [`AuthQueryClient`] directly.
 use async_trait::async_trait;
+use cosmrs::Any;
 use eyre::{Context, Report, Result};
 use prost::Message;
 use tonic::transport::channel::Channel;
 
 use crate::cosmrs::{
     crypto::PublicKey,
-    proto::cosmos::auth::v1beta1::{self as auth, QueryAccountsResponse},
+    proto::cosmos::auth::v1beta1::{self as auth},
 };
 
-use super::{GrpcClient, PageRequest, PageResponse, QueryClient};
+use super::{GrpcClient, PageRequest, QueryClient};
 
 /// The auth module's query client proto definition
 pub type AuthQueryClient = auth::query_client::QueryClient<Channel>;
@@ -27,6 +28,8 @@ impl GrpcClient for AuthQueryClient {
 
 impl QueryClient {
     /// Gets the account on chain with the specified address
+    /// NOTE: Currently this only supports accounts of type cosmos.auth.v1beta1.BaseAccount. Use
+    /// [`QueryClient::account_raw`] if the address might belong to another account type.
     pub async fn account(&mut self, address: &str) -> Result<BaseAccount> {
         let query_client = self.get_grpc_query_client::<AuthQueryClient>().await?;
         let request = auth::QueryAccountRequest {
@@ -40,18 +43,27 @@ impl QueryClient {
             .try_into()
     }
 
+    /// Gets the account on chain with the specified address as a raw [`cosmrs::Any`]
+    pub async fn account_raw(&mut self, address: &str) -> Result<Any> {
+        let query_client = self.get_grpc_query_client::<AuthQueryClient>().await?;
+        let request = auth::QueryAccountRequest {
+            address: address.to_string(),
+        };
+        let response = query_client.account(request).await?.into_inner();
+        Ok(response.account.unwrap())
+    }
+
     /// Gets all accounts
     pub async fn all_accounts(
         &mut self,
         pagination: Option<PageRequest>,
-    ) -> Result<AccountsResponse> {
+    ) -> Result<auth::QueryAccountsResponse> {
         let query_client = self.get_grpc_query_client::<AuthQueryClient>().await?;
         let request = auth::QueryAccountsRequest { pagination };
-        query_client
+        Ok(query_client
             .accounts(request)
             .await?
-            .into_inner()
-            .try_into()
+            .into_inner())
     }
 
     /// Gets the auth module's params
@@ -60,36 +72,6 @@ impl QueryClient {
         let request = auth::QueryParamsRequest {};
 
         Ok(query_client.params(request).await?.into_inner())
-    }
-}
-
-/// Convenience type for `all_accounts()` responses
-#[derive(Clone, Debug)]
-pub struct AccountsResponse {
-    /// Accounts returned in current page
-    pub accounts: Vec<BaseAccount>,
-    /// Paging information
-    pub pagination: Option<PageResponse>,
-}
-
-impl TryFrom<QueryAccountsResponse> for AccountsResponse {
-    type Error = Report;
-
-    fn try_from(response: QueryAccountsResponse) -> Result<Self> {
-        let base_accounts = response
-            .accounts
-            .iter()
-            .map(|any| auth::BaseAccount::decode(&any.value as &[u8]).unwrap())
-            .collect::<Vec<auth::BaseAccount>>();
-        let mut accounts = Vec::<BaseAccount>::new();
-        for ba in base_accounts {
-            accounts.push(ba.try_into()?)
-        }
-
-        Ok(Self {
-            accounts,
-            pagination: response.pagination,
-        })
     }
 }
 
@@ -114,7 +96,8 @@ impl TryFrom<cosmrs::proto::cosmos::auth::v1beta1::BaseAccount> for BaseAccount 
     /// This will fail if the public key is not of type `/cosmos.crypto.ed25519.PubKey` or `/cosmos.crypto.secp256k1.PubKey`
     fn try_from(account: cosmrs::proto::cosmos::auth::v1beta1::BaseAccount) -> Result<BaseAccount> {
         let pub_key = match account.pub_key {
-            Some(k) => Some(PublicKey::try_from(k)?),
+            // We don't currently support LegacyAminoPubKey so we simply return None if decoding fails
+            Some(k) => PublicKey::try_from(k).map_or(None, |v| Some(v)),
             None => None,
         };
 
