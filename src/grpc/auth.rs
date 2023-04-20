@@ -40,7 +40,7 @@ impl GrpcClient {
     }
 
     /// Gets the account on chain with the specified address as a raw [`cosmrs::Any`]
-    pub async fn account_raw(&mut self, address: &str) -> Result<Any> {
+    pub async fn query_account_raw(&mut self, address: &str) -> Result<Any> {
         let query_client = self.get_client::<AuthQueryClient>().await?;
         let request = auth::QueryAccountRequest {
             address: address.to_string(),
