@@ -1,15 +1,60 @@
-//! Message for submitting evidence of malicious behavior for slashing
-//!
-//! Since cosmrs doesn't currently have a [`cosmrs::tx::msg::Msg`] implementation for Evidence messages,
-//! it's defined here.
+//! Queries and messages for the [Evidence module](https://github.com/cosmos/cosmos-sdk/blob/main/proto/cosmos/evidence/v1beta1/query.proto). If you need a query that does not have a method wrapper here, you can use the [`EvidenceQueryClient`] directly.
 use std::str::FromStr;
 
-use cosmrs::{proto::traits::TypeUrl, tx::Msg, AccountId, Any};
-use eyre::{eyre, Report, Result};
+use async_trait::async_trait;
+use cosmrs::{
+    proto::{cosmos::evidence::v1beta1::QueryAllEvidenceResponse, traits::TypeUrl},
+    tx::Msg,
+    AccountId, Any,
+};
+use eyre::{eyre, Context, Report, Result};
 use prost::Message;
+use tonic::transport::Channel;
 
-use super::{ModuleMsg, UnsignedTx};
-use crate::cosmrs;
+use crate::{
+    cosmrs::proto::cosmos::evidence::v1beta1 as evidence,
+    tx::{ModuleMsg, UnsignedTx},
+};
+
+use super::{ConstructClient, GrpcClient, PageRequest};
+
+/// The evidence module's query client proto definition
+pub type EvidenceQueryClient = evidence::query_client::QueryClient<Channel>;
+
+#[async_trait]
+impl ConstructClient<EvidenceQueryClient> for EvidenceQueryClient {
+    async fn new_client(endpoint: String) -> Result<Self> {
+        EvidenceQueryClient::connect(endpoint.to_owned())
+            .await
+            .wrap_err("Failed to make gRPC connection")
+    }
+}
+
+impl GrpcClient {
+    /// Gets evidence with the specified hash. Hash must be a valid hex string.
+    pub async fn query_evidence(
+        &mut self,
+        evidence_hash: String,
+    ) -> Result<evidence::QueryEvidenceResponse> {
+        let query_client = self.get_client::<EvidenceQueryClient>().await?;
+        let request = evidence::QueryEvidenceRequest {
+            evidence_hash: hex::decode(evidence_hash)?,
+        };
+
+        Ok(query_client.evidence(request).await?.into_inner())
+    }
+
+    /// Gets all evidence with optional pagination
+    pub async fn query_all_evidence(
+        &mut self,
+        pagination: Option<PageRequest>,
+    ) -> Result<QueryAllEvidenceResponse> {
+        let query_client = self.get_client::<EvidenceQueryClient>().await?;
+        let request = evidence::QueryAllEvidenceRequest { pagination };
+
+        Ok(query_client.all_evidence(request).await?.into_inner())
+    }
+}
 
 /// Represents a [Evidence module message](https://docs.cosmos.network/v0.45/modules/evidence/03_messages.html)
 #[derive(Clone, Debug)]

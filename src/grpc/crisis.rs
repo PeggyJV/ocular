@@ -8,8 +8,10 @@ use cosmrs::{proto::traits::TypeUrl, tx::Msg, AccountId, Any};
 use eyre::{Report, Result};
 use prost::Message;
 
-use super::{ModuleMsg, UnsignedTx};
-use crate::cosmrs;
+use crate::{
+    cosmrs,
+    tx::{ModuleMsg, UnsignedTx},
+};
 
 /// Represents a [Crisis module message](https://docs.cosmos.network/v0.45/modules/crisis/02_messages.html)
 #[derive(Clone, Debug)]

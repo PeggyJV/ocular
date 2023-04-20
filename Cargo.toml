@@ -1,6 +1,6 @@
 [package]
 name = "ocular"
-description = "A client library for Cosmos SDK chains with a focus on pleasant UX"
+description = "A gRPC client library for Cosmos SDK chains"
 authors = ["Collin Brittain", "Phil Bal"]
 version = "1.0.0-beta-0.0.1"
 edition = "2021"
@@ -30,9 +30,9 @@ pkcs8 = { version = "0.9.0", features = ["encryption", "pem"] }
 tendermint-rpc = { version = "0.23.9", optional = true, features = ["websocket-client"] }
 
 [features]
-default = ["tx"]
-query = []
-tx = ["query"]
+default = ["grpc", "crypto"]
+crypto = []
+grpc = []
 tendermint-rpc-ws = ["tendermint-rpc"]
 
 [dev-dependencies]

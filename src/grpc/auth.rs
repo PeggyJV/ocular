@@ -10,28 +10,24 @@ use crate::cosmrs::{
     proto::cosmos::auth::v1beta1::{self as auth},
 };
 
-use super::{GrpcClient, PageRequest, QueryClient};
+use super::{ConstructClient, GrpcClient, PageRequest};
 
 /// The auth module's query client proto definition
 pub type AuthQueryClient = auth::query_client::QueryClient<Channel>;
 
 #[async_trait]
-impl GrpcClient for AuthQueryClient {
-    type ClientType = Self;
-
-    async fn make_client(endpoint: String) -> Result<Self::ClientType> {
-        AuthQueryClient::connect(endpoint)
+impl ConstructClient<AuthQueryClient> for AuthQueryClient {
+    async fn new_client(endpoint: String) -> Result<AuthQueryClient> {
+        AuthQueryClient::connect(endpoint.to_owned())
             .await
             .wrap_err("Failed to make gRPC connection")
     }
 }
 
-impl QueryClient {
+impl GrpcClient {
     /// Gets the account on chain with the specified address
-    /// NOTE: Currently this only supports accounts of type cosmos.auth.v1beta1.BaseAccount. Use
-    /// [`QueryClient::account_raw`] if the address might belong to another account type.
-    pub async fn account(&mut self, address: &str) -> Result<BaseAccount> {
-        let query_client = self.get_grpc_query_client::<AuthQueryClient>().await?;
+    pub async fn query_account(&mut self, address: &str) -> Result<BaseAccount> {
+        let query_client = self.get_client::<AuthQueryClient>().await?;
         let request = auth::QueryAccountRequest {
             address: address.to_string(),
         };
@@ -45,7 +41,7 @@ impl QueryClient {
 
     /// Gets the account on chain with the specified address as a raw [`cosmrs::Any`]
     pub async fn account_raw(&mut self, address: &str) -> Result<Any> {
-        let query_client = self.get_grpc_query_client::<AuthQueryClient>().await?;
+        let query_client = self.get_client::<AuthQueryClient>().await?;
         let request = auth::QueryAccountRequest {
             address: address.to_string(),
         };
@@ -54,18 +50,18 @@ impl QueryClient {
     }
 
     /// Gets all accounts
-    pub async fn all_accounts(
+    pub async fn query_all_accounts(
         &mut self,
         pagination: Option<PageRequest>,
     ) -> Result<auth::QueryAccountsResponse> {
-        let query_client = self.get_grpc_query_client::<AuthQueryClient>().await?;
+        let query_client = self.get_client::<AuthQueryClient>().await?;
         let request = auth::QueryAccountsRequest { pagination };
         Ok(query_client.accounts(request).await?.into_inner())
     }
 
     /// Gets the auth module's params
-    pub async fn auth_params(&mut self) -> Result<auth::QueryParamsResponse> {
-        let query_client = self.get_grpc_query_client::<AuthQueryClient>().await?;
+    pub async fn query_auth_params(&mut self) -> Result<auth::QueryParamsResponse> {
+        let query_client = self.get_client::<AuthQueryClient>().await?;
         let request = auth::QueryParamsRequest {};
 
         Ok(query_client.params(request).await?.into_inner())
@@ -90,7 +86,7 @@ pub struct BaseAccount {
 impl TryFrom<cosmrs::proto::cosmos::auth::v1beta1::BaseAccount> for BaseAccount {
     type Error = Report;
 
-    /// This will fail if the public key is not of type `/cosmos.crypto.ed25519.PubKey` or `/cosmos.crypto.secp256k1.PubKey`
+    /// This will ignore public keys not of type `/cosmos.crypto.ed25519.PubKey` or `/cosmos.crypto.secp256k1.PubKey`
     fn try_from(account: cosmrs::proto::cosmos::auth::v1beta1::BaseAccount) -> Result<BaseAccount> {
         let pub_key = match account.pub_key {
             // We don't currently support LegacyAminoPubKey so we simply return None if decoding fails

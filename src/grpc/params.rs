@@ -1,34 +1,32 @@
-//! Queries for the [Params module](https://github.com/cosmos/cosmos-sdk/blob/main/proto/cosmos/params/v1beta1/query.proto). If you need a query that does not have a method wrapper here, you can use the [`ParamsQueryClient`] directly.
+//! Queries and messages for the [Params module](https://github.com/cosmos/cosmos-sdk/blob/main/proto/cosmos/params/v1beta1/query.proto). If you need a query that does not have a method wrapper here, you can use the [`ParamsQueryClient`] directly.
 use async_trait::async_trait;
 use eyre::{Context, Result};
 use tonic::transport::Channel;
 
 use crate::cosmrs::proto::cosmos::params::v1beta1 as params;
 
-use super::{GrpcClient, QueryClient};
+use super::{ConstructClient, GrpcClient};
 
 /// The params module's query client proto definition
 pub type ParamsQueryClient = params::query_client::QueryClient<Channel>;
 
 #[async_trait]
-impl GrpcClient for ParamsQueryClient {
-    type ClientType = Self;
-
-    async fn make_client(endpoint: String) -> Result<Self::ClientType> {
-        ParamsQueryClient::connect(endpoint)
+impl ConstructClient<ParamsQueryClient> for ParamsQueryClient {
+    async fn new_client(endpoint: String) -> Result<Self> {
+        ParamsQueryClient::connect(endpoint.to_owned())
             .await
             .wrap_err("Failed to make gRPC connection")
     }
 }
 
-impl QueryClient {
+impl GrpcClient {
     /// Gets the chain's params
-    pub async fn params(
+    pub async fn query_params(
         &mut self,
         subspace: &str,
         key: &str,
     ) -> Result<params::QueryParamsResponse> {
-        let query_client = self.get_grpc_query_client::<ParamsQueryClient>().await?;
+        let query_client = self.get_client::<ParamsQueryClient>().await?;
         let request = params::QueryParamsRequest {
             subspace: subspace.to_string(),
             key: key.to_string(),
