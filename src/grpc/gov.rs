@@ -1,19 +1,144 @@
-#![allow(dead_code)]
-//! Messages for participating in governance
-//!
-//! Since cosmrs doesn't currently have [`cosmrs::tx::msg::Msg`] implementations for Gov messages,
-//! they are defined here.
+//! Queries and messages for the [Gov module](https://github.com/cosmos/cosmos-sdk/blob/main/proto/cosmos/gov/v1beta1/query.proto). If you need a query that does not have a method wrapper here, you can use the [`GovQueryClient`] directly.
 use std::str::FromStr;
 
+use async_trait::async_trait;
 use cosmrs::{
     proto::{cosmos::gov::v1beta1::VoteOption, traits::TypeUrl},
     tx::Msg,
     AccountId, Any, Coin, Denom,
 };
-use eyre::{eyre, Report, Result};
+use eyre::{eyre, Context, Report, Result};
 use prost::Message;
+use tonic::transport::Channel;
 
-use super::{ModuleMsg, UnsignedTx};
+use crate::{
+    cosmrs::proto::cosmos::gov::v1beta1::{
+        self as gov, QueryProposalsResponse, QueryVotesResponse,
+    },
+    tx::{ModuleMsg, UnsignedTx},
+};
+
+use super::{ConstructClient, GrpcClient, PageRequest};
+
+/// The gov module's query client proto definition
+pub type GovQueryClient = gov::query_client::QueryClient<Channel>;
+
+#[async_trait]
+impl ConstructClient<GovQueryClient> for GovQueryClient {
+    async fn new_client(endpoint: String) -> Result<Self> {
+        GovQueryClient::connect(endpoint.to_owned())
+            .await
+            .wrap_err("Failed to make gRPC connection")
+    }
+}
+
+impl GrpcClient {
+    /// Params queries all parameters of the gov module.
+    pub async fn query_gov_params(
+        &mut self,
+        params_type: String,
+    ) -> Result<gov::QueryParamsResponse> {
+        let query_client = self.get_client::<GovQueryClient>().await?;
+        let request = gov::QueryParamsRequest { params_type };
+
+        Ok(query_client.params(request).await?.into_inner())
+    }
+
+    /// Proposal queries proposal details based on ProposalID.
+    pub async fn query_proposal(&mut self, proposal_id: u64) -> Result<gov::QueryProposalResponse> {
+        let query_client = self.get_client::<GovQueryClient>().await?;
+        let request = gov::QueryProposalRequest { proposal_id };
+
+        Ok(query_client.proposal(request).await?.into_inner())
+    }
+
+    /// Proposals queries all proposals based on given status.
+    pub async fn query_proposals(
+        &mut self,
+        proposal_status: i32,
+        voter: String,
+        depositor: String,
+        pagination: Option<PageRequest>,
+    ) -> Result<QueryProposalsResponse> {
+        let query_client = self.get_client::<GovQueryClient>().await?;
+        let request = gov::QueryProposalsRequest {
+            proposal_status,
+            voter,
+            depositor,
+            pagination,
+        };
+
+        Ok(query_client.proposals(request).await?.into_inner())
+    }
+
+    /// Vote queries voted information based on proposalID, voterAddr.
+    pub async fn query_vote(
+        &mut self,
+        proposal_id: u64,
+        voter: String,
+    ) -> Result<gov::QueryVoteResponse> {
+        let query_client = self.get_client::<GovQueryClient>().await?;
+        let request = gov::QueryVoteRequest { proposal_id, voter };
+
+        Ok(query_client.vote(request).await?.into_inner())
+    }
+
+    /// Votes queries votes of a given proposal.
+    pub async fn query_votes(
+        &mut self,
+        proposal_id: u64,
+        pagination: Option<PageRequest>,
+    ) -> Result<QueryVotesResponse> {
+        let query_client = self.get_client::<GovQueryClient>().await?;
+        let request = gov::QueryVotesRequest {
+            proposal_id,
+            pagination,
+        };
+
+        Ok(query_client.votes(request).await?.into_inner())
+    }
+
+    /// Deposit queries single deposit information based proposalID, depositAddr.
+    pub async fn query_deposit(
+        &mut self,
+        proposal_id: u64,
+        depositor: String,
+    ) -> Result<gov::QueryDepositResponse> {
+        let query_client = self.get_client::<GovQueryClient>().await?;
+        let request = gov::QueryDepositRequest {
+            proposal_id,
+            depositor,
+        };
+
+        Ok(query_client.deposit(request).await?.into_inner())
+    }
+
+    /// Deposits queries all deposits of a single proposal.
+    pub async fn query_deposits(
+        &mut self,
+        proposal_id: u64,
+        pagination: Option<PageRequest>,
+    ) -> Result<gov::QueryDepositsResponse> {
+        let query_client = self.get_client::<GovQueryClient>().await?;
+        let request = gov::QueryDepositsRequest {
+            proposal_id,
+            pagination,
+        };
+
+        Ok(query_client.deposits(request).await?.into_inner())
+    }
+
+    /// TallyResult queries the tally of a proposal vote.
+    pub async fn query_tally_result(
+        &mut self,
+        proposal_id: u64,
+    ) -> Result<gov::QueryTallyResultResponse> {
+        let query_client = self.get_client::<GovQueryClient>().await?;
+        let request = gov::QueryTallyResultRequest { proposal_id };
+
+        Ok(query_client.tally_result(request).await?.into_inner())
+    }
+}
 
 /// Represents a [Gov module message](https://docs.cosmos.network/v0.45/modules/gov/03_messages.html)
 #[derive(Clone, Debug)]
@@ -47,7 +172,7 @@ pub enum Gov<'m> {
         /// Address of the voting account
         voter: &'m str,
         /// Vote option
-        option: VoteOption,
+        option: gov::VoteOption,
     },
 }
 
@@ -423,6 +548,8 @@ impl From<&MsgVote> for WrappedMsgVote {
 
 #[cfg(test)]
 mod tests {
+    use cosmrs::{proto::cosmos::gov::v1beta1::VoteOption, Any};
+
     use super::*;
 
     #[test]

@@ -1,15 +1,65 @@
-//! Messages for managing allowance fee grants
+//! Queries and messages for the [FeeGrant module](https://github.com/cosmos/cosmos-sdk/blob/main/proto/cosmos/feegrant/v1beta1/query.proto). If you need a query that does not have a method wrapper here, you can use the [`FeeGrantQueryClient`] directly.
 use std::str::FromStr;
 
-use eyre::{Report, Result};
-
-use crate::cosmrs::{
+use async_trait::async_trait;
+use cosmrs::{
     feegrant::{MsgGrantAllowance, MsgRevokeAllowance},
     tx::Msg,
     AccountId, Any,
 };
+use eyre::{Context, Report, Result};
+use tonic::transport::Channel;
 
-use super::{ModuleMsg, UnsignedTx};
+use crate::{
+    cosmrs::proto::cosmos::feegrant::v1beta1::{self as feegrant, QueryAllowancesResponse},
+    tx::{ModuleMsg, UnsignedTx},
+};
+
+use super::{ConstructClient, GrpcClient, PageRequest};
+
+/// The gov module's query client proto definition
+pub type FeeGrantQueryClient = feegrant::query_client::QueryClient<Channel>;
+
+#[async_trait]
+impl ConstructClient<FeeGrantQueryClient> for FeeGrantQueryClient {
+    async fn new_client(endpoint: String) -> Result<Self> {
+        FeeGrantQueryClient::connect(endpoint.to_owned())
+            .await
+            .wrap_err("Failed to make gRPC connection")
+    }
+}
+
+impl GrpcClient {
+    /// Allowance returns fee granted to the grantee by the granter.
+    pub async fn query_allowance(
+        &mut self,
+        granter: &str,
+        grantee: &str,
+    ) -> Result<feegrant::QueryAllowanceResponse> {
+        let query_client = self.get_client::<FeeGrantQueryClient>().await?;
+        let request = feegrant::QueryAllowanceRequest {
+            granter: granter.to_string(),
+            grantee: grantee.to_string(),
+        };
+
+        Ok(query_client.allowance(request).await?.into_inner())
+    }
+
+    /// Allowances returns all the grants for address.
+    pub async fn query_all_allowances(
+        &mut self,
+        grantee: &str,
+        pagination: Option<PageRequest>,
+    ) -> Result<QueryAllowancesResponse> {
+        let query_client = self.get_client::<FeeGrantQueryClient>().await?;
+        let request = feegrant::QueryAllowancesRequest {
+            grantee: grantee.to_string(),
+            pagination,
+        };
+
+        Ok(query_client.allowances(request).await?.into_inner())
+    }
+}
 
 /// Represents a [FeeGrant module message](https://docs.cosmos.network/v0.45/modules/feegrant/03_messages.html)
 #[derive(Clone, Debug)]

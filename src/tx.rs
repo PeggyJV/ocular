@@ -35,14 +35,9 @@
 //!
 //! // ...
 //! ```
-use cosmrs::{
-    rpc::{
-        endpoint::broadcast::{tx_async, tx_commit, tx_sync},
-        Client,
-    },
-    AccountId,
-};
-use eyre::{eyre, Context, Result};
+
+use cosmrs::AccountId;
+use eyre::{eyre, Result};
 
 use crate::{
     account::AccountInfo,
@@ -51,37 +46,8 @@ use crate::{
         tx::{BodyBuilder, Fee, Raw, SignDoc, SignerInfo},
         Any, Coin,
     },
-    HttpClient, QueryClient,
+    grpc::GrpcClient,
 };
-
-pub mod authz;
-pub mod bank;
-pub mod crisis;
-pub mod distribution;
-pub mod evidence;
-pub mod feegrant;
-pub mod gov;
-pub mod slashing;
-pub mod staking;
-
-/// Client for broadcasting [`SignedTx`]
-pub struct MsgClient {
-    inner: HttpClient,
-}
-
-impl MsgClient {
-    /// Constructor
-    pub fn new(rpc_endpoint: &str) -> Result<MsgClient> {
-        let inner = HttpClient::new(rpc_endpoint).wrap_err("failed to connect to rpc endpoint")?;
-
-        Ok(MsgClient { inner })
-    }
-
-    /// Gets a reference to the the inner RPC client
-    pub fn inner(&self) -> &HttpClient {
-        &self.inner
-    }
-}
 
 /// Convenience wrapper around a [`BodyBuilder`] representing an unsigned tx
 #[derive(Clone, Debug)]
@@ -138,10 +104,10 @@ impl UnsignedTx {
         signer: &AccountInfo,
         fee_info: FeeInfo,
         chain_context: &ChainContext,
-        qclient: &mut QueryClient,
+        client: &mut GrpcClient,
     ) -> Result<SignedTx> {
         let address = signer.address(&chain_context.prefix)?;
-        let account = qclient.account(&address).await?;
+        let account = client.query_account(&address).await?;
 
         self.sign_with_sequence(
             signer,
@@ -202,6 +168,46 @@ impl From<BodyBuilder> for UnsignedTx {
     }
 }
 
+impl From<&BodyBuilder> for UnsignedTx {
+    fn from(builder: &BodyBuilder) -> Self {
+        UnsignedTx {
+            inner: builder.clone(),
+        }
+    }
+}
+
+impl From<&mut BodyBuilder> for UnsignedTx {
+    fn from(builder: &mut BodyBuilder) -> Self {
+        UnsignedTx {
+            inner: builder.clone(),
+        }
+    }
+}
+
+impl From<Any> for UnsignedTx {
+    fn from(msg: Any) -> Self {
+        let mut builder = BodyBuilder::new();
+        builder.msg(msg);
+        builder.into()
+    }
+}
+
+impl From<&Any> for UnsignedTx {
+    fn from(msg: &Any) -> Self {
+        let mut builder = BodyBuilder::new();
+        builder.msg(msg.to_owned());
+        builder.into()
+    }
+}
+
+impl From<&Vec<Any>> for UnsignedTx {
+    fn from(msgs: &Vec<Any>) -> Self {
+        let mut builder = BodyBuilder::new();
+        builder.msgs(msgs.to_owned());
+        builder.into()
+    }
+}
+
 /// Wrapper around a [`Raw`], the raw bytes of a signed tx
 #[derive(Debug)]
 pub struct SignedTx {
@@ -209,33 +215,6 @@ pub struct SignedTx {
 }
 
 impl SignedTx {
-    /// Broadcasts transaction using the /broadcast_async Tendermint endpoint. Returns right away without waiting on CheckTx.
-    pub async fn broadcast_async(self, client: &mut MsgClient) -> Result<tx_async::Response> {
-        let tx = self.to_bytes()?.into();
-        client
-            .inner()
-            .broadcast_tx_async(tx)
-            .await
-            .map_err(|e| e.into())
-    }
-
-    /// Broadcasts transaction using the /broadcast_commit Tendermint endpoint, waiting for CheckTx and DeliverTx to complete
-    /// before returning. Note that the server may time out the connection while waiting for the tx to be included in a block.
-    /// This can result in an error being returned by this method even if the tx is ultimately successful.
-    pub async fn broadcast_commit(self, client: &mut MsgClient) -> Result<tx_commit::Response> {
-        self.inner.broadcast_commit(client.inner()).await
-    }
-
-    /// Broadcasts transaction using the /broadcast_sync Tendermint endpoint. Waits for CheckTx but not DeliverTx.
-    pub async fn broadcast_sync(self, client: &mut MsgClient) -> Result<tx_sync::Response> {
-        let tx = self.to_bytes()?.into();
-        client
-            .inner()
-            .broadcast_tx_sync(tx)
-            .await
-            .map_err(|e| e.into())
-    }
-
     /// Converts to the inner [`Raw`]
     pub fn into_inner(self) -> Raw {
         self.inner
@@ -305,7 +284,10 @@ impl FeeInfo {
 }
 
 /// Represents an arbitrary Cosmos module Msg
-pub trait ModuleMsg {
+pub trait ModuleMsg
+where
+    Self::Error: core::fmt::Debug,
+{
     #[allow(missing_docs)]
     type Error;
 

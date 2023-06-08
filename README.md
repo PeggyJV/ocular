@@ -1,6 +1,6 @@
 # Ocular
 
-Ocular is a client library for Cosmos SDK chains with a focus on pleasent UX. Think of it as a convenience wrapper around the [cosmrs](https://docs.rs/cosmrs/latest/cosmrs/) client features.
+Ocular is a gRPC client library for Cosmos SDK chains with a focus on pleasent UX. Think of it as a convenience wrapper around the [cosmrs](https://docs.rs/cosmrs/latest/cosmrs/) client features.
 
 # Beta Features
 
@@ -12,10 +12,10 @@ Ocular is a client library for Cosmos SDK chains with a focus on pleasent UX. Th
 
 ## To do
 
-- RPC query coverage?
+- RPC?
 - Feature enabling dynamic chain contexts populated by chain registry data
 - Key generation/persistance API
-- Websocket query support?
+- Websocket?
 - Code examples
 - Convenience wrappers around proto-generated types (like authz::{Grant, GrantAuthorization, GenericAuthorization})
 
