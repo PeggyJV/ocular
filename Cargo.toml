@@ -21,13 +21,16 @@ rustdoc-args = ["--cfg", "docsrs"]
 assay = "0.1"
 async-trait = "0.1.56"
 eyre = "0.6.8"
-cosmrs = { version = "0.9.0", features = ["grpc", "rpc"] }
+k256 = { version = "0.11.4", features = ["pem"] }
+bip32 = { version = "0.4.0", features = ["secp256k1"] }
+cosmrs = { version = "0.15.0", features = ["grpc", "rpc"] }
 serde = "1.0.133"
-tonic = { version = "0.8", features = ["transport"] }
-prost = "0.11"
+tonic = { version = "0.10", features = ["transport"] }
+prost = "0.12"
 hex = "0.4.3"
 pkcs8 = { version = "0.9.0", features = ["encryption", "pem"] }
-tendermint-rpc = { version = "0.23.9", optional = true, features = ["websocket-client"] }
+tendermint-rpc = { version = "0.34.0", optional = true, features = ["websocket-client"] }
+tendermint = { version = "0.34.0", features = ["secp256k1"] }
 
 [features]
 default = ["grpc", "crypto"]
@@ -36,6 +39,6 @@ grpc = []
 tendermint-rpc-ws = ["tendermint-rpc"]
 
 [dev-dependencies]
-cosmrs = { version = "0.9.0", features = ["dev"] }
+cosmrs = { version = "0.15.0", features = ["dev"] }
 k256 = { version = "0.11.4", features = ["pem"] }
 rand_core = { version = "0.6.3", features = ["getrandom"] }

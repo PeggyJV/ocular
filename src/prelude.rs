@@ -10,8 +10,8 @@ pub use grpc::*;
 /// Prelude submodule for only importing items relevant to querying
 pub mod grpc {
     pub use crate::grpc::{
-        *, auth::*, authz::*, bank::*, crisis::*, distribution::*, evidence::*, feegrant::*, gov::*, mint::*,
-        params::*, slashing::*, staking::*, tendermint::*, tx::*,
+        auth::*, authz::*, bank::*, crisis::*, distribution::*, evidence::*, feegrant::*, gov::*,
+        mint::*, params::*, slashing::*, staking::*, tendermint::*, tx::*, *,
     };
 }
 

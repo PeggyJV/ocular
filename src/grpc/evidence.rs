@@ -2,13 +2,9 @@
 use std::str::FromStr;
 
 use async_trait::async_trait;
-use cosmrs::{
-    proto::{cosmos::evidence::v1beta1::QueryAllEvidenceResponse, traits::TypeUrl},
-    tx::Msg,
-    AccountId, Any,
-};
+use cosmrs::{proto::cosmos::evidence::v1beta1::QueryAllEvidenceResponse, tx::Msg, AccountId, Any};
 use eyre::{eyre, Context, Report, Result};
-use prost::Message;
+use prost::{Message, Name};
 use tonic::transport::Channel;
 
 use crate::{
@@ -133,10 +129,6 @@ impl Message for WrappedMsgSubmitEvidence {
     }
 }
 
-impl TypeUrl for WrappedMsgSubmitEvidence {
-    const TYPE_URL: &'static str = "/cosmos.evidence.v1beta1.MsgSubmitEvidence";
-}
-
 /// MsgSubmitEvidence represents a message to send evidence of malicious conduct by a validator for slashing
 #[derive(Clone, Debug)]
 pub struct MsgSubmitEvidence {
@@ -149,6 +141,11 @@ pub struct MsgSubmitEvidence {
 
 impl Msg for MsgSubmitEvidence {
     type Proto = WrappedMsgSubmitEvidence;
+}
+
+impl Name for WrappedMsgSubmitEvidence {
+    const NAME: &'static str = "MsgSubmitEvidence";
+    const PACKAGE: &'static str = "cosmos.evidence.v1beta1";
 }
 
 impl TryFrom<WrappedMsgSubmitEvidence> for MsgSubmitEvidence {

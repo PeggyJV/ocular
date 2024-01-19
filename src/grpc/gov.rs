@@ -2,13 +2,9 @@
 use std::str::FromStr;
 
 use async_trait::async_trait;
-use cosmrs::{
-    proto::{cosmos::gov::v1beta1::VoteOption, traits::TypeUrl},
-    tx::Msg,
-    AccountId, Any, Coin, Denom,
-};
+use cosmrs::{proto::cosmos::gov::v1beta1::VoteOption, tx::Msg, AccountId, Any, Coin, Denom};
 use eyre::{eyre, Context, Report, Result};
-use prost::Message;
+use prost::{Message, Name};
 use tonic::transport::Channel;
 
 use crate::{
@@ -246,6 +242,11 @@ pub struct WrappedMsgSubmitProposal {
     inner: cosmrs::proto::cosmos::gov::v1beta1::MsgSubmitProposal,
 }
 
+impl Name for WrappedMsgSubmitProposal {
+    const NAME: &'static str = "MsgSubmitProposal";
+    const PACKAGE: &'static str = "cosmos.gov.v1beta1";
+}
+
 impl Message for WrappedMsgSubmitProposal {
     fn encode_raw<B>(&self, buf: &mut B)
     where
@@ -276,10 +277,6 @@ impl Message for WrappedMsgSubmitProposal {
     fn clear(&mut self) {
         self.inner.clear()
     }
-}
-
-impl TypeUrl for WrappedMsgSubmitProposal {
-    const TYPE_URL: &'static str = "/cosmos.gov.v1beta1.MsgSubmitProposal";
 }
 
 /// MsgSubmitProposal represents a message to submit a governance proposal
@@ -351,6 +348,11 @@ pub struct WrappedMsgDeposit {
     inner: cosmrs::proto::cosmos::gov::v1beta1::MsgDeposit,
 }
 
+impl Name for WrappedMsgDeposit {
+    const NAME: &'static str = "MsgDeposit";
+    const PACKAGE: &'static str = "cosmos.gov.v1beta1";
+}
+
 impl Message for WrappedMsgDeposit {
     fn encode_raw<B>(&self, buf: &mut B)
     where
@@ -381,10 +383,6 @@ impl Message for WrappedMsgDeposit {
     fn clear(&mut self) {
         self.inner.clear()
     }
-}
-
-impl TypeUrl for WrappedMsgDeposit {
-    const TYPE_URL: &'static str = "/cosmos.gov.v1beta1.MsgDeposit";
 }
 
 /// MsgDeposit represents a message to fund a proposal
@@ -448,6 +446,11 @@ pub struct WrappedMsgVote {
     inner: cosmrs::proto::cosmos::gov::v1beta1::MsgVote,
 }
 
+impl Name for WrappedMsgVote {
+    const NAME: &'static str = "MsgVote";
+    const PACKAGE: &'static str = "cosmos.gov.v1beta1";
+}
+
 impl Message for WrappedMsgVote {
     fn encode_raw<B>(&self, buf: &mut B)
     where
@@ -478,10 +481,6 @@ impl Message for WrappedMsgVote {
     fn clear(&mut self) {
         self.inner.clear()
     }
-}
-
-impl TypeUrl for WrappedMsgVote {
-    const TYPE_URL: &'static str = "/cosmos.gov.v1beta1.MsgVote";
 }
 
 /// MsgVote represents a message to vote on a proposal

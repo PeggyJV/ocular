@@ -1,14 +1,11 @@
 //! Defines [`AccountInfo`], a private key wrapper used for signing and deriving addresses
 use std::sync::Arc;
 
-use cosmrs::bip32::Language;
+use bip32::{secp256k1::SecretKey, Language, Mnemonic};
 use eyre::{Context, Result};
+use k256::ecdsa::SigningKey;
 
-use crate::cosmrs::{
-    bip32::{secp256k1::SecretKey, Mnemonic},
-    crypto::{secp256k1::SigningKey, PublicKey},
-    AccountId,
-};
+use crate::cosmrs::{crypto::PublicKey, AccountId};
 
 /// The derivation path commonly used by Cosmos chains for key generation
 pub const COSMOS_BASE_DERIVATION_PATH: &str = "m/44'/118'/0'/0/0";
@@ -31,9 +28,8 @@ impl AccountInfo {
         let phrase = Mnemonic::new(phrase, Language::English)
             .wrap_err("failed to parse mnemonic phrase. be sure it is a 24 word phrase as this crate does not support fewer words.")?;
         let seed = phrase.to_seed(passphrase);
-        let derivation_path =
-            COSMOS_BASE_DERIVATION_PATH.parse::<cosmrs::bip32::DerivationPath>()?;
-        let key = cosmrs::bip32::XPrv::derive_from_path(seed, &derivation_path)?;
+        let derivation_path = COSMOS_BASE_DERIVATION_PATH.parse::<bip32::DerivationPath>()?;
+        let key = bip32::XPrv::derive_from_path(seed, &derivation_path)?;
         let key = SecretKey::from(key.private_key());
         let key = SigningKey::from_bytes(key.to_be_bytes().as_slice())?;
 
@@ -150,11 +146,13 @@ impl From<SigningKey> for AccountInfo {
 impl From<Arc<SigningKey>> for AccountInfo {
     fn from(value: Arc<SigningKey>) -> Self {
         let private_key = value;
-        let public_key = private_key.public_key();
+        let public_key = private_key.verifying_key();
+        let public_key =
+            tendermint::PublicKey::from_raw_secp256k1(public_key.to_bytes().as_slice()).unwrap();
 
         AccountInfo {
             private_key,
-            public_key,
+            public_key: public_key.into(),
         }
     }
 }
