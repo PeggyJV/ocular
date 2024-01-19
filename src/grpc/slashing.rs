@@ -2,9 +2,9 @@
 use std::str::FromStr;
 
 use async_trait::async_trait;
-use cosmrs::{proto::traits::TypeUrl, tx::Msg, AccountId, Any};
+use cosmrs::{tx::Msg, AccountId, Any};
 use eyre::{Context, Report, Result};
-use prost::Message;
+use prost::{Message, Name};
 use tonic::transport::Channel;
 
 use crate::{
@@ -98,6 +98,11 @@ pub struct WrappedMsgVerifyInvariant {
     inner: cosmrs::proto::cosmos::slashing::v1beta1::MsgUnjail,
 }
 
+impl Name for WrappedMsgVerifyInvariant {
+    const NAME: &'static str = "MsgVerifyInvariant";
+    const PACKAGE: &'static str = "cosmos.slashing.v1beta1";
+}
+
 impl Message for WrappedMsgVerifyInvariant {
     fn encode_raw<B>(&self, buf: &mut B)
     where
@@ -128,10 +133,6 @@ impl Message for WrappedMsgVerifyInvariant {
     fn clear(&mut self) {
         self.inner.clear()
     }
-}
-
-impl TypeUrl for WrappedMsgVerifyInvariant {
-    const TYPE_URL: &'static str = "/cosmos.slashing.v1beta1.MsgUnjail";
 }
 
 /// MsgUnjail represents a message to send coins from one account to another.

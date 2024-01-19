@@ -4,9 +4,9 @@
 //! it's defined here.
 use std::str::FromStr;
 
-use cosmrs::{proto::traits::TypeUrl, tx::Msg, AccountId, Any};
+use cosmrs::{tx::Msg, AccountId, Any};
 use eyre::{Report, Result};
-use prost::Message;
+use prost::{Message, Name};
 
 use crate::{
     cosmrs,
@@ -61,6 +61,11 @@ pub struct WrappedMsgVerifyInvariant {
     inner: cosmrs::proto::cosmos::crisis::v1beta1::MsgVerifyInvariant,
 }
 
+impl Name for WrappedMsgVerifyInvariant {
+    const NAME: &'static str = "MsgVerifyInvariant";
+    const PACKAGE: &'static str = "cosmos.crisis.v1beta1";
+}
+
 impl Message for WrappedMsgVerifyInvariant {
     fn encode_raw<B>(&self, buf: &mut B)
     where
@@ -91,10 +96,6 @@ impl Message for WrappedMsgVerifyInvariant {
     fn clear(&mut self) {
         self.inner.clear()
     }
-}
-
-impl TypeUrl for WrappedMsgVerifyInvariant {
-    const TYPE_URL: &'static str = "/cosmos.crisis.v1beta1.MsgVerifyInvariant";
 }
 
 /// Represents a message to verify a given invariant of a given module.
