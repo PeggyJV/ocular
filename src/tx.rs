@@ -131,7 +131,7 @@ impl UnsignedTx {
         let signer_info = SignerInfo::single_direct(Some(signer.public_key()), sequence);
         let auth_info = signer_info.auth_info(Fee {
             amount: vec![fee_info.fee],
-            gas_limit: fee_info.gas_limit.into(),
+            gas_limit: fee_info.gas_limit,
             payer: fee_info.fee_payer,
             granter: fee_info.fee_granter,
         });
@@ -149,7 +149,7 @@ impl UnsignedTx {
         };
         let signing_key = signer.private_key();
         let signing_key =
-            cosmrs::crypto::secp256k1::SigningKey::from_bytes(&signing_key.to_bytes().as_slice())?;
+            cosmrs::crypto::secp256k1::SigningKey::from_slice(signing_key.to_bytes().as_slice())?;
         let tx_signed = match sign_doc.sign(&signing_key) {
             Ok(raw) => raw,
             Err(err) => return Err(eyre!("Failed to sign tx for chain {}: {}", chain_id, err)),

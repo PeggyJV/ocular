@@ -147,6 +147,7 @@ impl From<Arc<SigningKey>> for AccountInfo {
     fn from(value: Arc<SigningKey>) -> Self {
         let private_key = value;
         let public_key = private_key.verifying_key();
+        let public_key = tendermint::PublicKey::from_raw_secp256k1(public_key.to_bytes().as_slice()).unwrap();
 
         AccountInfo {
             private_key,
