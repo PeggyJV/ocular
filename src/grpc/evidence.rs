@@ -2,11 +2,7 @@
 use std::str::FromStr;
 
 use async_trait::async_trait;
-use cosmrs::{
-    proto::cosmos::evidence::v1beta1::QueryAllEvidenceResponse,
-    tx::Msg,
-    AccountId, Any,
-};
+use cosmrs::{proto::cosmos::evidence::v1beta1::QueryAllEvidenceResponse, tx::Msg, AccountId, Any};
 use eyre::{eyre, Context, Report, Result};
 use prost::{Message, Name};
 use tonic::transport::Channel;

@@ -148,7 +148,8 @@ impl UnsignedTx {
             }
         };
         let signing_key = signer.private_key();
-        let signing_key = cosmrs::crypto::secp256k1::SigningKey::from_bytes(&signing_key.to_bytes().as_slice())?;
+        let signing_key =
+            cosmrs::crypto::secp256k1::SigningKey::from_bytes(&signing_key.to_bytes().as_slice())?;
         let tx_signed = match sign_doc.sign(&signing_key) {
             Ok(raw) => raw,
             Err(err) => return Err(eyre!("Failed to sign tx for chain {}: {}", chain_id, err)),

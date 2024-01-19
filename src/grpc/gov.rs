@@ -2,11 +2,7 @@
 use std::str::FromStr;
 
 use async_trait::async_trait;
-use cosmrs::{
-    proto::cosmos::gov::v1beta1::VoteOption,
-    tx::Msg,
-    AccountId, Any, Coin, Denom,
-};
+use cosmrs::{proto::cosmos::gov::v1beta1::VoteOption, tx::Msg, AccountId, Any, Coin, Denom};
 use eyre::{eyre, Context, Report, Result};
 use prost::{Message, Name};
 use tonic::transport::Channel;
@@ -247,7 +243,7 @@ pub struct WrappedMsgSubmitProposal {
 }
 
 impl Name for WrappedMsgSubmitProposal {
-    const NAME: &'static str =  "MsgSubmitProposal";
+    const NAME: &'static str = "MsgSubmitProposal";
     const PACKAGE: &'static str = "cosmos.gov.v1beta1";
 }
 
