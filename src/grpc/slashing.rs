@@ -2,9 +2,9 @@
 use std::str::FromStr;
 
 use async_trait::async_trait;
-use cosmrs::{proto::traits::TypeUrl, tx::Msg, AccountId, Any};
+use cosmrs::{tx::Msg, AccountId, Any};
 use eyre::{Context, Report, Result};
-use prost::Message;
+use prost::{Message, Name};
 use tonic::transport::Channel;
 
 use crate::{
@@ -94,11 +94,16 @@ impl ModuleMsg for Slashing<'_> {
 
 /// We implement cosmrs::tx::Msg for slashing Msgs because they're not in cosmrs
 #[derive(Debug, Default)]
-pub struct WrappedMsgVerifyInvariant {
+pub struct WrappedStakingMsgVerifyInvariant {
     inner: cosmrs::proto::cosmos::slashing::v1beta1::MsgUnjail,
 }
 
-impl Message for WrappedMsgVerifyInvariant {
+impl Name for WrappedStakingMsgVerifyInvariant {
+    const NAME: &'static str = "MsgVerifyInvariant";
+    const PACKAGE: &'static str = "cosmos.slashing.v1beta1";
+}
+
+impl Message for WrappedStakingMsgVerifyInvariant {
     fn encode_raw<B>(&self, buf: &mut B)
     where
         B: prost::bytes::BufMut,
@@ -130,10 +135,6 @@ impl Message for WrappedMsgVerifyInvariant {
     }
 }
 
-impl TypeUrl for WrappedMsgVerifyInvariant {
-    const TYPE_URL: &'static str = "/cosmos.slashing.v1beta1.MsgUnjail";
-}
-
 /// MsgUnjail represents a message to send coins from one account to another.
 #[derive(Clone, Debug)]
 pub struct MsgUnjail {
@@ -142,36 +143,36 @@ pub struct MsgUnjail {
 }
 
 impl Msg for MsgUnjail {
-    type Proto = WrappedMsgVerifyInvariant;
+    type Proto = WrappedStakingMsgVerifyInvariant;
 }
 
-impl TryFrom<WrappedMsgVerifyInvariant> for MsgUnjail {
+impl TryFrom<WrappedStakingMsgVerifyInvariant> for MsgUnjail {
     type Error = Report;
 
-    fn try_from(proto: WrappedMsgVerifyInvariant) -> Result<MsgUnjail> {
+    fn try_from(proto: WrappedStakingMsgVerifyInvariant) -> Result<MsgUnjail> {
         MsgUnjail::try_from(&proto)
     }
 }
 
-impl TryFrom<&WrappedMsgVerifyInvariant> for MsgUnjail {
+impl TryFrom<&WrappedStakingMsgVerifyInvariant> for MsgUnjail {
     type Error = Report;
 
-    fn try_from(proto: &WrappedMsgVerifyInvariant) -> Result<MsgUnjail> {
+    fn try_from(proto: &WrappedStakingMsgVerifyInvariant) -> Result<MsgUnjail> {
         Ok(MsgUnjail {
             validator_addr: AccountId::from_str(&proto.inner.validator_addr)?,
         })
     }
 }
 
-impl From<MsgUnjail> for WrappedMsgVerifyInvariant {
-    fn from(coin: MsgUnjail) -> WrappedMsgVerifyInvariant {
-        WrappedMsgVerifyInvariant::from(&coin)
+impl From<MsgUnjail> for WrappedStakingMsgVerifyInvariant {
+    fn from(coin: MsgUnjail) -> WrappedStakingMsgVerifyInvariant {
+        WrappedStakingMsgVerifyInvariant::from(&coin)
     }
 }
 
-impl From<&MsgUnjail> for WrappedMsgVerifyInvariant {
-    fn from(msg: &MsgUnjail) -> WrappedMsgVerifyInvariant {
-        WrappedMsgVerifyInvariant {
+impl From<&MsgUnjail> for WrappedStakingMsgVerifyInvariant {
+    fn from(msg: &MsgUnjail) -> WrappedStakingMsgVerifyInvariant {
+        WrappedStakingMsgVerifyInvariant {
             inner: cosmrs::proto::cosmos::slashing::v1beta1::MsgUnjail {
                 validator_addr: msg.validator_addr.to_string(),
             },

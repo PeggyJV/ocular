@@ -2,9 +2,9 @@
 use std::str::FromStr;
 
 use async_trait::async_trait;
-use cosmrs::{proto::traits::TypeUrl, tx::Msg, AccountId, Any};
+use cosmrs::{tx::Msg, AccountId, Any};
 use eyre::{eyre, Context, Report, Result};
-use prost::Message;
+use prost::{Message, Name};
 use tonic::transport::Channel;
 
 use crate::{
@@ -159,6 +159,11 @@ pub struct WrappedMsgGrant {
     inner: cosmrs::proto::cosmos::authz::v1beta1::MsgGrant,
 }
 
+impl Name for WrappedMsgGrant {
+    const NAME: &'static str = "MsgGrant";
+    const PACKAGE: &'static str = "cosmos.authz.v1beta1";
+}
+
 impl Message for WrappedMsgGrant {
     fn encode_raw<B>(&self, buf: &mut B)
     where
@@ -189,10 +194,6 @@ impl Message for WrappedMsgGrant {
     fn clear(&mut self) {
         self.inner.clear()
     }
-}
-
-impl TypeUrl for WrappedMsgGrant {
-    const TYPE_URL: &'static str = "/cosmos.authz.v1beta1.MsgGrant";
 }
 
 /// Represents a message to grant authorization to execute a Msg from `granter` to `grantee`
@@ -261,6 +262,11 @@ pub struct WrappedMsgRevoke {
     inner: cosmrs::proto::cosmos::authz::v1beta1::MsgRevoke,
 }
 
+impl Name for WrappedMsgRevoke {
+    const NAME: &'static str = "MsgRevoke";
+    const PACKAGE: &'static str = "cosmos.authz.v1beta1";
+}
+
 impl Message for WrappedMsgRevoke {
     fn encode_raw<B>(&self, buf: &mut B)
     where
@@ -291,10 +297,6 @@ impl Message for WrappedMsgRevoke {
     fn clear(&mut self) {
         self.inner.clear()
     }
-}
-
-impl TypeUrl for WrappedMsgRevoke {
-    const TYPE_URL: &'static str = "/cosmos.authz.v1beta1.MsgRevoke";
 }
 
 /// MsgRevoke represents a message to revoke a [`Grant`] from `granter` to `grantee`
@@ -358,6 +360,11 @@ pub struct WrappedMsgExec {
     inner: cosmrs::proto::cosmos::authz::v1beta1::MsgExec,
 }
 
+impl Name for WrappedMsgExec {
+    const NAME: &'static str = "MsgExec";
+    const PACKAGE: &'static str = "cosmos.authz.v1beta1";
+}
+
 impl Message for WrappedMsgExec {
     fn encode_raw<B>(&self, buf: &mut B)
     where
@@ -388,10 +395,6 @@ impl Message for WrappedMsgExec {
     fn clear(&mut self) {
         self.inner.clear()
     }
-}
-
-impl TypeUrl for WrappedMsgExec {
-    const TYPE_URL: &'static str = "/cosmos.authz.v1beta1.MsgExec";
 }
 
 /// MsgExec represents a message to execute a tx on behalf of another account
