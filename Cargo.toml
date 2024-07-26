@@ -2,7 +2,7 @@
 name = "ocular"
 description = "A gRPC client library for Cosmos SDK chains"
 authors = ["Collin Brittain", "Phil Bal"]
-version = "1.0.0-beta-0.0.1"
+version = "1.0.0-beta-0.0.2"
 edition = "2021"
 license = "Apache-2.0"
 repository = "https://github.com/PeggyJV/ocular"
